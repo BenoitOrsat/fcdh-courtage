@@ -285,6 +285,172 @@ const TH=({children})=><th style={thStyle}>{children}</th>;
 const DragTH=({colId,label,dragRef,onDrop})=><th draggable onDragStart={()=>{dragRef.current=colId;}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onDrop(colId);}} style={{...thStyle,cursor:"grab"}}>{label}</th>;
 const TD=({children,style={}})=><td style={{padding:"9px 12px",fontSize:12,color:TEXT,whiteSpace:"nowrap",borderBottom:`1px solid ${G100}`,...style}}>{children}</td>;
 
+// ── Dashboard ─────────────────────────────────────────────────────
+function DashboardView({bouteilles, vinsClairs}) {
+  const btl = bouteilles.filter(r => r.campagne === CAMPAGNE);
+  const vc  = vinsClairs.filter(r => r.campagne === CAMPAGNE);
+  const all = [...btl, ...vc];
+
+  const actives  = all.filter(r => STATUTS_ACTIFS.includes(r.statut)).length;
+  const conclues = all.filter(r => r.statut === 'conclue' || r.statut === 'conclu').length;
+  const enDeg    = all.filter(r => r.statut === 'en dégustation').length;
+
+  const Kpi = ({icon, label, value, color}) => (
+    <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"20px 24px",boxShadow:"0 1px 4px rgba(13,27,62,.06)",display:"flex",alignItems:"center",gap:14}}>
+      <div style={{fontSize:30}}>{icon}</div>
+      <div>
+        <div style={{fontSize:26,fontWeight:800,color:color||NAVY,lineHeight:1}}>{value}</div>
+        <div style={{fontSize:10,color:G400,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.07em",marginTop:4}}>{label}</div>
+      </div>
+    </div>
+  );
+
+  const BarRow = ({label, value, max, bg, textColor}) => {
+    const pct = max > 0 ? Math.round((value/max)*100) : 0;
+    return (
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:7}}>
+        <div style={{width:110,fontSize:11,fontWeight:600,color:G600,textAlign:"right",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",flexShrink:0}}>{label}</div>
+        <div style={{flex:1,background:G100,borderRadius:4,height:20,position:"relative",overflow:"hidden"}}>
+          <div style={{width:`${pct}%`,background:bg,borderRadius:4,height:"100%",minWidth:value>0?4:0}}/>
+        </div>
+        <div style={{width:24,fontSize:12,fontWeight:700,color:textColor||NAVY,textAlign:"right",flexShrink:0}}>{value}</div>
+      </div>
+    );
+  };
+
+  const byStatut = STATUTS.map(s => {
+    const n = all.filter(r => r.statut === s).length;
+    const sc = STATUT_COLORS[s] || {bg:G200,col:G600};
+    return {s, n, bg:sc.bg, col:sc.col};
+  });
+  const maxStatut = Math.max(...byStatut.map(x=>x.n), 1);
+
+  const byCourtier = COURTIERS
+    .map(c => ({c, vend:all.filter(r=>r.courtier===c&&r.besoin==='Vend').length, rech:all.filter(r=>r.courtier===c&&r.besoin==='Recherche').length}))
+    .map(x => ({...x, total:x.vend+x.rech}))
+    .filter(x => x.total > 0)
+    .sort((a,b) => b.total - a.total);
+  const maxCourtier = Math.max(...byCourtier.map(x=>x.total), 1);
+
+  const btlByQualite = QUALITES_BTL
+    .map(q => ({q, n:btl.filter(r=>r.qualite===q).length}))
+    .filter(x => x.n > 0).sort((a,b) => b.n - a.n);
+  const maxQualite = Math.max(...btlByQualite.map(x=>x.n), 1);
+
+  const vcByCepage = CEPAGES
+    .map(c => ({c, n:vc.filter(r=>r.cepage===c).length}))
+    .filter(x => x.n > 0).sort((a,b) => b.n - a.n);
+  const maxCepage = Math.max(...vcByCepage.map(x=>x.n), 1);
+
+  const cotByCourtier = COURTIERS
+    .map(c => ({c, n:COTATIONS.filter(x=>x.courtier===c).length}))
+    .filter(x => x.n > 0).sort((a,b) => b.n - a.n);
+  const maxCot = Math.max(...cotByCourtier.map(x=>x.n), 1);
+
+  if (all.length === 0) return (
+    <div style={{textAlign:"center",padding:"60px 24px",color:G400}}>
+      <div style={{fontSize:48,marginBottom:16}}>📊</div>
+      <div style={{fontWeight:700,fontSize:18,color:NAVY,marginBottom:8}}>Tableau de bord</div>
+      <div style={{fontSize:13}}>Connectez Google Drive pour voir les statistiques.</div>
+    </div>
+  );
+
+  const Card = ({title, children}) => (
+    <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"20px 22px",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+      <div style={{fontWeight:700,fontSize:13,color:NAVY,marginBottom:16,paddingBottom:10,borderBottom:`1px solid ${G100}`}}>{title}</div>
+      {children}
+    </div>
+  );
+
+  const btlVend    = btl.filter(r=>r.besoin==='Vend').length;
+  const btlRech    = btl.filter(r=>r.besoin==='Recherche').length;
+  const vcVend     = vc.filter(r=>r.besoin==='Vend').length;
+  const vcRech     = vc.filter(r=>r.besoin==='Recherche').length;
+
+  return (
+    <div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14,marginBottom:20}}>
+        <Kpi icon="📋" label="Entrées campagne" value={all.length} color={NAVY}/>
+        <Kpi icon="⏳" label="Actives" value={actives} color="#d97706"/>
+        <Kpi icon="🔬" label="En dégustation" value={enDeg} color="#7c3aed"/>
+        <Kpi icon="✅" label="Conclues" value={conclues} color="#059669"/>
+        <Kpi icon="🫧" label="Bouteilles" value={btl.length} color={BLUE}/>
+        <Kpi icon="🍇" label="Vins Clairs" value={vc.length} color="#7c3aed"/>
+        <Kpi icon="📜" label="Cotations hist." value={COTATIONS.length} color={GOLD}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Card title="Répartition par statut">
+          {byStatut.map(x => <BarRow key={x.s} label={x.s} value={x.n} max={maxStatut} bg={x.bg} textColor={x.col}/>)}
+        </Card>
+
+        <Card title="Offre vs Demande">
+          {[{l:"🫧 Bouteilles",vend:btlVend,rech:btlRech},{l:"🍇 Vins Clairs",vend:vcVend,rech:vcRech}].map(x => {
+            const total = x.vend + x.rech || 1;
+            return (
+              <div key={x.l} style={{marginBottom:18}}>
+                <div style={{fontSize:11,fontWeight:700,color:G400,marginBottom:8}}>{x.l}</div>
+                <div style={{display:"flex",borderRadius:6,overflow:"hidden",height:24,marginBottom:6}}>
+                  <div style={{flex:x.vend,background:"#059669",minWidth:x.vend>0?4:0}}/>
+                  <div style={{flex:x.rech,background:"#3b82f6",minWidth:x.rech>0?4:0}}/>
+                </div>
+                <div style={{display:"flex",gap:16,fontSize:11}}>
+                  <span style={{color:"#059669",fontWeight:700}}>● Vend : {x.vend} ({Math.round(x.vend/total*100)}%)</span>
+                  <span style={{color:"#3b82f6",fontWeight:700}}>● Recherche : {x.rech} ({Math.round(x.rech/total*100)}%)</span>
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <Card title="Activité par courtier — campagne en cours">
+          {byCourtier.length > 0
+            ? byCourtier.map(x => (
+                <div key={x.c} style={{marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:50,fontSize:11,fontWeight:700,color:GOLD,textAlign:"right",flexShrink:0}}>{x.c}</div>
+                    <div style={{flex:1,background:G100,borderRadius:4,height:20,overflow:"hidden",display:"flex"}}>
+                      <div style={{width:`${Math.round(x.vend/maxCourtier*100)}%`,background:"#059669",minWidth:x.vend>0?4:0}}/>
+                      <div style={{width:`${Math.round(x.rech/maxCourtier*100)}%`,background:"#3b82f6",minWidth:x.rech>0?4:0}}/>
+                    </div>
+                    <div style={{width:24,fontSize:11,fontWeight:700,color:NAVY,textAlign:"right",flexShrink:0}}>{x.total}</div>
+                  </div>
+                </div>
+              ))
+            : <div style={{color:G400,fontSize:12,textAlign:"center",padding:"16px 0"}}>Aucune donnée</div>
+          }
+          <div style={{display:"flex",gap:14,marginTop:8,fontSize:10,fontWeight:600}}>
+            <span style={{color:"#059669"}}>● Vend</span>
+            <span style={{color:"#3b82f6"}}>● Recherche</span>
+          </div>
+        </Card>
+
+        <Card title="Cotations historiques par courtier">
+          {cotByCourtier.map(x => <BarRow key={x.c} label={x.c} value={x.n} max={maxCot} bg="#fde68a" textColor={NAVY}/>)}
+        </Card>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <Card title="🫧 Bouteilles par qualité">
+          {btlByQualite.length > 0
+            ? btlByQualite.map(x => <BarRow key={x.q} label={x.q} value={x.n} max={maxQualite} bg="#bfdbfe" textColor="#1e40af"/>)
+            : <div style={{color:G400,fontSize:12,textAlign:"center",padding:"16px 0"}}>Aucune donnée</div>
+          }
+        </Card>
+
+        <Card title="🍇 Vins Clairs par cépage">
+          {vcByCepage.length > 0
+            ? vcByCepage.map(x => <BarRow key={x.c} label={x.c} value={x.n} max={maxCepage} bg="#ddd6fe" textColor="#7c3aed"/>)
+            : <div style={{color:G400,fontSize:12,textAlign:"center",padding:"16px 0"}}>Aucune donnée</div>
+          }
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────
 function App() {
   const [tab, setTab]     = useState("bouteilles");
@@ -697,6 +863,10 @@ function App() {
             {t.l}<span style={{background:tab===t.k?NAVY:G100,color:tab===t.k?GOLD_L:G400,borderRadius:99,padding:"1px 8px",fontSize:11,fontWeight:700}}>{t.n}</span>
           </button>
         ))}
+        <button onClick={()=>setTab("dashboard")}
+          style={{padding:"14px 20px",fontSize:13,fontWeight:600,border:"none",borderBottom:tab==="dashboard"?`3px solid ${GOLD}`:"3px solid transparent",background:"none",color:tab==="dashboard"?NAVY:G400,cursor:"pointer"}}>
+          📊 Dashboard
+        </button>
       </div>
 
       <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 16px"}}>
@@ -861,8 +1031,11 @@ function App() {
           </div>
         )}
 
+        {/* ── Dashboard ── */}
+        {tab==="dashboard" && <DashboardView bouteilles={bouteilles} vinsClairs={vinsClairs}/>}
+
         {/* ── Liste ── */}
-        {view==="liste" && (bouteilles.length>0||vinsClairs.length>0) && (
+        {tab!=="dashboard" && view==="liste" && (bouteilles.length>0||vinsClairs.length>0) && (
           <>
             <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
@@ -904,7 +1077,7 @@ function App() {
         )}
 
         {/* ── Form ── */}
-        {view==="form" && form && (
+        {tab!=="dashboard" && view==="form" && form && (
           <div style={{maxWidth:760,margin:"0 auto"}}>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
               <button onClick={()=>setView("liste")} style={{background:"none",border:"none",color:GOLD,fontSize:13,fontWeight:600,cursor:"pointer"}}>← Retour</button>
