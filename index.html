@@ -337,7 +337,7 @@ function App() {
     const tc = window.google.accounts.oauth2.initTokenClient({
       client_id: gClientId,
       scope: DRIVE_SCOPE,
-      callback: (resp) => { console.log('GIS callback resp:', JSON.stringify(resp));
+      callback: (resp) => {
         if (resp.error) { setGError("Auth Google : " + resp.error); return; }
         setGToken(resp.access_token);
         setGError("");
@@ -348,14 +348,14 @@ function App() {
   };
 
   // ── Load from Drive ─────────────────────────────────────────────
-  const loadFromDrive = async (token) => { console.log('loadFromDrive token:', token ? 'OK' : 'VIDE');
+  const loadFromDrive = async (token) => {
     setGLoading(true); setGError("");
     try {
       const resp = await fetch(
         `https://www.googleapis.com/drive/v3/files/${DRIVE_FILE_ID}?alt=media`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log('Drive response status:', resp.status); if (!resp.ok) throw new Error(`Drive ${resp.status}: ${await resp.text()}`);
+      if (!resp.ok) throw new Error(`Drive ${resp.status}: ${await resp.text()}`);
       const buf = await resp.arrayBuffer();
       const wb  = XLSX.read(buf, {type:'array', cellDates:true});
       driveWbRef.current = wb;
