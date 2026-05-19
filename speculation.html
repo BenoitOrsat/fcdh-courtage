@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FCDH Courtiers Associés</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #eef0f5; }
+    ::-webkit-scrollbar-thumb { background: #C9A84C; border-radius: 3px; }
+    select, input, textarea { font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useRef, useEffect } = React;
+
+// ── Constants ─────────────────────────────────────────────────────
+const COURTIERS = ["BO","MAA","EC","EB","EH","JPNC","ASM","JBC","JFPM"];
+const STATUTS   = ["en attente","en dégustation","conclue","abandon"];
+const FORMATS_BTL  = ["Bouteille","Demie","Magnum","Jero"];
+const COULEURS     = ["verte","blanche","dépolie","noire","chêne/cannelle/antique"];
+const STADES       = ["S/L","S/P","DN"];
+const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","BSA","BIO DEMETER","ROUGE","TRES QUALI","BDB","BRUT NATURE"];
+const CRUS         = ["Sans Revendication","1er Cru","Grand Cru"];
+const CEPAGES      = ["CH","PN","PM","PN/CH","PM/PN","CH/PM","PN/PM/CH","CH PM PN","PN/PM","PM/PN"];
+const FORMATS_VC   = ["Cuvée","Tailles","TV","Cuvée + taille"];
+const QUALITES_VC  = ["ROUGE","BIO","RESERVE","Passé sous bois","DRA","CH +PB","MAUVAIS VINS","Mauvais rouge"];
+const CAMPAGNE     = "2025/2026";
+
+// ── Drive ─────────────────────────────────────────────────────────
+const DRIVE_FILE_ID = '1QruhgICsw5lBoUx3kXTEFV1ol-wlvf4G';
+const DEFAULT_CLIENT_ID = '186740067921-ee61d610og88l11vohc5if35805if5v1.apps.googleusercontent.com';
+const DRIVE_SCOPE   = 'https://www.googleapis.com/auth/drive';
+
+// Column indices (0-based) for each sheet
+const BTL = {campagne:0,statut:1,date:2,courtier:3,client:4,vn:5,besoin:6,acheteur:7,qte:8,format:9,modele:10,couleur:11,stade:12,qualite:13,cru:14,assemblage:15,millesime:16,tirage:17,prix:18,commentaires:20};
+const VCL = {campagne:0,statut:1,date:2,courtier:3,client:4,vn:5,besoin:6,acheteur:7,qte:8,vendange:9,formatVin:10,qualite:11,cru:12,cepage:13,assemblage:14,crus:15,prix:16,commentaires:18};
+
+// ── Drive helpers ─────────────────────────────────────────────────
+function fmtDate(v) {
+  if (!v) return '';
+  if (v instanceof Date) {
+    const y = v.getFullYear();
+    if (y < 1900 || y > 2200) return '';
+    return `${String(v.getDate()).padStart(2,'0')}/${String(v.getMonth()+1).padStart(2,'0')}/${y}`;
+  }
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+  return s;
+}
+function fmtPrix(v) {
+  if (v == null || v === '') return '';
+  const n = parseFloat(String(v).replace(',','.'));
+  if (isNaN(n)) return String(v);
+  return n.toFixed(2).replace('.',',') + ' €';
+}
+function parsePrixNum(s) {
+  if (!s) return '';
+  const n = parseFloat(String(s).replace(' €','').replace(',','.'));
+  return isNaN(n) ? s : n;
+}
+
+function parseSheet(wb, sheetName, type) {
+  const ws = wb.Sheets[sheetName];
+  if (!ws) return [];
+  const cols = type === 'bouteilles' ? BTL : VCL;
+  const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+  const result = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const campagne = String(row[cols.campagne]||'').trim();
+    const statut   = String(row[cols.statut]||'').trim();
+    if (!campagne) continue;
+    const g = c => String(row[c]||'').trim();
+    const entry = {
+      id: result.length + 1,
+      campagne, statut,
+      date: fmtDate(row[cols.date]),
+      courtier: g(cols.courtier), client: g(cols.client),
+      vn: (g(cols.vn)||'V').toUpperCase(), besoin: g(cols.besoin)||'Vend',
+      acheteur: g(cols.acheteur), qte: g(cols.qte),
+      prix: fmtPrix(row[cols.prix]), commentaires: g(cols.commentaires),
+      _sheet: sheetName, _row: i,
+    };
+    if (type === 'bouteilles') {
+      Object.assign(entry, {
+        format: g(cols.format)||'Bouteille', modele: g(cols.modele),
+        couleur: g(cols.couleur), stade: g(cols.stade),
+        qualite: g(cols.qualite), cru: g(cols.cru),
+        assemblage: g(cols.assemblage), millesime: g(cols.millesime),
+        tirage: fmtDate(row[cols.tirage]),
+      });
+    } else {
+      Object.assign(entry, {
+        vendange: g(cols.vendange), formatVin: g(cols.formatVin),
+        qualite: g(cols.qualite), cru: g(cols.cru),
+        cepage: g(cols.cepage), assemblage: g(cols.assemblage), crus: g(cols.crus),
+      });
+    }
+    result.push(entry);
+  }
+  return result;
+}
+
+function entryToRowArray(entry, existingRow, type) {
+  const cols = type === 'bouteilles' ? BTL : VCL;
+  const maxCol = Math.max(...Object.values(cols));
+  const row = existingRow ? [...existingRow] : [];
+  while (row.length <= maxCol) row.push('');
+  row[cols.statut]      = entry.statut;
+  row[cols.date]        = entry.date;
+  row[cols.courtier]    = entry.courtier;
+  row[cols.client]      = entry.client;
+  row[cols.vn]          = entry.vn;
+  row[cols.besoin]      = entry.besoin;
+  row[cols.acheteur]    = entry.acheteur;
+  row[cols.qte]         = entry.qte;
+  row[cols.prix]        = parsePrixNum(entry.prix);
+  row[cols.commentaires]= entry.commentaires;
+  if (type === 'bouteilles') {
+    row[cols.format]    = entry.format;
+    row[cols.modele]    = entry.modele;
+    row[cols.couleur]   = entry.couleur;
+    row[cols.stade]     = entry.stade;
+    row[cols.qualite]   = entry.qualite;
+    row[cols.cru]       = entry.cru;
+    row[cols.assemblage]= entry.assemblage;
+    row[cols.millesime] = entry.millesime;
+    row[cols.tirage]    = entry.tirage;
+  } else {
+    row[cols.vendange]  = entry.vendange;
+    row[cols.formatVin] = entry.formatVin;
+    row[cols.qualite]   = entry.qualite;
+    row[cols.cru]       = entry.cru;
+    row[cols.cepage]    = entry.cepage;
+    row[cols.assemblage]= entry.assemblage;
+    row[cols.crus]      = entry.crus;
+  }
+  return row;
+}
+
+// ── Colors ────────────────────────────────────────────────────────
+const NAVY="#0d1b3e",BLUE="#1a2f5a",GOLD="#C9A84C",GOLD_L="#e8c97a",
+      WHITE="#ffffff",G50="#f8f9fb",G100="#eef0f5",G200="#dde1eb",
+      G400="#8a94aa",G600="#4a5568",TEXT="#1a2035";
+
+// ── Name matching ─────────────────────────────────────────────────
+const NAME_ALIASES = {
+  "CANARD - DUCHÊNE":"CANARD DUCHENE","CANARD-DUCHÊNE":"CANARD DUCHENE",
+  "FOURRIER DELMOTTE":"FOURRIER","LE SUCHOT":"SUCHOT","MALETREZ FREDERIC":"MALETREZ",
+};
+function normalizeName(n) {
+  if (!n) return "";
+  const u = n.trim().toUpperCase();
+  for (const [k,v] of Object.entries(NAME_ALIASES)) if (u===k.toUpperCase()) return v.toUpperCase();
+  return u;
+}
+function namesMatch(a,b) {
+  const na=normalizeName(a),nb=normalizeName(b);
+  if (na===nb) return true;
+  if (na.includes(nb)||nb.includes(na)) return true;
+  const ta=na.split(/\s+/),tb=nb.split(/\s+/);
+  return ta.some(t=>t.length>3&&tb.includes(t));
+}
+
+// ── Score helpers ─────────────────────────────────────────────────
+function parseQty(q) {
+  if (!q) return null;
+  const s=String(q).replace(/\s/g,"").replace(",",".");
+  const range=s.match(/^([\d.]+)[-/]([\d.]+)$/);
+  if (range) return (parseFloat(range[1])+parseFloat(range[2]))/2;
+  const mult=s.match(/^(\d+)\*(\d+)$/);
+  if (mult) return parseInt(mult[1])*parseInt(mult[2]);
+  return parseFloat(s.replace(/[^0-9.]/g,""))||null;
+}
+function qtysCompatible(q1,q2) {
+  const a=parseQty(q1),b=parseQty(q2);
+  if (!a||!b) return true;
+  return Math.max(a,b)/Math.min(a,b)<=5;
+}
+function scoreMatch(v,a,type) {
+  let score=0,details=[],malus=[];
+  if (!qtysCompatible(v.qte,a.qte)) return {score:0,details:[],malus:["Quantités incompatibles"]};
+  if (type==="bouteilles") {
+    if (v.qualite&&a.qualite){if(v.qualite===a.qualite){score+=4;details.push("Qualité ✓");}else return {score:0,details:[],malus:["Qualité incompatible"]};}
+    if (v.format&&a.format){if(v.format===a.format){score+=3;details.push("Format ✓");}else return {score:0,details:[],malus:["Format incompatible"]};}
+    if (v.couleur&&a.couleur&&v.couleur===a.couleur){score+=2;details.push("Couleur ✓");}
+    if (v.stade&&a.stade&&v.stade===a.stade){score+=2;details.push("Stade ✓");}
+    if (v.cru&&a.cru&&v.cru===a.cru){score+=3;details.push("Cru ✓");}
+    if (v.millesime&&a.millesime){if(v.millesime===a.millesime){score+=4;details.push("Millésime ✓");}else malus.push("Millésime ✗");}
+  } else {
+    if (v.qualite&&a.qualite){if(v.qualite===a.qualite){score+=2;details.push("Qualité ✓");}else return {score:0,details:[],malus:["Qualité incompatible"]};}
+    if (v.vendange&&a.vendange){if(v.vendange===a.vendange){score+=4;details.push("Vendange ✓");}else malus.push("Vendange ✗");}
+    if (v.cepage&&a.cepage){const x=v.cepage,y=a.cepage;if(x===y||x.includes(y)||y.includes(x)){score+=4;details.push("Cépage ✓");}else malus.push("Cépage ✗");}
+    if (v.cru&&a.cru&&(v.cru===a.cru||v.cru.includes(a.cru)||a.cru.includes(v.cru))){score+=3;details.push("Cru ✓");}
+    if (v.formatVin&&a.formatVin&&v.formatVin===a.formatVin){score+=1;details.push("Format ✓");}
+  }
+  return {score,details,malus};
+}
+const STATUTS_ACTIFS = ["en attente","en dégustation"];
+function bestScore(entry,all,type) {
+  const opp=entry.besoin==="Vend"?"Recherche":"Vend";
+  const c=all.filter(r=>r.id!==entry.id&&r.besoin===opp&&STATUTS_ACTIFS.includes(r.statut));
+  if (!c.length) return 0;
+  return Math.max(...c.map(r=>scoreMatch(entry,r,type).score));
+}
+function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)return{bg:"#f59e0b",col:"#fff"};if(s>=3)return{bg:"#f97316",col:"#fff"};return{bg:G200,col:G600};}
+function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
+
+// ── Static COTATIONS (unchanged) ──────────────────────────────────
+const COTATIONS = [
+  {courtier:"JFPM",date:"21/04/2023",numero:"CF220446",acheteur:"GRINCLAIR",vendeur:"VINICOLE de VERTUS",qte:5000,prix:17.00,mention:"AOC Champagne;+36 mois;1er Cru;Blanc de Blancs;Millésime 2014",code:"DOSE",memo:"Vertus, parcelle Les Monts Ferrés"},
+  {courtier:"EH",date:"02/10/2025",numero:"CF250003",acheteur:"LEOPOLDINE",vendeur:"CUPERLY",qte:11046,prix:13.55,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
+  {courtier:"EB",date:"03/10/2025",numero:"CF250004",acheteur:"DUMONT & FILS",vendeur:"PRIEUR CLAUDE",qte:1008,prix:10.20,mention:"AOC Champagne;+15 mois",code:"POIN",memo:""},
+  {courtier:"EB",date:"03/10/2025",numero:"CF250004",acheteur:"DUMONT & FILS",vendeur:"PRIEUR CLAUDE",qte:3024,prix:10.10,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
+  {courtier:"JPNC",date:"07/10/2025",numero:"CF250005",acheteur:"COMTESSE LAFOND",vendeur:"VIGNOBLES BAUDRY",qte:3000,prix:11.00,mention:"AOC Champagne;+15 mois;Rosé;bouteilles blanches",code:"LATT",memo:"50% PN / 50% CH"},
+  {courtier:"JPNC",date:"07/10/2025",numero:"CF250006",acheteur:"BARON FUENTE",vendeur:"TRUFFAUT Nicolas",qte:935,prix:10.50,mention:"AOC Champagne;+15 mois;Blanc de Blancs;bouteilles vertes;Vin Bio",code:"LATT",memo:""},
+  {courtier:"BO",date:"08/10/2025",numero:"CF250007",acheteur:"POL COURONNE",vendeur:"CHAMPION ROLAND",qte:1000,prix:14.00,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"LATT",memo:""},
+  {courtier:"JPNC",date:"09/10/2025",numero:"CF250008",acheteur:"LES VINS DE SA FEMME",vendeur:"MELO DAVID",qte:2000,prix:9.00,mention:"AOC Champagne;+15 mois;Assemblage",code:"LATT",memo:"Lot LC22S/L"},
+  {courtier:"EH",date:"10/10/2025",numero:"CF250010",acheteur:"PIERRE HUGOT",vendeur:"ISSELEE ERIC",qte:1143,prix:13.60,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"POIN",memo:"TOUT CUVEE"},
+  {courtier:"MAA",date:"10/10/2025",numero:"CF250011",acheteur:"BONNET & CO",vendeur:"ISSELEE ERIC",qte:800,prix:7.00,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"LATT",memo:"TOUT CUVEE"},
+  {courtier:"EB",date:"13/10/2025",numero:"CF250012",acheteur:"LE SUCHOT",vendeur:"FOURRIER DELMOTTE",qte:8400,prix:11.40,mention:"AOC Champagne;+36 mois;Blanc de Blancs;Millésime 2020",code:"POIN",memo:""},
+  {courtier:"BO",date:"13/10/2025",numero:"CF250013",acheteur:"CHARLES MIGNON",vendeur:"CANARD - DUCHÊNE",qte:480,prix:6.40,mention:"AOC Champagne;+15 mois;Rosé",code:"POIN",memo:""},
+  {courtier:"EH",date:"13/10/2025",numero:"CF250014",acheteur:"GRINCLAIR",vendeur:"HENRI ABELE",qte:3696,prix:5.40,mention:"AOC Champagne;+15 mois",code:"POIN",memo:"40% PN / 35% CH / 25% MN"},
+  {courtier:"MAA",date:"16/10/2025",numero:"CF250016",acheteur:"G.F. DUNTZE",vendeur:"LA VIGNERONNE DE VERTUS",qte:1008,prix:14.20,mention:"AOC Champagne;+36 mois;1er Cru;Blanc de Blancs;Millésime 2021",code:"POIN",memo:""},
+  {courtier:"BO",date:"16/10/2025",numero:"CF250017",acheteur:"LES ROCHES BLANCHES",vendeur:"BURGUET",qte:24192,prix:10.00,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
+  {courtier:"EH",date:"22/10/2025",numero:"CF250019",acheteur:"PIERRE HUGOT",vendeur:"ISSELEE ERIC",qte:1143,prix:13.60,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"POIN",memo:"TOUT CUVEE"},
+  {courtier:"EB",date:"24/10/2025",numero:"CF250025",acheteur:"DOMAINE DOSNON",vendeur:"LAURENTI PERE ET FILS",qte:12096,prix:10.20,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
+  {courtier:"EB",date:"24/10/2025",numero:"CF250026",acheteur:"LE SUCHOT",vendeur:"LAURENT COURTILLIER",qte:3024,prix:11.15,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"POIN",memo:""},
+  {courtier:"EC",date:"28/10/2025",numero:"CF250028",acheteur:"G.F. DUNTZE",vendeur:"ROULOT FOURNIER",qte:2232,prix:11.50,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
+  {courtier:"EH",date:"28/10/2025",numero:"CF250029",acheteur:"G.F. DUNTZE",vendeur:"MALETREZ FREDERIC",qte:2016,prix:11.00,mention:"AOC Champagne;+15 mois;1er Cru",code:"LATT",memo:""},
+  {courtier:"EB",date:"28/10/2025",numero:"CF250030",acheteur:"LE SUCHOT",vendeur:"LAURENT COURTILLIER",qte:2520,prix:11.15,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"POIN",memo:""},
+  {courtier:"EB",date:"28/10/2025",numero:"CF250031",acheteur:"LE SUCHOT",vendeur:"FOURRIER DELMOTTE",qte:5040,prix:11.40,mention:"AOC Champagne;+36 mois;Blanc de Blancs;Millésime 2020",code:"POIN",memo:""},
+  {courtier:"EC",date:"29/10/2025",numero:"CF250032",acheteur:"GODIN ALEXIA",vendeur:"VINICOLE de BERRU",qte:2000,prix:12.80,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"DOSE",memo:""},
+  {courtier:"BO",date:"30/10/2025",numero:"CF250033",acheteur:"CANARD - DUCHÊNE",vendeur:"PAPELARD Jérome",qte:36,prix:10.00,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
+  {courtier:"EH",date:"04/11/2025",numero:"CF250036",acheteur:"PIERRE HUGOT",vendeur:"ISSELEE ERIC",qte:762,prix:13.60,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"POIN",memo:"TOUT CUVEE"},
+  {courtier:"MAA",date:"05/11/2025",numero:"CF250037",acheteur:"LAURENT PERRIER",vendeur:"TESSIER Françoise",qte:2152,prix:12.00,mention:"AOC Champagne;+15 mois;Vendanges 2008",code:"LATT",memo:""},
+  {courtier:"JPNC",date:"05/11/2025",numero:"CF250038",acheteur:"GRINCLAIR",vendeur:"TERROIRS ET VIGNERONS DE CHAMPAGNE",qte:200088,prix:10.35,mention:"AOC Champagne;+15 mois",code:"POIN",memo:"Tirage 2021"},
+  {courtier:"BO",date:"11/11/2025",numero:"CF250040",acheteur:"RUFFIN & FILS",vendeur:"GRUET",qte:2016,prix:10.40,mention:"AOC Champagne;+15 mois;Blanc de noirs",code:"POIN",memo:""},
+  {courtier:"EB",date:"13/11/2025",numero:"CF250043",acheteur:"LE SUCHOT",vendeur:"LAURENT COURTILLIER",qte:504,prix:11.15,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"POIN",memo:""},
+  {courtier:"EB",date:"14/11/2025",numero:"CF250045",acheteur:"DES COMBELLES",vendeur:"DANIEL CHEURLIN ET FILS",qte:1008,prix:10.70,mention:"AOC Champagne;+15 mois;Assemblage",code:"POIN",memo:""},
+  {courtier:"EH",date:"17/11/2025",numero:"CF250046",acheteur:"LEOPOLDINE",vendeur:"CUPERLY",qte:11046,prix:13.55,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
+  {courtier:"ASM",date:"17/11/2025",numero:"CF250047",acheteur:"LES PEIGNOTTES",vendeur:"DZIECIUCK BERNARD",qte:5680,prix:10.00,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
+  {courtier:"EB",date:"19/11/2025",numero:"CF250049",acheteur:"LE SUCHOT",vendeur:"FOURRIER DELMOTTE",qte:10080,prix:11.40,mention:"AOC Champagne;+36 mois;Blanc de Blancs;Millésime 2020",code:"POIN",memo:""},
+  {courtier:"EH",date:"20/11/2025",numero:"CF250052",acheteur:"DELABAYE MAURICE & FILS",vendeur:"A. ROBERT",qte:24192,prix:10.00,mention:"AOC Champagne;+15 mois",code:"POIN",memo:""},
+  {courtier:"MAA",date:"24/11/2025",numero:"CF250059",acheteur:"CHAPUY SAS",vendeur:"G. MORIZET ET FILS",qte:2500,prix:13.00,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"LATT",memo:""},
+  {courtier:"BO",date:"25/11/2025",numero:"CF250062",acheteur:"POL COURONNE",vendeur:"UNION CHAMPAGNE",qte:1200,prix:16.30,mention:"AOC Champagne;+15 mois;Grand Cru",code:"POIN",memo:""},
+  {courtier:"BO",date:"01/12/2025",numero:"CF250069",acheteur:"POL COURONNE",vendeur:"VINICOLE G.J.R. DE JANVRY",qte:600,prix:11.00,mention:"AOC Champagne;+15 mois;Blanc de noirs",code:"POIN",memo:""},
+  {courtier:"EH",date:"01/12/2025",numero:"CF250072",acheteur:"LEOPOLDINE",vendeur:"CUPERLY",qte:22092,prix:13.55,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
+  {courtier:"JPNC",date:"09/12/2025",numero:"CF250083",acheteur:"G.F. DUNTZE",vendeur:"VIGNOBLES BAUDRY",qte:1008,prix:11.00,mention:"AOC Champagne;+15 mois;PINOT NOIR;Blanc de noirs",code:"POIN",memo:""},
+  {courtier:"JPNC",date:"10/12/2025",numero:"CF250091",acheteur:"HATON JEAN-NOEL",vendeur:"FAVIER Philippe",qte:3400,prix:10.00,mention:"AOC Champagne;+15 mois;Vendanges 2021",code:"LATT",memo:"Tirage 2022"},
+];
+function getCotationsForClient(n){return COTATIONS.filter(c=>namesMatch(c.acheteur,n)||namesMatch(c.vendeur,n));}
+
+const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:""};
+const emptyVC ={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",vendange:"",formatVin:"Cuvée",qualite:"",cru:"",cepage:"",assemblage:"",crus:"",prix:"",commentaires:""};
+
+// ── UI primitives ─────────────────────────────────────────────────
+const STATUT_COLORS={"en attente":{bg:"#fef3c7",col:"#92400e",bdr:"#fde68a"},"en dégustation":{bg:"#ede9fe",col:"#4c1d95",bdr:"#c4b5fd"},"conclue":{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},"conclu":{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},"abandon":{bg:"#f3f4f6",col:"#6b7280",bdr:"#d1d5db"},"annulé":{bg:"#fee2e2",col:"#991b1b",bdr:"#fca5a5"}};
+const BESOIN_COLORS={"Vend":{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},"Recherche":{bg:"#dbeafe",col:"#1e40af",bdr:"#93c5fd"}};
+
+const Pill=({v,type="besoin"})=>{const m=type==="besoin"?BESOIN_COLORS[v]:STATUT_COLORS[v];const s=m||{bg:G100,col:G600,bdr:G200};return <span style={{background:s.bg,color:s.col,border:`1px solid ${s.bdr}`,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,whiteSpace:"nowrap",display:"inline-block"}}>{v}</span>;};
+const StatutSel=({value,onChange})=>{const sc=STATUT_COLORS[value]||{bg:G100,col:G600,bdr:G200};return <select value={value} onChange={e=>onChange(e.target.value)} onClick={e=>e.stopPropagation()} style={{background:sc.bg,color:sc.col,border:`1px solid ${sc.bdr}`,borderRadius:99,padding:"2px 8px",fontSize:11,fontWeight:600,cursor:"pointer",outline:"none",maxWidth:130,fontFamily:"inherit"}}>{STATUTS.map(s=><option key={s} value={s}>{s}</option>)}</select>;};
+const ScorePill=({score,onClick})=>{const s=scorePillStyle(score);return <span onClick={onClick} style={{background:s.bg,color:s.col,border:`1px solid ${s.bdr}`,borderRadius:99,padding:"2px 10px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"inline-block"}}>{score?`★ ${score}`:"—"}</span>;};
+const ScoreBox=({score})=>{const{bg,col}=scoreBoxColor(score);return <div style={{width:44,height:44,borderRadius:10,background:bg,color:col,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:17,flexShrink:0}}>{score||"—"}</div>;};
+const inp={border:`1px solid ${G200}`,borderRadius:8,padding:"8px 12px",fontSize:13,color:TEXT,background:WHITE,outline:"none",width:"100%",boxSizing:"border-box"};
+const Inp=(p)=><input style={inp} {...p}/>;
+const Sel=({children,...p})=><select style={inp} {...p}>{children}</select>;
+const Txa=(p)=><textarea style={{...inp,resize:"none",height:60}} {...p}/>;
+const Field=({label,children})=><div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:10,fontWeight:700,color:G400,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</label>{children}</div>;
+const thStyle={padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:GOLD_L,textTransform:"uppercase",letterSpacing:"0.07em",whiteSpace:"nowrap",borderBottom:`2px solid ${GOLD}`,background:NAVY,userSelect:"none",position:"sticky",top:0,zIndex:1};
+const TH=({children})=><th style={thStyle}>{children}</th>;
+const DragTH=({colId,label,dragRef,onDrop})=><th draggable onDragStart={()=>{dragRef.current=colId;}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onDrop(colId);}} style={{...thStyle,cursor:"grab"}}>{label}</th>;
+const TD=({children,style={}})=><td style={{padding:"9px 12px",fontSize:12,color:TEXT,whiteSpace:"nowrap",borderBottom:`1px solid ${G100}`,...style}}>{children}</td>;
+
+// ── App ───────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab]     = useState("bouteilles");
+  const [view, setView]   = useState("liste");
+  const [bouteilles, setBouteilles] = useState([]);
+  const [vinsClairs, setVinsClairs] = useState([]);
+  const [form, setForm]   = useState(null);
+  const [editId, setEditId] = useState(null);
+  const [fCampagne, setFCamp] = useState(CAMPAGNE);
+  const [fCourtier, setFC] = useState("");
+  const [fBesoin, setFB]   = useState("");
+  const [fStatuts, setFS]  = useState([]);
+  const [search, setSearch]= useState("");
+  const [sortBy, setSortBy]= useState("date");
+  const [delId, setDelId]  = useState(null);
+  const [modal, setModal]  = useState(null);
+  const [mTab, setMTab]    = useState("matches");
+  const [webRes, setWebRes]= useState({});
+  const [webLoad, setWebLoad]=useState(false);
+  const [webErr, setWebErr] = useState("");
+  const [webConfirm, setWebConfirm]=useState(false);
+
+  // Settings
+  const [showSettings, setShowSettings]=useState(false);
+  const [apiKey, setApiKey]=useState(()=>localStorage.getItem("fcdh_api_key")||"");
+  const [gClientId, setGClientId]=useState(()=>localStorage.getItem("fcdh_g_client_id")||DEFAULT_CLIENT_ID);
+
+  // Drive state
+  const [gToken, setGToken]       = useState(null);
+  const [gLoading, setGLoading]   = useState(false);
+  const [gError, setGError]       = useState("");
+  const [gSaved, setGSaved]       = useState(false);
+  const [driveLoaded, setDriveLoaded]=useState(false);
+  const driveWbRef  = useRef(null);
+  const origRowsRef = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
+  const rawRowsRef  = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
+  const dragColRef  = useRef(null);
+  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');return s?JSON.parse(s):['score','campagne','date','courtier','client','besoin','statut','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}catch{return['score','campagne','date','courtier','client','besoin','statut','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
+  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');return s?JSON.parse(s):['score','campagne','date','courtier','client','besoin','statut','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}catch{return['score','campagne','date','courtier','client','besoin','statut','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
+  useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
+  useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
+
+  const saveApiKey=(v)=>{setApiKey(v);localStorage.setItem("fcdh_api_key",v);};
+  const saveGClientId=(v)=>{setGClientId(v);localStorage.setItem("fcdh_g_client_id",v);};
+
+  // ── Google sign-in ──────────────────────────────────────────────
+  const signInGoogle = () => {
+    if (!gClientId) { setShowSettings(true); return; }
+    if (!window.google?.accounts?.oauth2) { setGError("Google Identity Services non chargé, réessayez dans 2s."); return; }
+    const tc = window.google.accounts.oauth2.initTokenClient({
+      client_id: gClientId,
+      scope: DRIVE_SCOPE,
+      callback: (resp) => {
+        if (resp.error) { setGError("Auth Google : " + resp.error); return; }
+        setGToken(resp.access_token);
+        setGError("");
+        loadFromDrive(resp.access_token);
+      },
+    });
+    tc.requestAccessToken();
+  };
+
+  // ── Load from Drive ─────────────────────────────────────────────
+  const loadFromDrive = async (token) => {
+    setGLoading(true); setGError("");
+    try {
+      const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${DRIVE_FILE_ID}?alt=media`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!resp.ok) throw new Error(`Drive ${resp.status}: ${await resp.text()}`);
+      const buf = await resp.arrayBuffer();
+      const wb  = XLSX.read(buf, {type:'array', cellDates:true});
+      driveWbRef.current = wb;
+
+      rawRowsRef.current = {
+        'BOUTEILLES':  XLSX.utils.sheet_to_json(wb.Sheets['BOUTEILLES'],  {header:1, defval:'', raw:true}),
+        'VINS CLAIRS': XLSX.utils.sheet_to_json(wb.Sheets['VINS CLAIRS'], {header:1, defval:'', raw:true}),
+      };
+
+      const btlData = parseSheet(wb, 'BOUTEILLES', 'bouteilles');
+      const vcData  = parseSheet(wb, 'VINS CLAIRS', 'vinsclairs');
+
+      // Migrate old-campaign entries still "en attente"/"en dégustation" → "abandon"
+      const needsMigration = {BOUTEILLES: false, 'VINS CLAIRS': false};
+      for (const e of btlData) {
+        if (e.campagne !== CAMPAGNE && ['en attente','en dégustation'].includes(e.statut)) {
+          e.statut = 'abandon';
+          rawRowsRef.current['BOUTEILLES'][e._row][BTL.statut] = 'abandon';
+          needsMigration['BOUTEILLES'] = true;
+        }
+      }
+      for (const e of vcData) {
+        if (e.campagne !== CAMPAGNE && ['en attente','en dégustation'].includes(e.statut)) {
+          e.statut = 'abandon';
+          rawRowsRef.current['VINS CLAIRS'][e._row][VCL.statut] = 'abandon';
+          needsMigration['VINS CLAIRS'] = true;
+        }
+      }
+      if (needsMigration['BOUTEILLES'] || needsMigration['VINS CLAIRS']) {
+        for (const sk of ['BOUTEILLES','VINS CLAIRS']) {
+          if (!needsMigration[sk]) continue;
+          const origWs = wb.Sheets[sk];
+          const newWs  = XLSX.utils.aoa_to_sheet(rawRowsRef.current[sk]);
+          if (origWs['!cols'])   newWs['!cols']   = origWs['!cols'];
+          if (origWs['!merges']) newWs['!merges'] = origWs['!merges'];
+          wb.Sheets[sk] = newWs;
+        }
+        const out  = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+        const blob = new Blob([out], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        await fetch(
+          `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_FILE_ID}?uploadType=media`,
+          {method:'PATCH', headers:{Authorization:`Bearer ${token}`, 'Content-Type':blob.type}, body:blob}
+        );
+      }
+
+      origRowsRef.current = {
+        'BOUTEILLES':  btlData.map(e => e._row),
+        'VINS CLAIRS': vcData.map(e => e._row),
+      };
+
+      setBouteilles(btlData);
+      setVinsClairs(vcData);
+      setDriveLoaded(true);
+    } catch(e) {
+      setGError("Chargement : " + e.message);
+    }
+    setGLoading(false);
+  };
+
+  // ── Save to Drive ───────────────────────────────────────────────
+  const saveToDrive = async () => {
+    if (!gToken || !driveWbRef.current) return;
+    setGLoading(true); setGError("");
+    try {
+      const wb = driveWbRef.current;
+
+      const syncSheetAoA = (sheetKey, entries, type) => {
+        let rawRows = rawRowsRef.current[sheetKey].map(r => [...r]);
+        const cols = type === 'bouteilles' ? BTL : VCL;
+        const origRowSet = new Set(origRowsRef.current[sheetKey]);
+        const entryRowMap = new Map();
+
+        for (const e of entries) {
+          if (e._row !== undefined) entryRowMap.set(e._row, e);
+        }
+        // Update existing rows in place
+        for (const [rowIdx, entry] of entryRowMap) {
+          rawRows[rowIdx] = entryToRowArray(entry, rawRows[rowIdx], type);
+        }
+        // Permanently delete rows that were removed from the app
+        const rowsToDelete = new Set([...origRowSet].filter(r => !entryRowMap.has(r)));
+        if (rowsToDelete.size > 0) {
+          const deletedSorted = [...rowsToDelete].sort((a, b) => a - b);
+          rawRows = rawRows.filter((_, idx) => !rowsToDelete.has(idx));
+          // Fix _row offsets on all remaining entries
+          for (const e of entries) {
+            if (e._row !== undefined) {
+              e._row -= deletedSorted.filter(r => r < e._row).length;
+            }
+          }
+        }
+        // Insert new entries right after the last existing managed row
+        const newEntries = entries.filter(e => e._row === undefined);
+        if (newEntries.length > 0) {
+          const existingIndices = entries.filter(e => e._row !== undefined).map(e => e._row);
+          let insertAt = existingIndices.length > 0
+            ? Math.max(...existingIndices) + 1
+            : rawRows.length;
+          for (const e of newEntries) {
+            const newRow = entryToRowArray(e, null, type);
+            newRow[cols.campagne] = CAMPAGNE;
+            rawRows.splice(insertAt, 0, newRow);
+            e._row = insertAt;
+            for (const ex of entries) {
+              if (ex._row !== undefined && ex._row > insertAt) ex._row++;
+            }
+            insertAt++;
+          }
+        }
+
+        const newWs = XLSX.utils.aoa_to_sheet(rawRows);
+        const origWs = wb.Sheets[sheetKey];
+        if (origWs['!cols'])   newWs['!cols']   = origWs['!cols'];
+        if (origWs['!merges']) newWs['!merges'] = origWs['!merges'];
+        wb.Sheets[sheetKey] = newWs;
+        rawRowsRef.current[sheetKey] = rawRows;
+      };
+
+      syncSheetAoA('BOUTEILLES',  bouteilles, 'bouteilles');
+      syncSheetAoA('VINS CLAIRS', vinsClairs, 'vinsclairs');
+
+      const out  = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      const blob = new Blob([out], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+
+      const up = await fetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_FILE_ID}?uploadType=media`,
+        { method:'PATCH', headers:{Authorization:`Bearer ${gToken}`, 'Content-Type': blob.type}, body: blob }
+      );
+      if (!up.ok) throw new Error(`Upload ${up.status}: ${await up.text()}`);
+
+      origRowsRef.current = {
+        'BOUTEILLES':  bouteilles.map(e=>e._row).filter(r=>r!==undefined),
+        'VINS CLAIRS': vinsClairs.map(e=>e._row).filter(r=>r!==undefined),
+      };
+      setGSaved(true);
+      setTimeout(()=>setGSaved(false), 3000);
+    } catch(e) {
+      setGError("Sauvegarde : " + e.message);
+    }
+    setGLoading(false);
+  };
+
+  // ── App logic ───────────────────────────────────────────────────
+  const data    = tab==="bouteilles" ? bouteilles : vinsClairs;
+  const setData = tab==="bouteilles" ? setBouteilles : setVinsClairs;
+  const empty   = tab==="bouteilles" ? emptyBtl : emptyVC;
+
+  const matchesFor = (entry) => {
+    const opp = entry.besoin==="Vend"?"Recherche":"Vend";
+    return data.filter(r=>r.id!==entry.id&&r.besoin===opp&&STATUTS_ACTIFS.includes(r.statut))
+      .map(r=>({...r,...scoreMatch(entry,r,tab)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
+  };
+
+  const enriched = useMemo(()=>data.map(r=>({...r,_best:bestScore(r,data,tab)})),[data,tab]);
+
+  const campagnes = useMemo(()=>[...new Set(data.map(r=>r.campagne))].filter(Boolean).sort().reverse(),[data]);
+
+  const filtered = useMemo(()=>{
+    let arr=enriched.filter(r=>{
+      if(fCampagne&&r.campagne!==fCampagne)return false;
+      if(fCourtier&&r.courtier!==fCourtier)return false;
+      if(fBesoin&&r.besoin!==fBesoin)return false;
+      if(fStatuts.length>0&&!fStatuts.includes(r.statut))return false;
+      if(search){const s=search.toLowerCase();return Object.values(r).some(v=>String(v).toLowerCase().includes(s));}
+      return true;
+    });
+    if(sortBy==="score")arr=[...arr].sort((a,b)=>b._best-a._best);
+    else arr=[...arr].sort((a,b)=>{const pd=s=>{const p=s.split("/");return p.length===3?`${p[2]}${p[1]}${p[0]}`:"";};return pd(b.date).localeCompare(pd(a.date));});
+    return arr;
+  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,search,sortBy]);
+
+  const openForm=(entry=null)=>{
+    setForm(entry?{...entry}:{...empty,date:new Date().toLocaleDateString("fr-FR")});
+    setEditId(entry?entry.id:null);
+    setView("form");
+  };
+  const saveForm=()=>{
+    if(!form.courtier||!form.client)return alert("Courtier et client requis.");
+    let saved;
+    if(editId){saved={...form,id:editId};setData(prev=>prev.map(r=>r.id===editId?saved:r));}
+    else{const nid=Math.max(0,...data.map(r=>r.id))+1;saved={...form,id:nid};setData(prev=>[...prev,saved]);}
+    setModal({entry:saved,matches:matchesFor(saved),cotations:getCotationsForClient(saved.client)});
+    setMTab("matches");setView("liste");
+  };
+  const openModal=(entry)=>{
+    setModal({entry,matches:matchesFor(entry),cotations:getCotationsForClient(entry.client)});
+    setMTab("matches");setWebErr("");setWebLoad(false);
+  };
+  const f=(k,v)=>setForm(prev=>({...prev,[k]:v}));
+
+  // ── Web search ──────────────────────────────────────────────────
+  const runWebSearch=async(exclude=[])=>{
+    if(!apiKey){setWebErr("Clé API Anthropic manquante — configurez-la dans ⚙️.");return;}
+    const entry=modal.entry;const key=entry.id+"_"+tab;
+    setWebLoad(true);setWebErr("");
+    try{
+      const crit=[entry.qualite&&`qualité "${entry.qualite}"`,entry.cru&&`cru "${entry.cru}"`,entry.format&&entry.format!=="Bouteille"&&`format "${entry.format}"`,entry.couleur&&`bouteille ${entry.couleur}`,entry.stade==="S/L"&&"sur lattes",entry.stade==="S/P"&&"sur pointes",entry.millesime&&`millésime ${entry.millesime}`,entry.vendange&&`vendange ${entry.vendange}`,entry.cepage&&`cépage ${entry.cepage}`,entry.assemblage&&`assemblage ${entry.assemblage}`,entry.crus&&`crus ${entry.crus}`].filter(Boolean).join(", ");
+      const ex=exclude.length?`\nExclure : ${exclude.join(", ")}.`:"";
+      const prompt=`Tu es expert en vins de Champagne. Trouve 5 producteurs champenois réels pour : ${crit}.${ex}\nAttention : propose UNIQUEMENT des RM, RC ou CM. Exclus impérativement les NM et ND.\nPour chacun : nom, commune, statut (RM/RC/CM), description produit 2 phrases max, URL image.\nRéponds UNIQUEMENT JSON : [{"nom":"...","commune":"...","statut":"...","description":"...","image":"..."},...]`;
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:2000,tools:[{"type":"web_search_20250305","name":"web_search"}],messages:[{role:"user",content:prompt}]})});
+      const d=await res.json();if(d.error)throw new Error(d.error.message);
+      const txt=d.content.filter(b=>b.type==="text").map(b=>b.text).join("");
+      const clean=txt.replace(/```json|```/g,"").trim();
+      const si=clean.indexOf("["),ei=clean.lastIndexOf("]");
+      if(si===-1||ei===-1)throw new Error("JSON introuvable");
+      setWebRes(prev=>({...prev,[key]:JSON.parse(clean.slice(si,ei+1))}));
+    }catch(e){setWebErr("Erreur : "+(e.message||"Réessayez."));}
+    setWebLoad(false);
+  };
+
+  // ── Column definitions ──────────────────────────────────────────
+  const reorderCols=(setOrder,dropId)=>{
+    if(!dragColRef.current||dragColRef.current===dropId)return;
+    setOrder(prev=>{const a=[...prev],f=a.indexOf(dragColRef.current),t=a.indexOf(dropId);if(f<0||t<0)return prev;a.splice(f,1);a.splice(t,0,dragColRef.current);return a;});
+  };
+  const actCell=r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
+  const COLS={
+    bouteilles:[
+      {id:"score",   label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
+      {id:"campagne",label:"Campagne", cell:r=><TD style={{fontSize:11,color:G400}}>{r.campagne}</TD>},
+      {id:"date",    label:"Date",     cell:r=><TD style={{fontSize:11,color:G400}}>{r.date}</TD>},
+      {id:"courtier",label:"Courtier", cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.courtier}</TD>},
+      {id:"client",  label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
+      {id:"besoin",  label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
+      {id:"statut",  label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x))}/></div></TD>},
+      {id:"qte",     label:"Qté",      cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
+      {id:"format",  label:"Format",   cell:r=><TD style={{color:G600}}>{r.format}</TD>},
+      {id:"couleur", label:"Couleur",  cell:r=><TD style={{color:G600}}>{r.couleur}</TD>},
+      {id:"stade",   label:"Stade",    cell:r=><TD style={{color:G600}}>{r.stade}</TD>},
+      {id:"qualite", label:"Qualité",  cell:r=><TD style={{fontSize:11,color:G600}}>{r.qualite}</TD>},
+      {id:"cru",     label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
+      {id:"millesime",label:"Mill.",   cell:r=><TD style={{color:G600}}>{r.millesime}</TD>},
+      {id:"prix",    label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
+      {id:"actions", label:"",         cell:r=>actCell(r)},
+    ],
+    vinsclairs:[
+      {id:"score",    label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
+      {id:"campagne", label:"Campagne", cell:r=><TD style={{fontSize:11,color:G400}}>{r.campagne}</TD>},
+      {id:"date",     label:"Date",     cell:r=><TD style={{fontSize:11,color:G400}}>{r.date}</TD>},
+      {id:"courtier", label:"Courtier", cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.courtier}</TD>},
+      {id:"client",   label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
+      {id:"besoin",   label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
+      {id:"statut",   label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x))}/></div></TD>},
+      {id:"qte",      label:"Qté (hl)", cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
+      {id:"vendange", label:"Vendange", cell:r=><TD style={{color:G600}}>{r.vendange}</TD>},
+      {id:"formatVin",label:"Format",   cell:r=><TD style={{fontSize:11,color:G600}}>{r.formatVin}</TD>},
+      {id:"qualite",  label:"Qualité",  cell:r=><TD style={{fontSize:11,color:G600}}>{r.qualite}</TD>},
+      {id:"cru",      label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
+      {id:"cepage",   label:"Cépage",   cell:r=><TD style={{fontWeight:600}}>{r.cepage}</TD>},
+      {id:"prix",     label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
+      {id:"actions",  label:"",         cell:r=>actCell(r)},
+    ],
+  };
+
+  // ── Render helpers ──────────────────────────────────────────────
+  const selStyle={border:`1px solid ${G200}`,borderRadius:8,padding:"8px 12px",fontSize:13,color:TEXT,background:WHITE,outline:"none"};
+
+  const renderCriteres=(entry)=>{
+    const chips=[entry.qte&&{l:"Qté",v:entry.qte+(tab==="vinsclairs"?" hl":"")},tab==="bouteilles"&&entry.format&&{l:"Format",v:entry.format},tab==="bouteilles"&&entry.couleur&&{l:"Couleur",v:entry.couleur},tab==="bouteilles"&&entry.stade&&{l:"Stade",v:entry.stade},entry.qualite&&{l:"Qualité",v:entry.qualite},entry.cru&&{l:"Cru",v:entry.cru},entry.assemblage&&{l:"Assemblage",v:entry.assemblage},tab==="bouteilles"&&entry.millesime&&{l:"Millésime",v:entry.millesime},tab==="vinsclairs"&&entry.vendange&&{l:"Vendange",v:entry.vendange},tab==="vinsclairs"&&entry.cepage&&{l:"Cépage",v:entry.cepage},entry.prix&&{l:"Prix",v:entry.prix}].filter(Boolean);
+    return <div style={{padding:"10px 24px",background:G50,borderBottom:`1px solid ${G100}`,display:"flex",flexWrap:"wrap",gap:6}}>
+      {chips.map(({l,v})=><span key={l} style={{background:WHITE,border:`1px solid ${G200}`,borderRadius:7,padding:"3px 10px",fontSize:11,display:"inline-flex",gap:5}}><span style={{color:G400}}>{l} :</span><span style={{fontWeight:700,color:NAVY}}>{v}</span></span>)}
+      {entry.commentaires&&<span style={{background:"#fef9c3",border:"1px solid #fde68a",borderRadius:7,padding:"3px 10px",fontSize:11,color:"#92400e",width:"100%"}}>📝 {entry.commentaires}</span>}
+    </div>;
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:G50}}>
+
+      {/* ── Loading overlay ── */}
+      {gLoading && (
+        <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}}>
+          <div style={{background:WHITE,borderRadius:14,padding:"28px 40px",textAlign:"center",boxShadow:"0 8px 40px rgba(13,27,62,.3)"}}>
+            <div style={{fontSize:36,marginBottom:12}}>⏳</div>
+            <div style={{fontWeight:700,color:NAVY,fontSize:14}}>Communication avec Google Drive…</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Settings modal ── */}
+      {showSettings && (
+        <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:80}}>
+          <div style={{background:WHITE,borderRadius:14,padding:28,maxWidth:480,width:"100%",margin:"0 16px",boxShadow:"0 8px 40px rgba(13,27,62,.3)"}}>
+            <div style={{fontWeight:700,fontSize:16,color:NAVY,marginBottom:20}}>⚙️ Paramètres</div>
+
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Google Drive — Client ID OAuth</div>
+              <input type="text" placeholder="xxx.apps.googleusercontent.com" value={gClientId} onChange={e=>saveGClientId(e.target.value)} style={{...inp,fontFamily:"monospace",fontSize:12,marginBottom:8}}/>
+              <div style={{fontSize:11,color:G400,lineHeight:1.6}}>
+                <b>Setup (une fois) :</b><br/>
+                1. <a href="https://console.cloud.google.com" target="_blank" style={{color:GOLD}}>console.cloud.google.com</a> → Nouveau projet<br/>
+                2. APIs → Google Drive API → Activer<br/>
+                3. Identifiants → OAuth 2.0 → Web → Origine : <code style={{background:G100,padding:"1px 5px",borderRadius:4}}>http://localhost:8080</code><br/>
+                4. Copier le Client ID ci-dessus<br/>
+                5. Lancer : <code style={{background:G100,padding:"1px 5px",borderRadius:4}}>python3 -m http.server 8080</code>
+              </div>
+            </div>
+
+            <div style={{marginBottom:20}}>
+              <div style={{fontSize:11,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Clé API Anthropic (recherche web)</div>
+              <input type="password" placeholder="sk-ant-api03-..." value={apiKey} onChange={e=>saveApiKey(e.target.value)} style={{...inp,fontFamily:"monospace"}}/>
+            </div>
+
+            <button onClick={()=>setShowSettings(false)} style={{width:"100%",background:NAVY,color:GOLD,border:"none",borderRadius:10,padding:12,fontWeight:700,fontSize:14,cursor:"pointer"}}>Fermer</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Header ── */}
+      <div style={{background:`linear-gradient(135deg,${NAVY} 0%,${BLUE} 100%)`,color:WHITE,padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:64,boxShadow:"0 2px 12px rgba(13,27,62,.4)"}}>
+        <div>
+          <div style={{fontWeight:700,fontSize:18,color:GOLD,letterSpacing:"0.04em"}}>FCDH Courtiers Associés</div>
+          <div style={{fontSize:11,color:GOLD_L,letterSpacing:"0.05em"}}>Campagne {CAMPAGNE} — Courtage Champagne</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {gError && <span style={{fontSize:11,color:"#fca5a5",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={gError}>⚠️ {gError}</span>}
+          {gSaved && <span style={{fontSize:12,color:"#6ee7b7",fontWeight:600}}>✓ Sauvegardé</span>}
+
+          {!driveLoaded
+            ? <button onClick={signInGoogle} style={{padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,border:`1px solid ${GOLD}`,background:"transparent",color:GOLD,cursor:"pointer"}}>
+                📊 Connecter Drive
+              </button>
+            : <>
+                <span style={{fontSize:11,color:"#6ee7b7",fontWeight:600}}>📊 Drive ✓</span>
+                <button onClick={()=>loadFromDrive(gToken)} title="Recharger depuis Drive" style={{padding:"7px 10px",borderRadius:7,fontSize:13,border:`1px solid ${GOLD}`,background:"transparent",color:GOLD,cursor:"pointer"}}>🔄</button>
+                <button onClick={saveToDrive} style={{padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,border:"none",background:"#059669",color:WHITE,cursor:"pointer"}}>💾 Sauvegarder</button>
+              </>
+          }
+          <button onClick={()=>setShowSettings(true)} style={{padding:"7px 10px",borderRadius:7,fontSize:14,border:`1px solid ${GOLD}`,background:"transparent",color:GOLD,cursor:"pointer"}}>⚙️</button>
+          <button onClick={()=>setView("liste")} style={{padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,border:`1px solid ${GOLD}`,background:view==="liste"?GOLD:NAVY,color:view==="liste"?NAVY:GOLD,cursor:"pointer"}}>📋 Liste</button>
+          <button onClick={()=>openForm()} style={{padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,border:"none",background:GOLD,color:NAVY,cursor:"pointer"}}>+ Nouvelle entrée</button>
+        </div>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div style={{background:WHITE,borderBottom:`1px solid ${G100}`,padding:"0 24px",display:"flex"}}>
+        {[{k:"bouteilles",l:"🫧 Bouteilles",n:bouteilles.length},{k:"vinsclairs",l:"🍇 Vins Clairs",n:vinsClairs.length}].map(t=>(
+          <button key={t.k} onClick={()=>{setTab(t.k);setView("liste");}}
+            style={{padding:"14px 20px",fontSize:13,fontWeight:600,border:"none",borderBottom:tab===t.k?`3px solid ${GOLD}`:"3px solid transparent",background:"none",color:tab===t.k?NAVY:G400,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+            {t.l}<span style={{background:tab===t.k?NAVY:G100,color:tab===t.k?GOLD_L:G400,borderRadius:99,padding:"1px 8px",fontSize:11,fontWeight:700}}>{t.n}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 16px"}}>
+
+        {/* ── Connect CTA (when no data) ── */}
+        {!driveLoaded && bouteilles.length===0 && view==="liste" && (
+          <div style={{background:WHITE,borderRadius:14,border:`2px dashed ${G200}`,padding:"48px 24px",textAlign:"center",marginBottom:16}}>
+            <div style={{fontSize:48,marginBottom:16}}>📊</div>
+            <div style={{fontWeight:700,fontSize:18,color:NAVY,marginBottom:8}}>Connecter Google Drive</div>
+            <div style={{fontSize:13,color:G400,marginBottom:24,maxWidth:420,margin:"0 auto 24px"}}>
+              Les données sont chargées depuis le fichier <b>SPECULATION EN COURS.xlsx</b> sur votre Drive.<br/>
+              Configurez votre Client ID Google dans ⚙️ puis connectez-vous.
+            </div>
+            <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+              <button onClick={()=>setShowSettings(true)} style={{padding:"10px 20px",background:G100,color:G600,border:"none",borderRadius:9,fontWeight:600,fontSize:13,cursor:"pointer"}}>⚙️ Configurer</button>
+              <button onClick={signInGoogle} style={{padding:"10px 24px",background:NAVY,color:GOLD,border:"none",borderRadius:9,fontWeight:700,fontSize:14,cursor:"pointer"}}>📊 Connecter Google Drive</button>
+            </div>
+            {gError && <div style={{marginTop:16,fontSize:12,color:"#dc2626"}}>{gError}</div>}
+          </div>
+        )}
+
+        {/* ── Confirm delete ── */}
+        {delId && (
+          <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60}}>
+            <div style={{background:WHITE,borderRadius:14,padding:28,maxWidth:360,width:"100%",margin:"0 16px",boxShadow:"0 8px 40px rgba(13,27,62,.25)"}}>
+              <div style={{fontWeight:700,fontSize:16,color:NAVY,marginBottom:6}}>Supprimer cette entrée ?</div>
+              <div style={{fontSize:13,color:G400,marginBottom:20}}>L'entrée sera définitivement supprimée de l'application et de Google Drive lors de la prochaine sauvegarde.</div>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>{setData(prev=>prev.filter(r=>r.id!==delId));setDelId(null);}} style={{flex:1,background:"#dc2626",color:WHITE,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>Supprimer</button>
+                <button onClick={()=>setDelId(null)} style={{flex:1,background:G100,color:G600,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Annuler</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modal ── */}
+        {modal && (
+          <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.65)",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:50,overflowY:"auto",padding:"32px 16px"}}>
+            <div style={{background:WHITE,borderRadius:16,width:"100%",maxWidth:800,boxShadow:"0 16px 60px rgba(13,27,62,.3)"}}>
+              <div style={{background:`linear-gradient(135deg,${NAVY},${BLUE})`,borderRadius:"16px 16px 0 0",padding:"18px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:17,color:WHITE}}>{modal.entry.client}</div>
+                  <div style={{fontSize:11,color:GOLD_L,marginTop:2}}>{modal.entry.courtier} · {modal.entry.besoin} · {modal.entry.date}</div>
+                </div>
+                <button onClick={()=>setModal(null)} style={{background:"none",border:"none",color:GOLD_L,fontSize:26,cursor:"pointer",lineHeight:1}}>×</button>
+              </div>
+              {renderCriteres(modal.entry)}
+              <div style={{display:"flex",borderBottom:`1px solid ${G100}`,padding:"0 24px"}}>
+                {[{k:"matches",l:"🎯 Matchs",n:modal.matches.length},{k:"historique",l:"📋 Historique",n:modal.cotations.length},{k:"web",l:"🌐 Web",n:null}].map(t=>(
+                  <button key={t.k} onClick={()=>setMTab(t.k)}
+                    style={{padding:"12px 16px",fontSize:13,fontWeight:600,border:"none",borderBottom:mTab===t.k?`3px solid ${GOLD}`:"3px solid transparent",background:"none",color:mTab===t.k?NAVY:G400,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                    {t.l}{t.n!==null&&<span style={{background:mTab===t.k?NAVY:G100,color:mTab===t.k?GOLD_L:G400,borderRadius:99,padding:"0 7px",fontSize:11}}>{t.n}</span>}
+                  </button>
+                ))}
+              </div>
+              <div style={{padding:24,maxHeight:"55vh",overflowY:"auto"}}>
+                {mTab==="matches"&&(modal.matches.length===0
+                  ?<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>🔍</div>Aucun match trouvé.</div>
+                  :<div style={{display:"flex",flexDirection:"column",gap:10}}>
+                    {modal.matches.map(r=>(
+                      <div key={r.id} style={{background:G50,borderRadius:10,padding:14,display:"flex",gap:14,border:`1px solid ${G100}`}}>
+                        <ScoreBox score={r.score}/>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4,alignItems:"center"}}>
+                            <span style={{fontWeight:700,color:NAVY,fontSize:14}}>{r.client}</span>
+                            <span style={{fontWeight:700,color:GOLD,fontSize:12}}>{r.courtier}</span>
+                            <Pill v={r.besoin}/>
+                            <span style={{fontSize:11,color:G400}}>{r.date}</span>
+                            {r.prix&&<span style={{fontWeight:700,color:GOLD,fontSize:12}}>💶 {r.prix}</span>}
+                          </div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:8,fontSize:11,color:G400,marginBottom:4}}>
+                            {r.qte&&<span>📦 {r.qte}</span>}{r.qualite&&<span>{r.qualite}</span>}{r.cru&&<span>📍 {r.cru}</span>}{r.millesime&&<span>📅 {r.millesime}</span>}{r.vendange&&<span>📅 {r.vendange}</span>}{r.cepage&&<span>🍇 {r.cepage}</span>}
+                          </div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                            {r.details.map(d=><span key={d} style={{background:"#d1fae5",color:"#065f46",borderRadius:5,padding:"1px 7px",fontSize:11}}>{d}</span>)}
+                            {r.malus&&r.malus.map(d=><span key={d} style={{background:"#fee2e2",color:"#991b1b",borderRadius:5,padding:"1px 7px",fontSize:11}}>{d}</span>)}
+                          </div>
+                          {r.commentaires&&<div style={{marginTop:4,fontSize:11,color:G400,fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.commentaires}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {mTab==="historique"&&(modal.cotations.length===0
+                  ?<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>📭</div>Aucune cotation trouvée.</div>
+                  :<div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                      <thead><tr>{["Date","N°","Acheteur","Vendeur","Qté","Prix","Mention","Code"].map(h=><TH key={h}>{h}</TH>)}</tr></thead>
+                      <tbody>{modal.cotations.map((c,i)=>(
+                        <tr key={i} style={{background:namesMatch(c.acheteur,modal.entry.client)?"#dbeafe":"#d1fae5"}}>
+                          <TD style={{fontSize:11,color:G400}}>{c.date}</TD><TD style={{fontSize:11,color:G400}}>{c.numero}</TD>
+                          <TD style={{fontWeight:600}}>{c.acheteur}</TD><TD>{c.vendeur}</TD>
+                          <TD style={{textAlign:"right"}}>{c.qte.toLocaleString()}</TD>
+                          <TD style={{fontWeight:700,color:GOLD}}>{c.prix.toFixed(2)} €</TD>
+                          <TD style={{fontSize:10,color:G400,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis"}}>{c.mention}</TD>
+                          <TD><span style={{background:G100,borderRadius:4,padding:"1px 6px",fontFamily:"monospace",fontSize:10}}>{c.code}</span></TD>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                    <div style={{marginTop:10,fontSize:11,color:G400,display:"flex",gap:14}}>
+                      <span><span style={{display:"inline-block",width:10,height:10,background:"#dbeafe",borderRadius:2,marginRight:4}}></span>Acheteur</span>
+                      <span><span style={{display:"inline-block",width:10,height:10,background:"#d1fae5",borderRadius:2,marginRight:4}}></span>Vendeur</span>
+                    </div>
+                  </div>
+                )}
+                {mTab==="web"&&(()=>{
+                  const key=modal.entry.id+"_"+tab;const results=webRes[key]||[];
+                  return <div>
+                    {webConfirm&&<div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:70}}>
+                      <div style={{background:WHITE,borderRadius:14,padding:28,maxWidth:380,width:"100%",margin:"0 16px",boxShadow:"0 8px 40px rgba(13,27,62,.3)"}}>
+                        <div style={{fontWeight:700,fontSize:15,color:NAVY,marginBottom:6}}>Nouvelles propositions ?</div>
+                        <div style={{fontSize:13,color:G400,marginBottom:20}}>Les producteurs déjà proposés peuvent être exclus.</div>
+                        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                          <button onClick={()=>{setWebConfirm(false);runWebSearch(results.map(r=>r.nom));}} style={{background:NAVY,color:GOLD,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>Oui — nouvelles propositions</button>
+                          <button onClick={()=>{setWebConfirm(false);runWebSearch([]);}} style={{background:BLUE,color:WHITE,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Non — relancer depuis le début</button>
+                          <button onClick={()=>setWebConfirm(false)} style={{background:G100,color:G600,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Annuler</button>
+                        </div>
+                      </div>
+                    </div>}
+                    {!apiKey&&<div style={{textAlign:"center",padding:"32px 0"}}><div style={{fontSize:36,marginBottom:12}}>🔑</div><p style={{color:G400,fontSize:13,marginBottom:16}}>Clé API Anthropic requise.</p><button onClick={()=>setShowSettings(true)} style={{padding:"9px 20px",background:NAVY,color:GOLD,border:"none",borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:13}}>⚙️ Configurer</button></div>}
+                    {apiKey&&!webLoad&&results.length===0&&!webErr&&<div style={{textAlign:"center",padding:"40px 0"}}><div style={{fontSize:44,marginBottom:14}}>🌐</div><p style={{color:G400,fontSize:13,marginBottom:20}}>Recherche web de producteurs correspondant aux critères</p><button onClick={()=>runWebSearch([])} style={{padding:"11px 28px",background:NAVY,color:GOLD,border:"none",borderRadius:9,fontWeight:700,fontSize:13,cursor:"pointer"}}>🔍 Lancer la recherche</button></div>}
+                    {webLoad&&<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>⏳</div>Recherche en cours...</div>}
+                    {webErr&&!webLoad&&<div style={{textAlign:"center",padding:"32px 0"}}><p style={{color:"#dc2626",fontSize:13,marginBottom:14}}>{webErr}</p><button onClick={()=>runWebSearch([])} style={{padding:"9px 20px",background:NAVY,color:GOLD,border:"none",borderRadius:8,fontWeight:600,cursor:"pointer",fontSize:13}}>Réessayer</button></div>}
+                    {results.length>0&&!webLoad&&<div>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                        <span style={{fontSize:12,fontWeight:600,color:G400}}>{results.length} producteurs trouvés</span>
+                        <button onClick={()=>setWebConfirm(true)} style={{padding:"6px 14px",background:NAVY,color:GOLD,border:"none",borderRadius:7,fontWeight:600,fontSize:12,cursor:"pointer"}}>🔄 Relancer</button>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                        {results.map((r,i)=>(
+                          <div key={i} style={{background:G50,borderRadius:10,border:`1px solid ${G100}`,padding:14,display:"flex",gap:14}}>
+                            <div style={{width:72,height:88,borderRadius:8,overflow:"hidden",background:G100,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>
+                              {r.image?<img src={r.image} alt={r.nom} style={{width:"100%",height:"100%",objectFit:"cover"}} onError={e=>{e.target.style.display="none";e.target.parentNode.textContent="🍾";}}/>:"🍾"}
+                            </div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                                <div><span style={{fontWeight:700,fontSize:14,color:NAVY}}>{r.nom}</span>
+                                  <div style={{display:"flex",gap:8,marginTop:2}}>
+                                    {r.commune&&<span style={{fontSize:11,color:G400}}>📍 {r.commune}</span>}
+                                    {r.statut&&<span style={{fontSize:11,background:"#fef9c3",color:"#92400e",border:"1px solid #fde68a",borderRadius:5,padding:"0 6px",fontWeight:600}}>{r.statut}</span>}
+                                  </div>
+                                </div>
+                                <span style={{fontWeight:800,fontSize:16,color:GOLD}}>#{i+1}</span>
+                              </div>
+                              <p style={{fontSize:12,color:G600,margin:"4px 0 6px"}}>{r.description}</p>
+                              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:4}}>
+                                <a href={`https://www.google.com/search?q=${encodeURIComponent(r.nom+" champagne site officiel")}`} target="_blank" rel="noreferrer" style={{fontSize:11,color:NAVY,background:G100,border:`1px solid ${G200}`,borderRadius:6,padding:"3px 9px",textDecoration:"none",fontWeight:600}}>🌐 Site officiel</a>
+                                <a href={`https://www.google.com/search?q=${encodeURIComponent(r.nom+" champagne "+modal.entry.qualite+" "+modal.entry.cru)}`} target="_blank" rel="noreferrer" style={{fontSize:11,color:NAVY,background:G100,border:`1px solid ${G200}`,borderRadius:6,padding:"3px 9px",textDecoration:"none",fontWeight:600}}>🍾 Rechercher ce produit</a>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>}
+                  </div>;
+                })()}
+              </div>
+              <div style={{padding:"16px 24px",borderTop:`1px solid ${G100}`}}>
+                <button onClick={()=>setModal(null)} style={{width:"100%",background:NAVY,color:GOLD,border:"none",borderRadius:10,padding:12,fontWeight:700,fontSize:14,cursor:"pointer"}}>Fermer</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Liste ── */}
+        {view==="liste" && (bouteilles.length>0||vinsClairs.length>0) && (
+          <>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
+              <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
+              <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
+              <select value={fBesoin}   onChange={e=>setFB(e.target.value)} style={selStyle}><option value="">Vend & Recherche</option><option>Vend</option><option>Recherche</option></select>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                {STATUTS.map(s=>{const sc=STATUT_COLORS[s]||{bg:G100,col:G600,bdr:G200};const on=fStatuts.includes(s);return <span key={s} onClick={()=>setFS(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])} style={{background:on?sc.bg:G50,color:on?sc.col:G400,border:`1.5px solid ${on?sc.bdr:G200}`,borderRadius:99,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>{s}</span>;})}
+                {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
+              </div>
+              <select value={sortBy}    onChange={e=>setSortBy(e.target.value)} style={selStyle}><option value="date">Date ↓</option><option value="score">Score ↓</option></select>
+              <span style={{fontSize:11,color:G400,marginLeft:"auto"}}>{filtered.length} entrée(s)</span>
+            </div>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflow:"auto",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+              {(()=>{
+                const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
+                const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
+                const setColOrder=tab==="bouteilles"?setBtlOrder:setVcOrder;
+                const ordered=colOrder.map(id=>colDefs.find(c=>c.id===id)).filter(Boolean);
+                return <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)}/>)}</tr></thead>
+                  <tbody>{filtered.map(r=>(
+                    <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
+                      {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
+                    </tr>
+                  ))}</tbody>
+                </table>;
+              })()}
+              {filtered.length===0&&<div style={{textAlign:"center",padding:"48px 0",color:G400}}>Aucune entrée trouvée</div>}
+            </div>
+            <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",fontSize:11}}>
+              <span style={{fontWeight:700,color:G400}}>Score :</span>
+              {[{l:"★ ≥10 Excellent",bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},{l:"★ 6-9 Bon",bg:"#fef9c3",col:"#92400e",bdr:"#fde68a"},{l:"★ 3-5 Partiel",bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"},{l:"— Aucun",bg:G100,col:G400,bdr:G200}].map(s=>(
+                <span key={s.l} style={{background:s.bg,color:s.col,border:`1px solid ${s.bdr}`,borderRadius:99,padding:"2px 10px",fontWeight:600}}>{s.l}</span>
+              ))}
+              <span style={{color:G400}}>· Double-clic sur une ligne pour voir les matchs</span>
+            </div>
+          </>
+        )}
+
+        {/* ── Form ── */}
+        {view==="form" && form && (
+          <div style={{maxWidth:760,margin:"0 auto"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+              <button onClick={()=>setView("liste")} style={{background:"none",border:"none",color:GOLD,fontSize:13,fontWeight:600,cursor:"pointer"}}>← Retour</button>
+              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:NAVY}}>{editId?"Modifier l'entrée":"Nouvelle entrée"} — {tab==="bouteilles"?"🫧 Bouteilles":"🍇 Vins Clairs"}</h2>
+            </div>
+            <div style={{background:WHITE,borderRadius:14,border:`1px solid ${G100}`,padding:28,boxShadow:"0 1px 6px rgba(13,27,62,.07)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+                <Field label="Courtier *"><Sel value={form.courtier} onChange={e=>f("courtier",e.target.value)}><option value="">--</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</Sel></Field>
+                <Field label="Date"><Inp value={form.date} onChange={e=>f("date",e.target.value)} placeholder="JJ/MM/AAAA"/></Field>
+                <Field label="Nom Client *"><Inp value={form.client} onChange={e=>f("client",e.target.value)} placeholder="Ex: BRUNO PAILLARD"/></Field>
+                <Field label="Vend ou Recherche"><Sel value={form.besoin} onChange={e=>f("besoin",e.target.value)}><option>Vend</option><option>Recherche</option></Sel></Field>
+                <Field label="Statut"><Sel value={form.statut} onChange={e=>f("statut",e.target.value)}>{STATUTS.map(s=><option key={s}>{s}</option>)}</Sel></Field>
+                <Field label="Acheteur potentiel"><Inp value={form.acheteur||""} onChange={e=>f("acheteur",e.target.value)}/></Field>
+                <Field label={tab==="bouteilles"?"Quantité":"Quantité (hl)"}><Inp value={form.qte} onChange={e=>f("qte",e.target.value)}/></Field>
+              </div>
+              <hr style={{border:"none",borderTop:`1px solid ${G100}`,margin:"0 0 16px"}}/>
+              <div style={{fontSize:10,fontWeight:700,color:GOLD,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:12}}>
+                {tab==="bouteilles"?"Caractéristiques bouteilles":"Caractéristiques vins clairs"}
+              </div>
+              {tab==="bouteilles"
+                ?<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                  <Field label="Format"><Sel value={form.format} onChange={e=>f("format",e.target.value)}>{FORMATS_BTL.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Modèle"><Inp value={form.modele||""} onChange={e=>f("modele",e.target.value)} placeholder="STD, CARMEN…"/></Field>
+                  <Field label="Couleur verre"><Sel value={form.couleur} onChange={e=>f("couleur",e.target.value)}><option value="">--</option>{COULEURS.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Stade"><Sel value={form.stade} onChange={e=>f("stade",e.target.value)}><option value="">--</option>{STADES.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Qualité"><Sel value={form.qualite} onChange={e=>f("qualite",e.target.value)}><option value="">--</option>{QUALITES_BTL.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Cru"><Sel value={form.cru} onChange={e=>f("cru",e.target.value)}><option value="">--</option>{CRUS.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)} placeholder="60% PN / 40% CH"/></Field>
+                  <Field label="Millésime"><Inp value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} placeholder="2020"/></Field>
+                  <Field label="Tirage"><Inp value={form.tirage||""} onChange={e=>f("tirage",e.target.value)}/></Field>
+                  <Field label="Prix souhaité"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)} placeholder="10,50 €"/></Field>
+                </div>
+                :<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                  <Field label="Vendange"><Inp value={form.vendange||""} onChange={e=>f("vendange",e.target.value)} placeholder="2025 ou Ass"/></Field>
+                  <Field label="Cuvée / Tailles"><Sel value={form.formatVin||""} onChange={e=>f("formatVin",e.target.value)}><option value="">--</option>{FORMATS_VC.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Qualité"><Sel value={form.qualite||""} onChange={e=>f("qualite",e.target.value)}><option value="">--</option>{QUALITES_VC.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Cru"><Sel value={form.cru||""} onChange={e=>f("cru",e.target.value)}><option value="">--</option>{[...CRUS,"GC","GC et PC","PC"].map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Cépage"><Sel value={form.cepage||""} onChange={e=>f("cepage",e.target.value)}><option value="">--</option>{CEPAGES.map(v=><option key={v}>{v}</option>)}</Sel></Field>
+                  <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)}/></Field>
+                  <Field label="Crus / Villages"><Inp value={form.crus||""} onChange={e=>f("crus",e.target.value)} placeholder="BOUZY, Verzy…"/></Field>
+                  <Field label="Prix (€/hl)"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)} placeholder="1 600 €"/></Field>
+                </div>
+              }
+              <div style={{marginTop:16}}>
+                <Field label="Commentaires"><Txa value={form.commentaires||""} onChange={e=>f("commentaires",e.target.value)} placeholder="Notes, restrictions, conditions…"/></Field>
+              </div>
+              <div style={{display:"flex",gap:12,marginTop:20}}>
+                <button onClick={saveForm} style={{flex:1,background:NAVY,color:GOLD,border:"none",borderRadius:10,padding:13,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                  {editId?"💾 Enregistrer":"✅ Ajouter et voir les résultats"}
+                </button>
+                <button onClick={()=>setView("liste")} style={{padding:"13px 24px",background:G100,color:G600,border:"none",borderRadius:10,fontWeight:600,fontSize:14,cursor:"pointer"}}>Annuler</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
