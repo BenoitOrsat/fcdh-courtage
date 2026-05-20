@@ -240,6 +240,12 @@ function namesMatch(a,b) {
   return shorter.every(t=>longer.includes(t));
 }
 
+// Convertit JJ/MM/AAAA → AAAAMMJJ pour tri lexicographique correct
+function parseDateForSort(s) {
+  const p = s.split("/");
+  return p.length === 3 ? `${p[2]}${p[1]}${p[0]}` : "";
+}
+
 // ── Score helpers ─────────────────────────────────────────────────
 function parseQty(q) {
   if (!q) return null;
@@ -597,7 +603,7 @@ function App() {
       return true;
     });
     if(sortBy==="score")arr=[...arr].sort((a,b)=>b._best-a._best);
-    else arr=[...arr].sort((a,b)=>{const pd=s=>{const p=s.split("/");return p.length===3?`${p[2]}${p[1]}${p[0]}`:"";};return pd(b.date).localeCompare(pd(a.date));});
+    else arr=[...arr].sort((a,b)=>parseDateForSort(b.date).localeCompare(parseDateForSort(a.date)));
     return arr;
   },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,search,sortBy]);
 
@@ -645,8 +651,9 @@ function App() {
     if(!dragColRef.current||dragColRef.current===dropId)return;
     setOrder(prev=>{const a=[...prev],f=a.indexOf(dragColRef.current),t=a.indexOf(dropId);if(f<0||t<0)return prev;a.splice(f,1);a.splice(t,0,dragColRef.current);return a;});
   };
-  const actCell=r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
-  const COLS={
+  const COLS = useMemo(()=>{
+    const actCell = r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
+    return {
     bouteilles:[
       {id:"score",   label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
       {id:"campagne",label:"Campagne", cell:r=><TD style={{fontSize:11,color:G400}}>{r.campagne}</TD>},
@@ -684,7 +691,7 @@ function App() {
       {id:"prix",     label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
       {id:"actions",  label:"",         cell:r=>actCell(r)},
     ],
-  };
+  };},[openForm,openModal,setBouteilles,setVinsClairs,setDelId]);
 
   // ── Render helpers ──────────────────────────────────────────────
   const selStyle={border:`1px solid ${G200}`,borderRadius:8,padding:"8px 12px",fontSize:13,color:TEXT,background:WHITE,outline:"none"};
@@ -755,7 +762,7 @@ function App() {
               </button>
             : <>
                 <span style={{fontSize:11,color:"#6ee7b7",fontWeight:600}}>📊 Drive ✓</span>
-                <button onClick={()=>loadFromDrive(gToken)} title="Recharger depuis Drive" style={{padding:"7px 10px",borderRadius:7,fontSize:13,border:`1px solid ${GOLD}`,background:"transparent",color:GOLD,cursor:"pointer"}}>🔄</button>
+                <button onClick={()=>{cotLoadedRef.current=false;loadFromDrive(gToken);}} title="Recharger depuis Drive (cotations incluses)" style={{padding:"7px 10px",borderRadius:7,fontSize:13,border:`1px solid ${GOLD}`,background:"transparent",color:GOLD,cursor:"pointer"}}>🔄</button>
                 <button onClick={saveToDrive} style={{padding:"7px 14px",borderRadius:7,fontSize:13,fontWeight:600,border:"none",background:"#059669",color:WHITE,cursor:"pointer"}}>💾 Sauvegarder</button>
               </>
           }
@@ -861,7 +868,7 @@ function App() {
                 )}
                 {mTab==="historique"&&(()=>{
                   const COT_COLS=[
-                    {id:"date",   label:"Date",    cmp:(a,b)=>{const pd=s=>{const p=s.split("/");return p.length===3?`${p[2]}${p[1]}${p[0]}`:"";};return pd(a.date).localeCompare(pd(b.date));}},
+                    {id:"date",   label:"Date",    cmp:(a,b)=>parseDateForSort(a.date).localeCompare(parseDateForSort(b.date))},
                     {id:"numero", label:"N°",      cmp:(a,b)=>String(a.numero).localeCompare(String(b.numero),undefined,{numeric:true})},
                     {id:"acheteur",label:"Acheteur",cmp:(a,b)=>a.acheteur.localeCompare(b.acheteur)},
                     {id:"vendeur", label:"Vendeur", cmp:(a,b)=>a.vendeur.localeCompare(b.vendeur)},
