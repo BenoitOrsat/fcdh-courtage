@@ -114,10 +114,21 @@ function parseSheet(wb, sheetName, type) {
         const m = v.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
         return m ? m[1] : v;
       };
+      const normQualite = v => {
+        // BLANC DE BLANCS
+        if(/^(BDB|BDB\s*\(.*\)|BLANCS\s+DE\s+BLANCS|Base\s+blanc|BLANC\s+DE\s+BLANCS\s+(1er|GRAND|CRU|BIO|CRVC).*)$/i.test(v)) return "BLANC DE BLANCS";
+        // BLANC DE NOIRS (typo uniquement)
+        if(/^BLANC\s+DE\s+NOIR$/i.test(v)) return "BLANC DE NOIRS";
+        // ROSÉ DE SAIGNÉE
+        if(/^ROS[EÉ]\s+DE\s+SAIGN[EÉ]{1,2}$/i.test(v)) return "ROSÉ DE SAIGNÉE";
+        // ROSÉ (sans accent ou minuscule, mais pas les variantes spécifiques)
+        if(/^ROS[EÉ]$/i.test(v)) return "ROSÉ";
+        return v;
+      };
       Object.assign(entry, {
         format: normFormat(g(cols.format)||'Bouteille'), modele: g(cols.modele),
         couleur: normCouleur(g(cols.couleur)), stade: g(cols.stade),
-        qualite: g(cols.qualite), cru: normCru(g(cols.cru)),
+        qualite: normQualite(g(cols.qualite)), cru: normCru(g(cols.cru)),
         assemblage: g(cols.assemblage), millesime: normMillesime(g(cols.millesime)),
         tirage: fmtDate(row[cols.tirage]),
       });
