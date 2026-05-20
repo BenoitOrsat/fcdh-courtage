@@ -265,6 +265,14 @@ const BESOIN_COLORS={"Vend":{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},"Recherch
 
 const Pill=({v,type="besoin"})=>{const m=type==="besoin"?BESOIN_COLORS[v]:STATUT_COLORS[v];const s=m||{bg:G100,col:G600,bdr:G200};return <span style={{background:s.bg,color:s.col,border:`1px solid ${s.bdr}`,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:600,whiteSpace:"nowrap",display:"inline-block"}}>{v}</span>;};
 const StatutSel=({value,onChange})=>{const sc=STATUT_COLORS[value]||{bg:G100,col:G600,bdr:G200};return <select value={value} onChange={e=>onChange(e.target.value)} onClick={e=>e.stopPropagation()} style={{background:sc.bg,color:sc.col,border:`1px solid ${sc.bdr}`,borderRadius:99,padding:"2px 8px",fontSize:11,fontWeight:600,cursor:"pointer",outline:"none",maxWidth:130,fontFamily:"inherit"}}>{STATUTS.map(s=><option key={s} value={s}>{s}</option>)}</select>;};
+const InlineText=({value,onChange,placeholder="—"})=>{
+  const [editing,setEditing]=React.useState(false);
+  const [val,setVal]=React.useState(value||"");
+  React.useEffect(()=>{setVal(value||"");},[value]);
+  const commit=()=>{setEditing(false);if(val!==(value||""))onChange(val);};
+  if(editing)return <input autoFocus value={val} onChange={e=>setVal(e.target.value)} onBlur={commit} onKeyDown={e=>{if(e.key==="Enter")commit();if(e.key==="Escape"){setVal(value||"");setEditing(false);}}} onClick={e=>e.stopPropagation()} style={{border:`1px solid ${G200}`,borderRadius:5,padding:"2px 6px",fontSize:11,width:120,outline:"none",fontFamily:"inherit"}}/>;
+  return <span onClick={e=>{e.stopPropagation();setEditing(true);}} style={{cursor:"text",color:value?TEXT:G300,fontSize:11,display:"inline-block",minWidth:40,padding:"2px 4px",borderRadius:4,border:`1px dashed transparent`}} title="Cliquer pour modifier">{value||placeholder}</span>;
+};
 const ScorePill=({score,onClick})=>{const s=scorePillStyle(score);return <span onClick={onClick} style={{background:s.bg,color:s.col,border:`1px solid ${s.bdr}`,borderRadius:99,padding:"2px 10px",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"inline-block"}}>{score?`★ ${score}`:"—"}</span>;};
 const ScoreBox=({score})=>{const{bg,col}=scoreBoxColor(score);return <div style={{width:44,height:44,borderRadius:10,background:bg,color:col,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:17,flexShrink:0}}>{score||"—"}</div>;};
 const inp={border:`1px solid ${G200}`,borderRadius:8,padding:"8px 12px",fontSize:13,color:TEXT,background:WHITE,outline:"none",width:"100%",boxSizing:"border-box"};
@@ -318,8 +326,9 @@ function App() {
   const rawRowsRef  = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
   const dragColRef  = useRef(null);
   const cotLoadedRef = useRef(false);
-  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');return s?JSON.parse(s):['score','campagne','date','courtier','client','besoin','statut','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}catch{return['score','campagne','date','courtier','client','besoin','statut','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
-  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');return s?JSON.parse(s):['score','campagne','date','courtier','client','besoin','statut','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}catch{return['score','campagne','date','courtier','client','besoin','statut','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
+  const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
+  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
+  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
 
@@ -597,6 +606,7 @@ function App() {
       {id:"client",  label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
       {id:"besoin",  label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
       {id:"statut",  label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x))}/></div></TD>},
+      {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x))}/></div></TD>},
       {id:"qte",     label:"Qté",      cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"format",  label:"Format",   cell:r=><TD style={{color:G600}}>{r.format}</TD>},
       {id:"couleur", label:"Couleur",  cell:r=><TD style={{color:G600}}>{r.couleur}</TD>},
@@ -615,6 +625,7 @@ function App() {
       {id:"client",   label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
       {id:"besoin",   label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
       {id:"statut",   label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x))}/></div></TD>},
+      {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x))}/></div></TD>},
       {id:"qte",      label:"Qté (hl)", cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"vendange", label:"Vendange", cell:r=><TD style={{color:G600}}>{r.vendange}</TD>},
       {id:"formatVin",label:"Format",   cell:r=><TD style={{fontSize:11,color:G600}}>{r.formatVin}</TD>},
@@ -953,7 +964,7 @@ function App() {
                 <Field label="Nom Client *"><Inp value={form.client} onChange={e=>f("client",e.target.value)} placeholder="Ex: BRUNO PAILLARD"/></Field>
                 <Field label="Vend ou Recherche"><Sel value={form.besoin} onChange={e=>f("besoin",e.target.value)}><option>Vend</option><option>Recherche</option></Sel></Field>
                 <Field label="Statut"><Sel value={form.statut} onChange={e=>f("statut",e.target.value)}>{STATUTS.map(s=><option key={s}>{s}</option>)}</Sel></Field>
-                <Field label="Acheteur potentiel"><Inp value={form.acheteur||""} onChange={e=>f("acheteur",e.target.value)}/></Field>
+                <Field label="Proposition"><Inp value={form.acheteur||""} onChange={e=>f("acheteur",e.target.value)}/></Field>
                 <Field label={tab==="bouteilles"?"Quantité":"Quantité (hl)"}><Inp value={form.qte} onChange={e=>f("qte",e.target.value)}/></Field>
               </div>
               <hr style={{border:"none",borderTop:`1px solid ${G100}`,margin:"0 0 16px"}}/>
