@@ -749,6 +749,7 @@ function App() {
       {/* ── Header ── */}
       <div style={{background:`linear-gradient(135deg,${NAVY} 0%,${BLUE} 100%)`,color:WHITE,padding:"0 24px",display:"flex",alignItems:"center",justifyContent:"space-between",height:64,boxShadow:"0 2px 12px rgba(13,27,62,.4)"}}>
         <div>
+          <a href="index.html" style={{color:GOLD,textDecoration:"none",fontSize:11,fontWeight:600,opacity:0.8,display:"inline-flex",alignItems:"center",gap:4,marginBottom:4,transition:"opacity .15s"}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=0.8}>← Tableau de bord</a>
           <div style={{fontWeight:700,fontSize:18,color:GOLD,letterSpacing:"0.04em"}}>FCDH Courtiers Associés</div>
           <div style={{fontSize:11,color:GOLD_L,letterSpacing:"0.05em"}}>Campagne {CAMPAGNE} — Courtage Champagne</div>
         </div>
