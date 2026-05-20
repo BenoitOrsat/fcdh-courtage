@@ -29,10 +29,11 @@ const { useState, useMemo, useRef, useEffect } = React;
 const COURTIERS = ["BO","MAA","EC","EB","EH","JPNC","ASM","JBC","JFPM"];
 const STATUTS   = ["en attente","en dégustation","conclue","abandon"];
 const FORMATS_BTL  = ["Bouteille","Demie","Magnum","Jero"];
-const COULEURS     = ["verte","blanche","dépolie","noire","chêne/cannelle/antique"];
+const COULEURS     = ["verte","blanche","dépolie","noire","chêne/antique","feuille morte"];
 const STADES       = ["S/L","S/P","DN"];
 const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","BSA","BIO DEMETER","ROUGE","TRES QUALI","BDB","BRUT NATURE"];
-const CRUS         = ["Sans Revendication","1er Cru","Grand Cru"];
+const CRUS         = ["Sans Revendication","1er Cru","Grand Cru","1er Cru / Grand Cru"];
+const MILLESIMES   = (()=>{const a=[];for(let y=new Date().getFullYear()+1;y>=1950;y--)a.push(String(y));return a;})();
 const CEPAGES      = ["CH","PN","PM","PN/CH","PM/PN","CH/PM","PN/PM/CH","CH PM PN","PN/PM","PM/PN"];
 const FORMATS_VC   = ["Cuvée","Tailles","TV","Cuvée + taille"];
 const QUALITES_VC  = ["ROUGE","BIO","RESERVE","Passé sous bois","DRA","CH +PB","MAUVAIS VINS","Mauvais rouge"];
@@ -97,11 +98,27 @@ function parseSheet(wb, sheetName, type) {
       _sheet: sheetName, _row: i,
     };
     if (type === 'bouteilles') {
+      const normFormat = v => v==="bouteille"?"Bouteille":v;
+      const normCouleur = v => {
+        if(/ch[eê]ne.*(cannelle|antique)|antique.*ch[eê]ne/i.test(v)) return "chêne/antique";
+        if(/^ch[eê]ne$/i.test(v)) return "chêne/antique";
+        return v;
+      };
+      const normCru = v => {
+        if(/grand.?cru.*1er|1er.*grand.?cru/i.test(v)) return "1er Cru / Grand Cru";
+        if(/grand.?cru/i.test(v)) return "Grand Cru";
+        if(/1er.?cru/i.test(v)) return "1er Cru";
+        return v;
+      };
+      const normMillesime = v => {
+        const m = v.match(/\b(1[89]\d{2}|20[0-2]\d)\b/);
+        return m ? m[1] : v;
+      };
       Object.assign(entry, {
-        format: g(cols.format)||'Bouteille', modele: g(cols.modele),
-        couleur: g(cols.couleur), stade: g(cols.stade),
-        qualite: g(cols.qualite), cru: g(cols.cru),
-        assemblage: g(cols.assemblage), millesime: g(cols.millesime),
+        format: normFormat(g(cols.format)||'Bouteille'), modele: g(cols.modele),
+        couleur: normCouleur(g(cols.couleur)), stade: g(cols.stade),
+        qualite: g(cols.qualite), cru: normCru(g(cols.cru)),
+        assemblage: g(cols.assemblage), millesime: normMillesime(g(cols.millesime)),
         tirage: fmtDate(row[cols.tirage]),
       });
     } else {
@@ -980,7 +997,10 @@ function App() {
                   <Field label="Qualité"><Sel value={form.qualite} onChange={e=>f("qualite",e.target.value)}><option value="">--</option>{QUALITES_BTL.map(v=><option key={v}>{v}</option>)}</Sel></Field>
                   <Field label="Cru"><Sel value={form.cru} onChange={e=>f("cru",e.target.value)}><option value="">--</option>{CRUS.map(v=><option key={v}>{v}</option>)}</Sel></Field>
                   <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)} placeholder="60% PN / 40% CH"/></Field>
-                  <Field label="Millésime"><Inp value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} placeholder="2020"/></Field>
+                  <Field label="Millésime">
+                    <input list="millesimes-list" value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} placeholder="2020" style={{...inp}}/>
+                    <datalist id="millesimes-list">{MILLESIMES.map(y=><option key={y} value={y}/>)}</datalist>
+                  </Field>
                   <Field label="Tirage"><Inp value={form.tirage||""} onChange={e=>f("tirage",e.target.value)}/></Field>
                   <Field label="Prix souhaité"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)} placeholder="10,50 €"/></Field>
                 </div>
