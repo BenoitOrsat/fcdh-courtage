@@ -179,19 +179,32 @@ const NAVY="#0d1b3e",BLUE="#1a2f5a",GOLD="#C9A84C",GOLD_L="#e8c97a",
 const NAME_ALIASES = {
   "CANARD - DUCHÊNE":"CANARD DUCHENE","CANARD-DUCHÊNE":"CANARD DUCHENE",
   "FOURRIER DELMOTTE":"FOURRIER","LE SUCHOT":"SUCHOT","MALETREZ FREDERIC":"MALETREZ",
+  "EPC":"GRINCLAIR","GRINCLAIR":"GRINCLAIR","E.P.C.":"GRINCLAIR",
 };
+// Mots génériques qui ne doivent pas déclencher un match à eux seuls
+const NAME_STOP_WORDS = new Set([
+  "CHAMPAGNE","MAISON","DOMAINE","CAVE","CAVES","VIGNOBLE","VIGNOBLES",
+  "DE","DU","LA","LE","LES","ET","EN","SUR","SOUS","AU","AUX","&",
+  "SA","SAS","SARL","SCI","SCE","GFA","EARL","GAEC","SCA",
+  "VINS","VIN","VIGNE","VIGNES","BLANC","ROUGE","ROSE","ROSÉ",
+]);
 function normalizeName(n) {
   if (!n) return "";
-  const u = n.trim().toUpperCase();
+  const u = n.trim().toUpperCase().replace(/['']/g,"'").replace(/[-–]/g," ");
   for (const [k,v] of Object.entries(NAME_ALIASES)) if (u===k.toUpperCase()) return v.toUpperCase();
   return u;
 }
 function namesMatch(a,b) {
   const na=normalizeName(a),nb=normalizeName(b);
+  // Une valeur vide ne génère jamais de match
+  if (!na||!nb) return false;
   if (na===nb) return true;
-  if (na.includes(nb)||nb.includes(na)) return true;
+  // Inclusion seulement si la valeur incluse n'est pas un stop word seul
+  if (na.includes(nb)&&!NAME_STOP_WORDS.has(nb)) return true;
+  if (nb.includes(na)&&!NAME_STOP_WORDS.has(na)) return true;
+  // Match sur un mot significatif commun (>3 lettres, hors stop words)
   const ta=na.split(/\s+/),tb=nb.split(/\s+/);
-  return ta.some(t=>t.length>3&&tb.includes(t));
+  return ta.some(t=>t.length>3&&!NAME_STOP_WORDS.has(t)&&tb.includes(t));
 }
 
 // ── Score helpers ─────────────────────────────────────────────────
