@@ -718,7 +718,7 @@ function App() {
 
       {/* ── Tabs ── */}
       <div style={{background:WHITE,borderBottom:`1px solid ${G100}`,padding:"0 24px",display:"flex"}}>
-        {[{k:"bouteilles",l:"🫧 Bouteilles",n:bouteilles.length},{k:"vinsclairs",l:"🍇 Vins Clairs",n:vinsClairs.length}].map(t=>(
+        {[{k:"bouteilles",l:"🫧 Bouteilles",n:bouteilles.filter(r=>r.campagne===CAMPAGNE&&STATUTS_ACTIFS.includes(r.statut)).length},{k:"vinsclairs",l:"🍇 Vins Clairs",n:vinsClairs.filter(r=>r.campagne===CAMPAGNE&&STATUTS_ACTIFS.includes(r.statut)).length}].map(t=>(
           <button key={t.k} onClick={()=>{setTab(t.k);setView("liste");}}
             style={{padding:"14px 20px",fontSize:13,fontWeight:600,border:"none",borderBottom:tab===t.k?`3px solid ${GOLD}`:"3px solid transparent",background:"none",color:tab===t.k?NAVY:G400,cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
             {t.l}<span style={{background:tab===t.k?NAVY:G100,color:tab===t.k?GOLD_L:G400,borderRadius:99,padding:"1px 8px",fontSize:11,fontWeight:700}}>{t.n}</span>
