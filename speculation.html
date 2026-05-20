@@ -796,7 +796,10 @@ function App() {
                   <div style={{fontWeight:700,fontSize:17,color:WHITE}}>{modal.entry.client}</div>
                   <div style={{fontSize:11,color:GOLD_L,marginTop:2}}>{modal.entry.courtier} · {modal.entry.besoin} · {modal.entry.date}</div>
                 </div>
-                <button onClick={()=>setModal(null)} style={{background:"none",border:"none",color:GOLD_L,fontSize:26,cursor:"pointer",lineHeight:1}}>×</button>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <button onClick={()=>{setModal(null);openForm(modal.entry);}} style={{background:GOLD,color:NAVY,border:"none",borderRadius:7,padding:"6px 14px",fontWeight:700,fontSize:12,cursor:"pointer"}}>✏️ Modifier</button>
+                  <button onClick={()=>setModal(null)} style={{background:"none",border:"none",color:GOLD_L,fontSize:26,cursor:"pointer",lineHeight:1}}>×</button>
+                </div>
               </div>
               {renderCriteres(modal.entry)}
               <div style={{display:"flex",borderBottom:`1px solid ${G100}`,padding:"0 24px"}}>
