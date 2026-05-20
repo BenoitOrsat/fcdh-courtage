@@ -381,6 +381,23 @@ function App() {
     tc.requestAccessToken();
   };
 
+  // ── Reconnexion silencieuse sur token expiré (401) ──────────────
+  const reAuthAndRetry = (retryFn) => {
+    if (!window.google?.accounts?.oauth2) { setGError("Impossible de rafraîchir la session."); return; }
+    setGError("Session expirée — reconnexion automatique…");
+    const tc = window.google.accounts.oauth2.initTokenClient({
+      client_id: gClientId,
+      scope: DRIVE_SCOPE,
+      callback: (resp) => {
+        if (resp.error) { setGError("Reconnexion échouée : " + resp.error); return; }
+        setGToken(resp.access_token);
+        setGError("");
+        retryFn(resp.access_token);
+      },
+    });
+    tc.requestAccessToken({prompt: ''});
+  };
+
   // ── Load from Drive ─────────────────────────────────────────────
   const loadFromDrive = async (token) => {
     setGLoading(true); setGError("");
@@ -389,6 +406,7 @@ function App() {
         `https://www.googleapis.com/drive/v3/files/${DRIVE_FILE_ID}?alt=media`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      if (resp.status === 401) { setGLoading(false); reAuthAndRetry(loadFromDrive); return; }
       if (!resp.ok) throw new Error(`Drive ${resp.status}: ${await resp.text()}`);
       const buf = await resp.arrayBuffer();
       const wb  = XLSX.read(buf, {type:'array', cellDates:true});
@@ -470,8 +488,9 @@ function App() {
   };
 
   // ── Save to Drive ───────────────────────────────────────────────
-  const saveToDrive = async () => {
-    if (!gToken || !driveWbRef.current) return;
+  const saveToDrive = async (tokenOverride) => {
+    const token = tokenOverride || gToken;
+    if (!token || !driveWbRef.current) return;
     setGLoading(true); setGError("");
     try {
       const wb = driveWbRef.current;
@@ -536,8 +555,9 @@ function App() {
 
       const up = await fetch(
         `https://www.googleapis.com/upload/drive/v3/files/${DRIVE_FILE_ID}?uploadType=media`,
-        { method:'PATCH', headers:{Authorization:`Bearer ${gToken}`, 'Content-Type': blob.type}, body: blob }
+        { method:'PATCH', headers:{Authorization:`Bearer ${token}`, 'Content-Type': blob.type}, body: blob }
       );
+      if (up.status === 401) { setGLoading(false); reAuthAndRetry(t => saveToDrive(t)); return; }
       if (!up.ok) throw new Error(`Upload ${up.status}: ${await up.text()}`);
 
       origRowsRef.current = {
