@@ -40,6 +40,8 @@ const CAMPAGNE     = "2025/2026";
 
 // ── Drive ─────────────────────────────────────────────────────────
 const DRIVE_FILE_ID = '1QruhgICsw5lBoUx3kXTEFV1ol-wlvf4G';
+const DRIVE_COTATION_BT_ID = '1xhCh12aS2HlbbuKMFGsr__R8lJC3eQAY';
+const DRIVE_COTATION_VC_ID = '13ggyURqnhioMcCUgypiXBNI5GD6JVSRh';
 const DEFAULT_CLIENT_ID = '186740067921-ee61d610og88l11vohc5if35805if5v1.apps.googleusercontent.com';
 const DRIVE_SCOPE   = 'https://www.googleapis.com/auth/drive';
 
@@ -110,6 +112,23 @@ function parseSheet(wb, sheetName, type) {
       });
     }
     result.push(entry);
+  }
+  return result;
+}
+
+function parseCotationRows(rows, memoCol) {
+  const result = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[0]) continue;
+    const g = c => String(row[c]||'').trim();
+    const prix = parseFloat(String(row[6]||'0').replace(',','.').replace(/[^\d.]/g,'')) || 0;
+    const qte  = parseFloat(String(row[5]||'0').replace(',','.').replace(/[^\d.]/g,'')) || 0;
+    result.push({
+      courtier: g(0), date: fmtDate(row[1]), numero: g(2),
+      acheteur: g(3), vendeur: g(4), qte, prix,
+      mention: g(7), code: g(8), memo: g(memoCol),
+    });
   }
   return result;
 }
@@ -219,50 +238,6 @@ function bestScore(entry,all,type) {
 function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)return{bg:"#f59e0b",col:"#fff"};if(s>=3)return{bg:"#f97316",col:"#fff"};return{bg:G200,col:G600};}
 function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
 
-// ── Static COTATIONS (unchanged) ──────────────────────────────────
-const COTATIONS = [
-  {courtier:"JFPM",date:"21/04/2023",numero:"CF220446",acheteur:"GRINCLAIR",vendeur:"VINICOLE de VERTUS",qte:5000,prix:17.00,mention:"AOC Champagne;+36 mois;1er Cru;Blanc de Blancs;Millésime 2014",code:"DOSE",memo:"Vertus, parcelle Les Monts Ferrés"},
-  {courtier:"EH",date:"02/10/2025",numero:"CF250003",acheteur:"LEOPOLDINE",vendeur:"CUPERLY",qte:11046,prix:13.55,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
-  {courtier:"EB",date:"03/10/2025",numero:"CF250004",acheteur:"DUMONT & FILS",vendeur:"PRIEUR CLAUDE",qte:1008,prix:10.20,mention:"AOC Champagne;+15 mois",code:"POIN",memo:""},
-  {courtier:"EB",date:"03/10/2025",numero:"CF250004",acheteur:"DUMONT & FILS",vendeur:"PRIEUR CLAUDE",qte:3024,prix:10.10,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
-  {courtier:"JPNC",date:"07/10/2025",numero:"CF250005",acheteur:"COMTESSE LAFOND",vendeur:"VIGNOBLES BAUDRY",qte:3000,prix:11.00,mention:"AOC Champagne;+15 mois;Rosé;bouteilles blanches",code:"LATT",memo:"50% PN / 50% CH"},
-  {courtier:"JPNC",date:"07/10/2025",numero:"CF250006",acheteur:"BARON FUENTE",vendeur:"TRUFFAUT Nicolas",qte:935,prix:10.50,mention:"AOC Champagne;+15 mois;Blanc de Blancs;bouteilles vertes;Vin Bio",code:"LATT",memo:""},
-  {courtier:"BO",date:"08/10/2025",numero:"CF250007",acheteur:"POL COURONNE",vendeur:"CHAMPION ROLAND",qte:1000,prix:14.00,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"LATT",memo:""},
-  {courtier:"JPNC",date:"09/10/2025",numero:"CF250008",acheteur:"LES VINS DE SA FEMME",vendeur:"MELO DAVID",qte:2000,prix:9.00,mention:"AOC Champagne;+15 mois;Assemblage",code:"LATT",memo:"Lot LC22S/L"},
-  {courtier:"EH",date:"10/10/2025",numero:"CF250010",acheteur:"PIERRE HUGOT",vendeur:"ISSELEE ERIC",qte:1143,prix:13.60,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"POIN",memo:"TOUT CUVEE"},
-  {courtier:"MAA",date:"10/10/2025",numero:"CF250011",acheteur:"BONNET & CO",vendeur:"ISSELEE ERIC",qte:800,prix:7.00,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"LATT",memo:"TOUT CUVEE"},
-  {courtier:"EB",date:"13/10/2025",numero:"CF250012",acheteur:"LE SUCHOT",vendeur:"FOURRIER DELMOTTE",qte:8400,prix:11.40,mention:"AOC Champagne;+36 mois;Blanc de Blancs;Millésime 2020",code:"POIN",memo:""},
-  {courtier:"BO",date:"13/10/2025",numero:"CF250013",acheteur:"CHARLES MIGNON",vendeur:"CANARD - DUCHÊNE",qte:480,prix:6.40,mention:"AOC Champagne;+15 mois;Rosé",code:"POIN",memo:""},
-  {courtier:"EH",date:"13/10/2025",numero:"CF250014",acheteur:"GRINCLAIR",vendeur:"HENRI ABELE",qte:3696,prix:5.40,mention:"AOC Champagne;+15 mois",code:"POIN",memo:"40% PN / 35% CH / 25% MN"},
-  {courtier:"MAA",date:"16/10/2025",numero:"CF250016",acheteur:"G.F. DUNTZE",vendeur:"LA VIGNERONNE DE VERTUS",qte:1008,prix:14.20,mention:"AOC Champagne;+36 mois;1er Cru;Blanc de Blancs;Millésime 2021",code:"POIN",memo:""},
-  {courtier:"BO",date:"16/10/2025",numero:"CF250017",acheteur:"LES ROCHES BLANCHES",vendeur:"BURGUET",qte:24192,prix:10.00,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
-  {courtier:"EH",date:"22/10/2025",numero:"CF250019",acheteur:"PIERRE HUGOT",vendeur:"ISSELEE ERIC",qte:1143,prix:13.60,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"POIN",memo:"TOUT CUVEE"},
-  {courtier:"EB",date:"24/10/2025",numero:"CF250025",acheteur:"DOMAINE DOSNON",vendeur:"LAURENTI PERE ET FILS",qte:12096,prix:10.20,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
-  {courtier:"EB",date:"24/10/2025",numero:"CF250026",acheteur:"LE SUCHOT",vendeur:"LAURENT COURTILLIER",qte:3024,prix:11.15,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"POIN",memo:""},
-  {courtier:"EC",date:"28/10/2025",numero:"CF250028",acheteur:"G.F. DUNTZE",vendeur:"ROULOT FOURNIER",qte:2232,prix:11.50,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
-  {courtier:"EH",date:"28/10/2025",numero:"CF250029",acheteur:"G.F. DUNTZE",vendeur:"MALETREZ FREDERIC",qte:2016,prix:11.00,mention:"AOC Champagne;+15 mois;1er Cru",code:"LATT",memo:""},
-  {courtier:"EB",date:"28/10/2025",numero:"CF250030",acheteur:"LE SUCHOT",vendeur:"LAURENT COURTILLIER",qte:2520,prix:11.15,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"POIN",memo:""},
-  {courtier:"EB",date:"28/10/2025",numero:"CF250031",acheteur:"LE SUCHOT",vendeur:"FOURRIER DELMOTTE",qte:5040,prix:11.40,mention:"AOC Champagne;+36 mois;Blanc de Blancs;Millésime 2020",code:"POIN",memo:""},
-  {courtier:"EC",date:"29/10/2025",numero:"CF250032",acheteur:"GODIN ALEXIA",vendeur:"VINICOLE de BERRU",qte:2000,prix:12.80,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"DOSE",memo:""},
-  {courtier:"BO",date:"30/10/2025",numero:"CF250033",acheteur:"CANARD - DUCHÊNE",vendeur:"PAPELARD Jérome",qte:36,prix:10.00,mention:"AOC Champagne;+15 mois",code:"LATT",memo:""},
-  {courtier:"EH",date:"04/11/2025",numero:"CF250036",acheteur:"PIERRE HUGOT",vendeur:"ISSELEE ERIC",qte:762,prix:13.60,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"POIN",memo:"TOUT CUVEE"},
-  {courtier:"MAA",date:"05/11/2025",numero:"CF250037",acheteur:"LAURENT PERRIER",vendeur:"TESSIER Françoise",qte:2152,prix:12.00,mention:"AOC Champagne;+15 mois;Vendanges 2008",code:"LATT",memo:""},
-  {courtier:"JPNC",date:"05/11/2025",numero:"CF250038",acheteur:"GRINCLAIR",vendeur:"TERROIRS ET VIGNERONS DE CHAMPAGNE",qte:200088,prix:10.35,mention:"AOC Champagne;+15 mois",code:"POIN",memo:"Tirage 2021"},
-  {courtier:"BO",date:"11/11/2025",numero:"CF250040",acheteur:"RUFFIN & FILS",vendeur:"GRUET",qte:2016,prix:10.40,mention:"AOC Champagne;+15 mois;Blanc de noirs",code:"POIN",memo:""},
-  {courtier:"EB",date:"13/11/2025",numero:"CF250043",acheteur:"LE SUCHOT",vendeur:"LAURENT COURTILLIER",qte:504,prix:11.15,mention:"AOC Champagne;+15 mois;Blanc de Blancs",code:"POIN",memo:""},
-  {courtier:"EB",date:"14/11/2025",numero:"CF250045",acheteur:"DES COMBELLES",vendeur:"DANIEL CHEURLIN ET FILS",qte:1008,prix:10.70,mention:"AOC Champagne;+15 mois;Assemblage",code:"POIN",memo:""},
-  {courtier:"EH",date:"17/11/2025",numero:"CF250046",acheteur:"LEOPOLDINE",vendeur:"CUPERLY",qte:11046,prix:13.55,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
-  {courtier:"ASM",date:"17/11/2025",numero:"CF250047",acheteur:"LES PEIGNOTTES",vendeur:"DZIECIUCK BERNARD",qte:5680,prix:10.00,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
-  {courtier:"EB",date:"19/11/2025",numero:"CF250049",acheteur:"LE SUCHOT",vendeur:"FOURRIER DELMOTTE",qte:10080,prix:11.40,mention:"AOC Champagne;+36 mois;Blanc de Blancs;Millésime 2020",code:"POIN",memo:""},
-  {courtier:"EH",date:"20/11/2025",numero:"CF250052",acheteur:"DELABAYE MAURICE & FILS",vendeur:"A. ROBERT",qte:24192,prix:10.00,mention:"AOC Champagne;+15 mois",code:"POIN",memo:""},
-  {courtier:"MAA",date:"24/11/2025",numero:"CF250059",acheteur:"CHAPUY SAS",vendeur:"G. MORIZET ET FILS",qte:2500,prix:13.00,mention:"AOC Champagne;+15 mois;Blanc de Blancs;Grand Cru",code:"LATT",memo:""},
-  {courtier:"BO",date:"25/11/2025",numero:"CF250062",acheteur:"POL COURONNE",vendeur:"UNION CHAMPAGNE",qte:1200,prix:16.30,mention:"AOC Champagne;+15 mois;Grand Cru",code:"POIN",memo:""},
-  {courtier:"BO",date:"01/12/2025",numero:"CF250069",acheteur:"POL COURONNE",vendeur:"VINICOLE G.J.R. DE JANVRY",qte:600,prix:11.00,mention:"AOC Champagne;+15 mois;Blanc de noirs",code:"POIN",memo:""},
-  {courtier:"EH",date:"01/12/2025",numero:"CF250072",acheteur:"LEOPOLDINE",vendeur:"CUPERLY",qte:22092,prix:13.55,mention:"AOC Champagne;+15 mois",code:"DOSE",memo:""},
-  {courtier:"JPNC",date:"09/12/2025",numero:"CF250083",acheteur:"G.F. DUNTZE",vendeur:"VIGNOBLES BAUDRY",qte:1008,prix:11.00,mention:"AOC Champagne;+15 mois;PINOT NOIR;Blanc de noirs",code:"POIN",memo:""},
-  {courtier:"JPNC",date:"10/12/2025",numero:"CF250091",acheteur:"HATON JEAN-NOEL",vendeur:"FAVIER Philippe",qte:3400,prix:10.00,mention:"AOC Champagne;+15 mois;Vendanges 2021",code:"LATT",memo:"Tirage 2022"},
-];
-function getCotationsForClient(n){return COTATIONS.filter(c=>namesMatch(c.acheteur,n)||namesMatch(c.vendeur,n));}
 
 const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:""};
 const emptyVC ={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",vendange:"",formatVin:"Cuvée",qualite:"",cru:"",cepage:"",assemblage:"",crus:"",prix:"",commentaires:""};
@@ -318,6 +293,8 @@ function App() {
   const [gError, setGError]       = useState("");
   const [gSaved, setGSaved]       = useState(false);
   const [driveLoaded, setDriveLoaded]=useState(false);
+  const [cotationsBT, setCotationsBT] = useState([]);
+  const [cotationsVC, setCotationsVC] = useState([]);
   const driveWbRef  = useRef(null);
   const origRowsRef = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
   const rawRowsRef  = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
@@ -409,6 +386,23 @@ function App() {
       setBouteilles(btlData);
       setVinsClairs(vcData);
       setDriveLoaded(true);
+
+      // Load cotation files in parallel
+      const loadCotFile = async (fileId, memoCol) => {
+        try {
+          const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {headers:{Authorization:`Bearer ${token}`}});
+          if (!r.ok) return [];
+          const wb2 = XLSX.read(await r.arrayBuffer(), {type:'array', cellDates:true});
+          const ws2 = wb2.Sheets[wb2.SheetNames[0]];
+          return parseCotationRows(XLSX.utils.sheet_to_json(ws2, {header:1, defval:'', raw:true}), memoCol);
+        } catch { return []; }
+      };
+      const [btCot, vcCot] = await Promise.all([
+        loadCotFile(DRIVE_COTATION_BT_ID, 9),
+        loadCotFile(DRIVE_COTATION_VC_ID, 10),
+      ]);
+      setCotationsBT(btCot);
+      setCotationsVC(vcCot);
     } catch(e) {
       setGError("Chargement : " + e.message);
     }
@@ -537,11 +531,11 @@ function App() {
     let saved;
     if(editId){saved={...form,id:editId};setData(prev=>prev.map(r=>r.id===editId?saved:r));}
     else{const nid=Math.max(0,...data.map(r=>r.id))+1;saved={...form,id:nid};setData(prev=>[...prev,saved]);}
-    setModal({entry:saved,matches:matchesFor(saved),cotations:getCotationsForClient(saved.client)});
+    setModal({entry:saved,matches:matchesFor(saved),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,saved.client)||namesMatch(c.vendeur,saved.client))});
     setMTab("matches");setView("liste");
   };
   const openModal=(entry)=>{
-    setModal({entry,matches:matchesFor(entry),cotations:getCotationsForClient(entry.client)});
+    setModal({entry,matches:matchesFor(entry),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,entry.client)||namesMatch(c.vendeur,entry.client))});
     setMTab("matches");setWebErr("");setWebLoad(false);
   };
   const f=(k,v)=>setForm(prev=>({...prev,[k]:v}));
