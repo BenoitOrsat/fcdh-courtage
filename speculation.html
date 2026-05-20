@@ -199,12 +199,16 @@ function namesMatch(a,b) {
   // Une valeur vide ne génère jamais de match
   if (!na||!nb) return false;
   if (na===nb) return true;
-  // Inclusion seulement si la valeur incluse n'est pas un stop word seul
+  // Inclusion substring seulement si la valeur incluse n'est pas un stop word seul
   if (na.includes(nb)&&!NAME_STOP_WORDS.has(nb)) return true;
   if (nb.includes(na)&&!NAME_STOP_WORDS.has(na)) return true;
-  // Match sur un mot significatif commun (>3 lettres, hors stop words)
-  const ta=na.split(/\s+/),tb=nb.split(/\s+/);
-  return ta.some(t=>t.length>3&&!NAME_STOP_WORDS.has(t)&&tb.includes(t));
+  // Option A : tous les mots significatifs du nom le plus court
+  // doivent être présents dans le nom le plus long
+  const sigWords = s => s.split(/\s+/).filter(t=>t.length>2&&!NAME_STOP_WORDS.has(t));
+  const ta=sigWords(na), tb=sigWords(nb);
+  if (ta.length===0||tb.length===0) return false;
+  const [shorter,longer] = ta.length<=tb.length ? [ta,tb] : [tb,ta];
+  return shorter.every(t=>longer.includes(t));
 }
 
 // ── Score helpers ─────────────────────────────────────────────────
