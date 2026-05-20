@@ -294,6 +294,7 @@ function App() {
   const [delId, setDelId]  = useState(null);
   const [modal, setModal]  = useState(null);
   const [mTab, setMTab]    = useState("matches");
+  const [cotSort, setCotSort] = useState({col:"date", dir:-1});
   const [webRes, setWebRes]= useState({});
   const [webLoad, setWebLoad]=useState(false);
   const [webErr, setWebErr] = useState("");
@@ -795,28 +796,48 @@ function App() {
                     ))}
                   </div>
                 )}
-                {mTab==="historique"&&(modal.cotations.length===0
-                  ?<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>📭</div>Aucune cotation trouvée.</div>
-                  :<div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-                      <thead><tr>{["Date","N°","Acheteur","Vendeur","Qté","Prix","Mention","Code"].map(h=><TH key={h}>{h}</TH>)}</tr></thead>
-                      <tbody>{modal.cotations.map((c,i)=>(
-                        <tr key={i} style={{background:namesMatch(c.acheteur,modal.entry.client)?"#dbeafe":"#d1fae5"}}>
-                          <TD style={{fontSize:11,color:G400}}>{c.date}</TD><TD style={{fontSize:11,color:G400}}>{c.numero}</TD>
-                          <TD style={{fontWeight:600}}>{c.acheteur}</TD><TD>{c.vendeur}</TD>
-                          <TD style={{textAlign:"right"}}>{c.qte.toLocaleString()}</TD>
-                          <TD style={{fontWeight:700,color:GOLD}}>{c.prix.toFixed(2)} €</TD>
-                          <TD style={{fontSize:10,color:G400,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis"}}>{c.mention}</TD>
-                          <TD><span style={{background:G100,borderRadius:4,padding:"1px 6px",fontFamily:"monospace",fontSize:10}}>{c.code}</span></TD>
-                        </tr>
-                      ))}</tbody>
-                    </table>
-                    <div style={{marginTop:10,fontSize:11,color:G400,display:"flex",gap:14}}>
-                      <span><span style={{display:"inline-block",width:10,height:10,background:"#dbeafe",borderRadius:2,marginRight:4}}></span>Acheteur</span>
-                      <span><span style={{display:"inline-block",width:10,height:10,background:"#d1fae5",borderRadius:2,marginRight:4}}></span>Vendeur</span>
-                    </div>
-                  </div>
-                )}
+                {mTab==="historique"&&(()=>{
+                  const COT_COLS=[
+                    {id:"date",   label:"Date",    cmp:(a,b)=>{const pd=s=>{const p=s.split("/");return p.length===3?`${p[2]}${p[1]}${p[0]}`:"";};return pd(a.date).localeCompare(pd(b.date));}},
+                    {id:"numero", label:"N°",      cmp:(a,b)=>String(a.numero).localeCompare(String(b.numero),undefined,{numeric:true})},
+                    {id:"acheteur",label:"Acheteur",cmp:(a,b)=>a.acheteur.localeCompare(b.acheteur)},
+                    {id:"vendeur", label:"Vendeur", cmp:(a,b)=>a.vendeur.localeCompare(b.vendeur)},
+                    {id:"qte",    label:"Qté",     cmp:(a,b)=>a.qte-b.qte},
+                    {id:"prix",   label:"Prix",    cmp:(a,b)=>a.prix-b.prix},
+                    {id:"mention",label:"Mention", cmp:(a,b)=>a.mention.localeCompare(b.mention)},
+                    {id:"code",   label:"Code",    cmp:(a,b)=>a.code.localeCompare(b.code)},
+                  ];
+                  const col=COT_COLS.find(c=>c.id===cotSort.col)||COT_COLS[0];
+                  const sorted=[...modal.cotations].sort((a,b)=>col.cmp(a,b)*cotSort.dir);
+                  const toggleSort=id=>{setCotSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:1});};
+                  const SortTH=({id,label})=>{
+                    const active=cotSort.col===id;
+                    return <th onClick={()=>toggleSort(id)} style={{...thStyle,cursor:"pointer",userSelect:"none",background:active?"#e8edf8":G50,whiteSpace:"nowrap"}}>
+                      {label}{active?(cotSort.dir===1?" ▲":" ▼"):<span style={{color:G200}}> ⇅</span>}
+                    </th>;
+                  };
+                  return modal.cotations.length===0
+                    ?<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>📭</div>Aucune cotation trouvée.</div>
+                    :<div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                        <thead><tr>{COT_COLS.map(h=><SortTH key={h.id} id={h.id} label={h.label}/>)}</tr></thead>
+                        <tbody>{sorted.map((c,i)=>(
+                          <tr key={i} style={{background:namesMatch(c.acheteur,modal.entry.client)?"#dbeafe":"#d1fae5"}}>
+                            <TD style={{fontSize:11,color:G400}}>{c.date}</TD><TD style={{fontSize:11,color:G400}}>{c.numero}</TD>
+                            <TD style={{fontWeight:600}}>{c.acheteur}</TD><TD>{c.vendeur}</TD>
+                            <TD style={{textAlign:"right"}}>{c.qte.toLocaleString()}</TD>
+                            <TD style={{fontWeight:700,color:GOLD}}>{c.prix.toFixed(2)} €</TD>
+                            <TD style={{fontSize:10,color:G400,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis"}}>{c.mention}</TD>
+                            <TD><span style={{background:G100,borderRadius:4,padding:"1px 6px",fontFamily:"monospace",fontSize:10}}>{c.code}</span></TD>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                      <div style={{marginTop:10,fontSize:11,color:G400,display:"flex",gap:14}}>
+                        <span><span style={{display:"inline-block",width:10,height:10,background:"#dbeafe",borderRadius:2,marginRight:4}}></span>Acheteur</span>
+                        <span><span style={{display:"inline-block",width:10,height:10,background:"#d1fae5",borderRadius:2,marginRight:4}}></span>Vendeur</span>
+                      </div>
+                    </div>;
+                })()}
                 {mTab==="web"&&(()=>{
                   const key=modal.entry.id+"_"+tab;const results=webRes[key]||[];
                   return <div>
