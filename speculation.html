@@ -299,6 +299,7 @@ function App() {
   const origRowsRef = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
   const rawRowsRef  = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
   const dragColRef  = useRef(null);
+  const cotLoadedRef = useRef(false);
   const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');return s?JSON.parse(s):['score','campagne','date','courtier','client','besoin','statut','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}catch{return['score','campagne','date','courtier','client','besoin','statut','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');return s?JSON.parse(s):['score','campagne','date','courtier','client','besoin','statut','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}catch{return['score','campagne','date','courtier','client','besoin','statut','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
@@ -387,22 +388,25 @@ function App() {
       setVinsClairs(vcData);
       setDriveLoaded(true);
 
-      // Load cotation files in parallel
-      const loadCotFile = async (fileId, memoCol) => {
-        try {
-          const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {headers:{Authorization:`Bearer ${token}`}});
-          if (!r.ok) return [];
-          const wb2 = XLSX.read(await r.arrayBuffer(), {type:'array', cellDates:true});
-          const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-          return parseCotationRows(XLSX.utils.sheet_to_json(ws2, {header:1, defval:'', raw:true}), memoCol);
-        } catch { return []; }
-      };
-      const [btCot, vcCot] = await Promise.all([
-        loadCotFile(DRIVE_COTATION_BT_ID, 9),
-        loadCotFile(DRIVE_COTATION_VC_ID, 10),
-      ]);
-      setCotationsBT(btCot);
-      setCotationsVC(vcCot);
+      // Load cotation files only once at startup
+      if (!cotLoadedRef.current) {
+        const loadCotFile = async (fileId, memoCol) => {
+          try {
+            const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {headers:{Authorization:`Bearer ${token}`}});
+            if (!r.ok) return [];
+            const wb2 = XLSX.read(await r.arrayBuffer(), {type:'array', cellDates:true});
+            const ws2 = wb2.Sheets[wb2.SheetNames[0]];
+            return parseCotationRows(XLSX.utils.sheet_to_json(ws2, {header:1, defval:'', raw:true}), memoCol);
+          } catch { return []; }
+        };
+        const [btCot, vcCot] = await Promise.all([
+          loadCotFile(DRIVE_COTATION_BT_ID, 9),
+          loadCotFile(DRIVE_COTATION_VC_ID, 10),
+        ]);
+        setCotationsBT(btCot);
+        setCotationsVC(vcCot);
+        cotLoadedRef.current = true;
+      }
     } catch(e) {
       setGError("Chargement : " + e.message);
     }
