@@ -18,6 +18,7 @@
     ::-webkit-scrollbar-track { background: #eef0f5; }
     ::-webkit-scrollbar-thumb { background: #C9A84C; border-radius: 3px; }
     select, input, textarea { font-family: inherit; }
+    input::placeholder, textarea::placeholder { color: #c5cad8; }
   </style>
 </head>
 <body>
@@ -31,9 +32,9 @@ const STATUTS   = ["en attente","en dégustation","conclue","abandon"];
 const FORMATS_BTL  = ["Bouteille","Demie","Magnum","Jero"];
 const COULEURS     = ["verte","blanche","dépolie","noire","chêne/antique","feuille morte"];
 const STADES       = ["S/L","S/P","DN"];
-const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","BSA","BIO DEMETER","ROUGE","TRES QUALI","BDB","BRUT NATURE"];
+const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","ROSÉ DE SAIGNÉE","BSA","BIO DEMETER","ROUGE","TRES QUALI","BRUT NATURE"];
 const CRUS         = ["Sans Revendication","1er Cru","Grand Cru","1er Cru / Grand Cru"];
-const MILLESIMES   = (()=>{const a=[];for(let y=new Date().getFullYear()+1;y>=1950;y--)a.push(String(y));return a;})();
+const MILLESIMES   = (()=>{const a=[];for(let y=2027;y>=2000;y--)a.push(String(y));return a;})();
 const CEPAGES      = ["CH","PN","PM","PN/CH","PM/PN","CH/PM","PN/PM/CH","CH PM PN","PN/PM","PM/PN"];
 const FORMATS_VC   = ["Cuvée","Tailles","TV","Cuvée + taille"];
 const QUALITES_VC  = ["ROUGE","BIO","RESERVE","Passé sous bois","DRA","CH +PB","MAUVAIS VINS","Mauvais rouge"];
