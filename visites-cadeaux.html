@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visites &amp; Distribution Cadeaux — FCDH</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; height: 100vh; }
+
+    /* Header */
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); flex-shrink: 0; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .back-btn { color: #C9A84C; text-decoration: none; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 5px; opacity: 0.8; transition: opacity 0.15s; white-space: nowrap; }
+    .back-btn:hover { opacity: 1; }
+    .sep { color: #1a2f5a; font-size: 18px; font-weight: 300; }
+    .header-title { font-size: 15px; font-weight: 800; color: #C9A84C; }
+    .header-sub { font-size: 10px; color: #e8c97a; opacity: 0.7; margin-top: 1px; }
+
+    /* Toolbar */
+    .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 8px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all 0.15s; font-family: inherit; white-space: nowrap; }
+    .btn-primary { background: #0d1b3e; color: #C9A84C; }
+    .btn-primary:hover { background: #1a2f5a; }
+    .btn-success { background: #15803d; color: white; }
+    .btn-success:hover { background: #166534; }
+    .btn-success:disabled { background: #d1d5db; color: #9ca3af; cursor: default; }
+    .btn-reset { background: #f3f4f6; color: #6b7280; }
+    .btn-reset:hover { background: #e5e7eb; }
+    .file-info { font-size: 11px; color: #6b7280; font-style: italic; }
+
+    /* Filters */
+    .filters { background: #f8f9fb; border-bottom: 1px solid #dde1eb; padding: 8px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
+    .filter-group { display: flex; align-items: center; gap: 6px; }
+    .filter-group label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+    .filter-input { padding: 4px 8px; border: 1px solid #dde1eb; border-radius: 6px; font-size: 12px; font-family: inherit; background: white; color: #0d1b3e; height: 28px; }
+    .filter-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 2px rgba(201,168,76,.15); }
+    input.filter-input { min-width: 160px; }
+    select.filter-input { min-width: 100px; }
+    .filter-check-label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #374151; cursor: pointer; white-space: nowrap; }
+    .filter-check-label input[type=checkbox] { accent-color: #0d1b3e; width: 14px; height: 14px; }
+    .filter-count { font-size: 11px; color: #8a94aa; margin-left: auto; white-space: nowrap; font-weight: 600; }
+
+    /* Stats */
+    .stats-bar { background: #0d1b3e; padding: 6px 20px; display: flex; gap: 0; flex-shrink: 0; overflow-x: auto; }
+    .stat { display: flex; flex-direction: column; align-items: center; padding: 0 20px; border-right: 1px solid #1a2f5a; }
+    .stat:last-child { border-right: none; }
+    .stat-value { font-size: 16px; font-weight: 800; color: #C9A84C; line-height: 1; }
+    .stat-label { font-size: 9px; color: #8a94aa; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; white-space: nowrap; }
+
+    /* Table container */
+    .table-wrap { flex: 1; overflow: auto; position: relative; }
+
+    table { border-collapse: separate; border-spacing: 0; font-size: 12px; min-width: max-content; }
+
+    /* Header rows */
+    thead tr.group-row th {
+      background: #1a2f5a; color: #e8c97a; font-size: 9px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 6px;
+      border-bottom: 1px solid #0d1b3e; border-right: 1px solid #0d1b3e;
+      position: sticky; top: 0; z-index: 4; text-align: center;
+    }
+    thead tr.col-row th {
+      background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
+      padding: 6px 6px; border-bottom: 2px solid #C9A84C; border-right: 1px solid #1a2f5a;
+      position: sticky; top: 25px; z-index: 4; white-space: nowrap; text-align: center;
+    }
+
+    /* Sticky columns */
+    .s1 { position: sticky; left: 0; z-index: 2 !important; }
+    .s2 { position: sticky; left: 48px; z-index: 2 !important; }
+    .s3 { position: sticky; left: 168px; z-index: 2 !important; }
+    .s4 { position: sticky; left: 368px; z-index: 2 !important; }
+    thead .s1, thead .s2, thead .s3, thead .s4 { z-index: 6 !important; }
+    /* Shadow on last sticky column */
+    td.s4, th.s4 { box-shadow: 2px 0 6px rgba(0,0,0,.08); }
+
+    /* Data rows */
+    tbody tr { background: white; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:hover td { background: #eff6ff !important; }
+    tbody tr.modified td.s1, tbody tr.modified td.s2, tbody tr.modified td.s3, tbody tr.modified td.s4 { background: #fefce8 !important; }
+    tbody tr.modified:hover td { background: #fef9c3 !important; }
+
+    td {
+      padding: 4px 7px; border-bottom: 1px solid #edf0f5; border-right: 1px solid #edf0f5;
+      vertical-align: middle; text-align: center; color: #1f2937; white-space: nowrap;
+    }
+    td.text-left { text-align: left; }
+    td.pressoir-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Sticky td backgrounds inherit row color */
+    tbody tr:nth-child(even) .s1,
+    tbody tr:nth-child(even) .s2,
+    tbody tr:nth-child(even) .s3,
+    tbody tr:nth-child(even) .s4 { background: #f9fafb; }
+    tbody tr:nth-child(odd) .s1,
+    tbody tr:nth-child(odd) .s2,
+    tbody tr:nth-child(odd) .s3,
+    tbody tr:nth-child(odd) .s4 { background: white; }
+    tbody tr.modified td { background: #fefce8; }
+
+    /* Editable cells */
+    td.editable { cursor: pointer; }
+    td.editable:hover { outline: 1px solid #93c5fd; outline-offset: -1px; }
+    td.editable input {
+      width: 100%; min-width: 40px; border: 1px solid #3b82f6; border-radius: 4px;
+      padding: 2px 4px; font-size: 12px; font-family: inherit; text-align: center;
+      background: white; outline: none; color: #0d1b3e;
+    }
+    td.editable select {
+      width: 100%; border: 1px solid #3b82f6; border-radius: 4px;
+      padding: 1px 2px; font-size: 11px; font-family: inherit;
+      background: white; outline: none; color: #0d1b3e;
+    }
+
+    /* Niveau badges */
+    .niv { display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; padding: 1px 9px; font-size: 11px; font-weight: 700; min-width: 28px; }
+    .niv-empty { background: #f3f4f6; color: #9ca3af; }
+    .niv-0 { background: #f3f4f6; color: #6b7280; }
+    .niv-1 { background: #dcfce7; color: #16a34a; }
+    .niv-2 { background: #dbeafe; color: #1d4ed8; }
+    .niv-3 { background: #fef3c7; color: #b45309; }
+    .niv-4 { background: #fee2e2; color: #dc2626; }
+
+    /* Type badge */
+    .type-badge { display: inline-flex; align-items: center; border-radius: 99px; padding: 1px 8px; font-size: 10px; font-weight: 700; }
+    .type-direct { background: #e0f2fe; color: #0369a1; }
+    .type-fcdh { background: #f0fdf4; color: #15803d; }
+
+    /* Visit */
+    .visit-check { color: #16a34a; font-size: 14px; font-weight: 700; }
+
+    /* Total cell */
+    .total-cell { font-weight: 700; color: #15803d; background: #f0fdf4 !important; }
+    tbody tr:hover .total-cell { background: #dcfce7 !important; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 80px 24px; gap: 16px; cursor: pointer;
+      border: 2px dashed transparent; border-radius: 16px; transition: border-color 0.2s, background 0.2s;
+    }
+    .empty-state:hover { border-color: #C9A84C; background: rgba(201,168,76,.04); }
+    .empty-state.drag-over { border-color: #C9A84C; background: rgba(201,168,76,.08); }
+    .empty-icon { font-size: 64px; line-height: 1; }
+    .empty-title { font-size: 20px; font-weight: 800; color: #0d1b3e; }
+    .empty-sub { font-size: 13px; color: #6b7280; }
+
+    /* Drop overlay */
+    .drop-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(13,27,62,.88); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .drop-overlay.active { display: flex; }
+    .drop-box { border: 3px dashed #C9A84C; border-radius: 20px; padding: 60px 80px; text-align: center; }
+    .drop-box .drop-icon { font-size: 72px; }
+    .drop-box p { font-size: 22px; font-weight: 800; color: white; margin-top: 12px; }
+
+    footer { text-align: center; padding: 10px; font-size: 10px; color: #8a94aa; flex-shrink: 0; background: white; border-top: 1px solid #edf0f5; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a class="back-btn" href="index.html">← Tableau de bord</a>
+    <span class="sep">|</span>
+    <div>
+      <div class="header-title">Liste visite &amp; distribution cadeaux</div>
+      <div class="header-sub">FCDH Courtiers Associés</div>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📂 Importer Excel</button>
+  <button class="btn btn-success" id="exportBtn" disabled onclick="exportExcel()">💾 Exporter Excel</button>
+  <button class="btn btn-reset" id="resetBtn" style="display:none" onclick="resetModifications()">↩ Réinitialiser</button>
+  <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="handleFileInput(event)">
+  <span class="file-info" id="fileInfo">Aucun fichier chargé — glissez un fichier .xlsx ou cliquez sur Importer</span>
+</div>
+
+<div class="filters" id="filtersBar" style="display:none">
+  <div class="filter-group">
+    <label>Recherche</label>
+    <input class="filter-input" type="text" id="filterSearch" placeholder="Commune, pressoir…" oninput="applyFilters()">
+  </div>
+  <div class="filter-group">
+    <label>Secteur</label>
+    <select class="filter-input" id="filterSecteur" onchange="applyFilters()">
+      <option value="">Tous</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Courtier</label>
+    <select class="filter-input" id="filterCourtier" onchange="applyFilters()">
+      <option value="">Tous</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Niveau</label>
+    <select class="filter-input" id="filterNiveau" onchange="applyFilters()">
+      <option value="">Tous</option>
+      <option value="0">0</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label>Type</label>
+    <select class="filter-input" id="filterType" onchange="applyFilters()">
+      <option value="">Tous</option>
+      <option value="Direct">Direct</option>
+      <option value="FCDH">FCDH</option>
+    </select>
+  </div>
+  <label class="filter-check-label">
+    <input type="checkbox" id="filterVisi26" onchange="applyFilters()"> Visites 2026 seulement
+  </label>
+  <label class="filter-check-label">
+    <input type="checkbox" id="filterModified" onchange="applyFilters()"> Modifiés seulement
+  </label>
+  <span class="filter-count" id="filterCount"></span>
+</div>
+
+<div class="stats-bar" id="statsBar" style="display:none">
+  <div class="stat"><div class="stat-value" id="sSecteur">—</div><div class="stat-label">Pressoirs</div></div>
+  <div class="stat"><div class="stat-value" id="sVisi25">—</div><div class="stat-label">Visites 2025</div></div>
+  <div class="stat"><div class="stat-value" id="sVisi26">—</div><div class="stat-label">Visites 2026</div></div>
+  <div class="stat"><div class="stat-value" id="sChoco25">—</div><div class="stat-label">Chocolats 2025</div></div>
+  <div class="stat"><div class="stat-value" id="sChoco26">—</div><div class="stat-label">Chocolats 2026</div></div>
+  <div class="stat"><div class="stat-value" id="sVins25">—</div><div class="stat-label">Vins 2025</div></div>
+  <div class="stat"><div class="stat-value" id="sVins26">—</div><div class="stat-label">Vins 2026</div></div>
+  <div class="stat"><div class="stat-value" id="sBouteilles">—</div><div class="stat-label">Bouteilles</div></div>
+  <div class="stat"><div class="stat-value" id="sModified" style="color:#fbbf24">—</div><div class="stat-label">Modifiés</div></div>
+</div>
+
+<div class="table-wrap" id="tableWrap">
+  <div class="empty-state" id="emptyState" onclick="document.getElementById('fileInput').click()">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">Liste visite &amp; distribution cadeaux</div>
+    <div class="empty-sub">Glissez votre fichier Excel ici, ou cliquez pour l'importer</div>
+  </div>
+
+  <table id="mainTable" style="display:none">
+    <thead>
+      <tr class="group-row">
+        <th class="s1 s2 s3 s4" colspan="4" style="text-align:left; padding-left:10px;">Localisation</th>
+        <th colspan="2">Suivi</th>
+        <th colspan="3" style="border-left:2px solid #C9A84C55;">Visites — 2025</th>
+        <th colspan="3" style="border-left:2px solid #C9A84C;">Visites — 2026</th>
+        <th colspan="7" style="border-left:2px solid #C9A84C55;">Bouteilles · Vendange 2025</th>
+        <th colspan="3" style="border-left:2px solid #C9A84C55;">Totaux</th>
+      </tr>
+      <tr class="col-row">
+        <th class="s1" style="min-width:48px; left:0">Sec.</th>
+        <th class="s2" style="min-width:120px; left:48px; text-align:left">Commune</th>
+        <th class="s3" style="min-width:200px; left:168px; text-align:left">Pressoir</th>
+        <th class="s4" style="min-width:70px; left:368px">Courtier</th>
+        <th style="min-width:52px">Niv.</th>
+        <th style="min-width:70px">Type</th>
+        <th style="min-width:52px; border-left:2px solid #C9A84C55">Visi</th>
+        <th style="min-width:62px">Choco</th>
+        <th style="min-width:62px">Vins</th>
+        <th style="min-width:52px; border-left:2px solid #C9A84C;">Visi</th>
+        <th style="min-width:62px">Choco</th>
+        <th style="min-width:62px">Vins</th>
+        <th style="min-width:44px; border-left:2px solid #C9A84C55">EC</th>
+        <th style="min-width:44px">MA</th>
+        <th style="min-width:44px">EH</th>
+        <th style="min-width:44px">JP</th>
+        <th style="min-width:44px">AS</th>
+        <th style="min-width:44px">EB</th>
+        <th style="min-width:44px">BO</th>
+        <th style="min-width:54px; border-left:2px solid #C9A84C55; color:#6ee7b7">TOTAL</th>
+        <th style="min-width:62px">Bt Crt</th>
+        <th style="min-width:62px">Bt Cor</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-box">
+    <div class="drop-icon">📂</div>
+    <p>Déposer le fichier Excel ici</p>
+  </div>
+</div>
+
+<footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+<script>
+  let allRows = [];
+  let filteredRows = [];
+  let rawSheetRows = []; // All raw rows from XLSX (for export)
+  let fileName = '';
+
+  // ─── File loading ───────────────────────────────────────────────────────────
+
+  function handleFileInput(e) {
+    const f = e.target.files[0];
+    if (f) loadFile(f);
+    e.target.value = '';
+  }
+
+  function loadFile(file) {
+    fileName = file.name;
+    const reader = new FileReader();
+    reader.onload = e => parseExcel(e.target.result);
+    reader.readAsArrayBuffer(file);
+  }
+
+  function parseExcel(buffer) {
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    rawSheetRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    const validSectors = new Set(['A','B','C','D','E','F','G','H','I','M','S','1']);
+
+    allRows = [];
+    for (let i = 3; i < rawSheetRows.length; i++) {
+      const r = rawSheetRows[i];
+      if (!r[0] || !validSectors.has(String(r[0]))) continue;
+      const niveau = r[10];
+      const type = r[11];
+      if (typeof niveau === 'string' && niveau.startsWith('=')) continue;
+      if (typeof type === 'string' && type.startsWith('=')) continue;
+
+      allRows.push({
+        _rawIdx: i,
+        _modified: false,
+        secteur:     String(r[0] || ''),
+        commune:     String(r[1] || ''),
+        pressoir:    String(r[2] || ''),
+        courtier:    String(r[3] || ''),
+        visi25:      toNum(r[4]),
+        choco25:     toNum(r[5]),
+        vins25:      toNum(r[6]),
+        visi26:      toNum(r[7]),
+        choco26:     toNum(r[8]),
+        vins26:      toNum(r[9]),
+        niveau:      niveau !== null && niveau !== undefined ? toNum(niveau) : null,
+        type:        (type && !String(type).startsWith('=')) ? String(type) : '',
+        bt_EC:       toNum(r[12]),
+        bt_MA:       toNum(r[13]),
+        bt_EH:       toNum(r[14]),
+        bt_JP:       toNum(r[15]),
+        bt_AS:       toNum(r[16]),
+        bt_EB:       toNum(r[17]),
+        bt_BO:       toNum(r[18]),
+        bt_courtier: toNum(r[20]),
+        bt_corresp:  toNum(r[21]),
+      });
+    }
+
+    populateFilters();
+    applyFilters();
+
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('mainTable').style.display = '';
+    document.getElementById('filtersBar').style.display = '';
+    document.getElementById('statsBar').style.display = '';
+    document.getElementById('exportBtn').disabled = false;
+    document.getElementById('resetBtn').style.display = '';
+    document.getElementById('fileInfo').textContent = fileName + ' · ' + allRows.length + ' pressoirs chargés';
+  }
+
+  function toNum(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (typeof v === 'string' && v.startsWith('=')) return null;
+    const n = Number(v);
+    return isNaN(n) ? null : n;
+  }
+
+  // ─── Filters ────────────────────────────────────────────────────────────────
+
+  function populateFilters() {
+    const secteurs = [...new Set(allRows.map(r => r.secteur))].sort();
+    const courtiers = [...new Set(allRows.map(r => r.courtier).filter(Boolean))].sort();
+
+    document.getElementById('filterSecteur').innerHTML =
+      '<option value="">Tous</option>' + secteurs.map(s => `<option>${esc(s)}</option>`).join('');
+    document.getElementById('filterCourtier').innerHTML =
+      '<option value="">Tous</option>' + courtiers.map(c => `<option>${esc(c)}</option>`).join('');
+  }
+
+  function applyFilters() {
+    const search   = document.getElementById('filterSearch').value.toLowerCase().trim();
+    const secteur  = document.getElementById('filterSecteur').value;
+    const courtier = document.getElementById('filterCourtier').value;
+    const niveau   = document.getElementById('filterNiveau').value;
+    const type     = document.getElementById('filterType').value;
+    const visi26   = document.getElementById('filterVisi26').checked;
+    const modOnly  = document.getElementById('filterModified').checked;
+
+    filteredRows = allRows.filter(r => {
+      if (search && !r.commune.toLowerCase().includes(search) && !r.pressoir.toLowerCase().includes(search)) return false;
+      if (secteur  && r.secteur !== secteur) return false;
+      if (courtier && r.courtier !== courtier) return false;
+      if (niveau !== '' && String(r.niveau) !== niveau) return false;
+      if (type   && r.type !== type) return false;
+      if (visi26 && !r.visi26) return false;
+      if (modOnly && !r._modified) return false;
+      return true;
+    });
+
+    renderTable();
+    updateStats();
+    document.getElementById('filterCount').textContent =
+      filteredRows.length === allRows.length
+        ? `${allRows.length} pressoirs`
+        : `${filteredRows.length} / ${allRows.length} pressoirs`;
+  }
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    const rows = filteredRows;
+    let html = '';
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const idx = allRows.indexOf(r);
+      const total = calcTotal(r);
+      html += `<tr data-idx="${idx}"${r._modified ? ' class="modified"' : ''}>
+        <td class="s1">${esc(r.secteur)}</td>
+        <td class="s2 text-left">${esc(r.commune)}</td>
+        <td class="s3 text-left pressoir-cell" title="${esc(r.pressoir)}">${esc(r.pressoir)}</td>
+        <td class="s4">${esc(r.courtier)}</td>
+        <td class="editable" data-f="niveau">${htmlNiveau(r.niveau)}</td>
+        <td class="editable" data-f="type">${htmlType(r.type)}</td>
+        <td class="editable" data-f="visi25" style="border-left:2px solid #C9A84C33">${htmlVisit(r.visi25)}</td>
+        <td class="editable" data-f="choco25">${fmtN(r.choco25)}</td>
+        <td class="editable" data-f="vins25">${fmtN(r.vins25)}</td>
+        <td class="editable" data-f="visi26" style="border-left:2px solid #C9A84C">${htmlVisit(r.visi26)}</td>
+        <td class="editable" data-f="choco26">${fmtN(r.choco26)}</td>
+        <td class="editable" data-f="vins26">${fmtN(r.vins26)}</td>
+        <td class="editable" data-f="bt_EC" style="border-left:2px solid #C9A84C33">${fmtN(r.bt_EC)}</td>
+        <td class="editable" data-f="bt_MA">${fmtN(r.bt_MA)}</td>
+        <td class="editable" data-f="bt_EH">${fmtN(r.bt_EH)}</td>
+        <td class="editable" data-f="bt_JP">${fmtN(r.bt_JP)}</td>
+        <td class="editable" data-f="bt_AS">${fmtN(r.bt_AS)}</td>
+        <td class="editable" data-f="bt_EB">${fmtN(r.bt_EB)}</td>
+        <td class="editable" data-f="bt_BO">${fmtN(r.bt_BO)}</td>
+        <td class="total-cell" style="border-left:2px solid #C9A84C33">${total > 0 ? total : ''}</td>
+        <td class="editable" data-f="bt_courtier">${fmtN(r.bt_courtier)}</td>
+        <td class="editable" data-f="bt_corresp">${fmtN(r.bt_corresp)}</td>
+      </tr>`;
+    }
+
+    tbody.innerHTML = html;
+
+    // Attach click listeners
+    tbody.querySelectorAll('td.editable').forEach(td => {
+      td.addEventListener('click', handleCellClick);
+    });
+  }
+
+  // ─── Inline editing ─────────────────────────────────────────────────────────
+
+  function handleCellClick(e) {
+    const td = e.currentTarget;
+    if (td.querySelector('input, select')) return; // already editing
+    const tr = td.closest('tr');
+    const idx = parseInt(tr.dataset.idx);
+    const row = allRows[idx];
+    const field = td.dataset.f;
+    startEdit(td, row, field);
+  }
+
+  function startEdit(td, row, field) {
+    const val = row[field];
+
+    if (field === 'visi25' || field === 'visi26') {
+      // Toggle: click to flip 1 ↔ null
+      commitEdit(td, row, field, val ? null : 1);
+      return;
+    }
+
+    if (field === 'niveau') {
+      const sel = document.createElement('select');
+      ['', '0', '1', '2', '3', '4'].forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = v === '' ? '—' : v;
+        if (String(val) === v || (val === null && v === '')) o.selected = true;
+        sel.appendChild(o);
+      });
+      td.innerHTML = ''; td.appendChild(sel); sel.focus();
+      const save = () => commitEdit(td, row, field, sel.value === '' ? null : parseInt(sel.value));
+      sel.addEventListener('change', save);
+      sel.addEventListener('blur', save);
+      sel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); renderCell(td, row, field); } });
+      return;
+    }
+
+    if (field === 'type') {
+      const sel = document.createElement('select');
+      ['', 'Direct', 'FCDH'].forEach(v => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = v || '—';
+        if ((val || '') === v) o.selected = true;
+        sel.appendChild(o);
+      });
+      td.innerHTML = ''; td.appendChild(sel); sel.focus();
+      const save = () => commitEdit(td, row, field, sel.value);
+      sel.addEventListener('change', save);
+      sel.addEventListener('blur', save);
+      sel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); renderCell(td, row, field); } });
+      return;
+    }
+
+    // Numeric
+    const inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '0'; inp.step = '1';
+    inp.value = val !== null ? val : '';
+    td.innerHTML = ''; td.appendChild(inp);
+    inp.focus(); inp.select();
+
+    const save = () => {
+      const v = inp.value === '' ? null : parseFloat(inp.value);
+      commitEdit(td, row, field, isNaN(v) ? null : v);
+    };
+
+    inp.addEventListener('blur', save);
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  { e.preventDefault(); save(); }
+      if (e.key === 'Escape') { e.stopPropagation(); renderCell(td, row, field); }
+      if (e.key === 'Tab') {
+        e.preventDefault(); save();
+        const editables = [...td.closest('tr').querySelectorAll('td.editable')];
+        const next = editables[editables.indexOf(td) + (e.shiftKey ? -1 : 1)];
+        if (next) next.click();
+      }
+    });
+  }
+
+  function commitEdit(td, row, field, newVal) {
+    row[field] = newVal;
+    row._modified = true;
+    td.closest('tr').classList.add('modified');
+    renderCell(td, row, field);
+    if (field.startsWith('bt_')) refreshTotal(td.closest('tr'), row);
+    updateStats();
+  }
+
+  function renderCell(td, row, field) {
+    const v = row[field];
+    if (field === 'niveau') td.innerHTML = htmlNiveau(v);
+    else if (field === 'type') td.innerHTML = htmlType(v);
+    else if (field === 'visi25' || field === 'visi26') td.innerHTML = htmlVisit(v);
+    else td.innerHTML = fmtN(v);
+  }
+
+  function refreshTotal(tr, row) {
+    const tc = tr.querySelector('.total-cell');
+    if (tc) { const t = calcTotal(row); tc.textContent = t > 0 ? t : ''; }
+  }
+
+  // ─── Stats ───────────────────────────────────────────────────────────────────
+
+  function updateStats() {
+    const s = allRows;
+    document.getElementById('sSecteur').textContent   = filteredRows.length !== allRows.length ? filteredRows.length + ' / ' + allRows.length : allRows.length;
+    document.getElementById('sVisi25').textContent    = s.filter(r => r.visi25).length;
+    document.getElementById('sVisi26').textContent    = s.filter(r => r.visi26).length;
+    document.getElementById('sChoco25').textContent   = s.reduce((a,r)=>a+(r.choco25||0),0);
+    document.getElementById('sChoco26').textContent   = s.reduce((a,r)=>a+(r.choco26||0),0);
+    document.getElementById('sVins25').textContent    = s.reduce((a,r)=>a+(r.vins25||0),0);
+    document.getElementById('sVins26').textContent    = s.reduce((a,r)=>a+(r.vins26||0),0);
+    document.getElementById('sBouteilles').textContent = s.reduce((a,r)=>a+calcTotal(r),0);
+    document.getElementById('sModified').textContent  = s.filter(r => r._modified).length;
+  }
+
+  // ─── Export ──────────────────────────────────────────────────────────────────
+
+  function exportExcel() {
+    const wb = XLSX.utils.book_new();
+
+    // Rebuild all rows from rawSheetRows, updating modified ones
+    const out = rawSheetRows.map(r => r ? [...r] : []);
+
+    for (const row of allRows) {
+      const i = row._rawIdx;
+      const r = out[i] || [];
+      r[4]  = row.visi25;
+      r[5]  = row.choco25;
+      r[6]  = row.vins25;
+      r[7]  = row.visi26;
+      r[8]  = row.choco26;
+      r[9]  = row.vins26;
+      r[10] = row.niveau;
+      r[11] = row.type || null;
+      r[12] = row.bt_EC;
+      r[13] = row.bt_MA;
+      r[14] = row.bt_EH;
+      r[15] = row.bt_JP;
+      r[16] = row.bt_AS;
+      r[17] = row.bt_EB;
+      r[18] = row.bt_BO;
+      r[19] = calcTotal(row) || null;
+      r[20] = row.bt_courtier;
+      r[21] = row.bt_corresp;
+      out[i] = r;
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(out);
+    XLSX.utils.book_append_sheet(wb, ws, 'Feuil1');
+
+    const outName = fileName.replace(/\.xlsx?$/i, '') + '_modifié.xlsx';
+    XLSX.writeFile(wb, outName);
+  }
+
+  function resetModifications() {
+    if (!confirm('Réinitialiser toutes les modifications non exportées ?')) return;
+    allRows.forEach(r => { r._modified = false; });
+    applyFilters();
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+  function calcTotal(r) {
+    return (r.bt_EC||0)+(r.bt_MA||0)+(r.bt_EH||0)+(r.bt_JP||0)+(r.bt_AS||0)+(r.bt_EB||0)+(r.bt_BO||0);
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtN(v) {
+    if (v === null || v === undefined) return '';
+    return String(v);
+  }
+
+  function htmlNiveau(v) {
+    if (v === null || v === undefined) return `<span class="niv niv-empty">—</span>`;
+    const n = parseInt(v);
+    if (isNaN(n)) return '';
+    const c = n >= 0 && n <= 4 ? `niv-${n}` : 'niv-empty';
+    return `<span class="niv ${c}">${n}</span>`;
+  }
+
+  function htmlType(v) {
+    if (!v) return '';
+    if (v === 'Direct') return `<span class="type-badge type-direct">Direct</span>`;
+    if (v === 'FCDH')   return `<span class="type-badge type-fcdh">FCDH</span>`;
+    return esc(v);
+  }
+
+  function htmlVisit(v) {
+    return v ? `<span class="visit-check">✓</span>` : '';
+  }
+
+  // ─── Drag & drop ─────────────────────────────────────────────────────────────
+
+  let dragCount = 0;
+  const overlay = document.getElementById('dropOverlay');
+
+  document.addEventListener('dragenter', e => {
+    e.preventDefault();
+    dragCount++;
+    if (dragCount === 1) overlay.classList.add('active');
+  });
+
+  document.addEventListener('dragleave', () => {
+    dragCount--;
+    if (dragCount <= 0) { dragCount = 0; overlay.classList.remove('active'); }
+  });
+
+  document.addEventListener('dragover', e => e.preventDefault());
+
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCount = 0;
+    overlay.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file && /\.xlsx?$/i.test(file.name)) loadFile(file);
+  });
+</script>
+</body>
+</html>
