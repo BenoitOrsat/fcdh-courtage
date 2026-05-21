@@ -584,9 +584,10 @@ function App() {
   const setData = tab==="bouteilles" ? setBouteilles : setVinsClairs;
   const empty   = tab==="bouteilles" ? emptyBtl : emptyVC;
 
-  const matchesFor = (entry) => {
+  const matchesFor = (entry, dataOverride) => {
+    const d = dataOverride || data;
     const opp = entry.besoin==="Vend"?"Recherche":"Vend";
-    return data.filter(r=>r.id!==entry.id&&r.besoin===opp&&STATUTS_ACTIFS.includes(r.statut))
+    return d.filter(r=>r.id!==entry.id&&r.besoin===opp&&STATUTS_ACTIFS.includes(r.statut))
       .map(r=>({...r,...scoreMatch(entry,r,tab)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score);
   };
 
@@ -1017,8 +1018,20 @@ function App() {
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
               <button onClick={()=>{
                 if(prevModal){
+                  if(!form.courtier||!form.client){alert("Courtier et client requis pour sauvegarder.");return;}
+                  // Sauvegarder silencieusement
+                  let newData;
+                  if(editId){
+                    const saved={...form,id:editId};
+                    newData=data.map(r=>r.id===editId?saved:r);
+                  } else {
+                    const nid=Math.max(0,...data.map(r=>r.id))+1;
+                    newData=[...data,{...form,id:nid}];
+                  }
+                  setData(newData);
+                  // Retourner à la fiche précédente avec matchs recalculés
                   const src=prevModal.entry;
-                  setModal({entry:src,matches:matchesFor(src),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,src.client)||namesMatch(c.vendeur,src.client))});
+                  setModal({entry:src,matches:matchesFor(src,newData),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,src.client)||namesMatch(c.vendeur,src.client))});
                   setMTab("matches");
                   setPrevModal(null);
                   setView("liste");
