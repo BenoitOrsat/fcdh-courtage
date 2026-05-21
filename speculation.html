@@ -338,6 +338,7 @@ function App() {
   const [modal, setModal]  = useState(null);
   const [mTab, setMTab]    = useState("matches");
   const [cotSort, setCotSort] = useState({col:"date", dir:-1});
+  const [prevModal, setPrevModal] = useState(null);
   const [webRes, setWebRes]= useState({});
   const [webLoad, setWebLoad]=useState(false);
   const [webErr, setWebErr] = useState("");
@@ -618,7 +619,7 @@ function App() {
     if(editId){saved={...form,id:editId};setData(prev=>prev.map(r=>r.id===editId?saved:r));}
     else{const nid=Math.max(0,...data.map(r=>r.id))+1;saved={...form,id:nid};setData(prev=>[...prev,saved]);}
     setModal({entry:saved,matches:matchesFor(saved),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,saved.client)||namesMatch(c.vendeur,saved.client))});
-    setMTab("matches");setView("liste");
+    setMTab("matches");setView("liste");setPrevModal(null);
   };
   const openModal=(entry)=>{
     setModal({entry,matches:matchesFor(entry),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,entry.client)||namesMatch(c.vendeur,entry.client))});
@@ -844,7 +845,7 @@ function App() {
                   ?<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>🔍</div>Aucun match trouvé.</div>
                   :<div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {modal.matches.map(r=>(
-                      <div key={r.id} style={{background:G50,borderRadius:10,padding:14,display:"flex",gap:14,border:`1px solid ${G100}`}}>
+                      <div key={r.id} onDoubleClick={()=>{setPrevModal(modal);setModal(null);openForm(r);}} title="Double-clic pour modifier cette entrée" style={{background:G50,borderRadius:10,padding:14,display:"flex",gap:14,border:`1px solid ${G100}`,cursor:"pointer"}}>
                         <ScoreBox score={r.score}/>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:4,alignItems:"center"}}>
@@ -1014,7 +1015,15 @@ function App() {
         {view==="form" && form && (
           <div style={{maxWidth:760,margin:"0 auto"}}>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-              <button onClick={()=>setView("liste")} style={{background:"none",border:"none",color:GOLD,fontSize:13,fontWeight:600,cursor:"pointer"}}>← Retour</button>
+              <button onClick={()=>{
+                if(prevModal){
+                  const src=prevModal.entry;
+                  setModal({entry:src,matches:matchesFor(src),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,src.client)||namesMatch(c.vendeur,src.client))});
+                  setMTab("matches");
+                  setPrevModal(null);
+                  setView("liste");
+                } else { setView("liste"); }
+              }} style={{background:"none",border:"none",color:GOLD,fontSize:13,fontWeight:600,cursor:"pointer"}}>← Retour</button>
               <h2 style={{margin:0,fontSize:16,fontWeight:700,color:NAVY}}>{editId?"Modifier l'entrée":"Nouvelle entrée"} — {tab==="bouteilles"?"🫧 Bouteilles":"🍇 Vins Clairs"}</h2>
             </div>
             <div style={{background:WHITE,borderRadius:14,border:`1px solid ${G100}`,padding:28,boxShadow:"0 1px 6px rgba(13,27,62,.07)"}}>
@@ -1065,7 +1074,7 @@ function App() {
                 <button onClick={saveForm} style={{flex:1,background:NAVY,color:GOLD,border:"none",borderRadius:10,padding:13,fontWeight:700,fontSize:14,cursor:"pointer"}}>
                   {editId?"💾 Enregistrer":"✅ Ajouter et voir les résultats"}
                 </button>
-                <button onClick={()=>setView("liste")} style={{padding:"13px 24px",background:G100,color:G600,border:"none",borderRadius:10,fontWeight:600,fontSize:14,cursor:"pointer"}}>Annuler</button>
+                <button onClick={()=>{setPrevModal(null);setView("liste");}} style={{padding:"13px 24px",background:G100,color:G600,border:"none",borderRadius:10,fontWeight:600,fontSize:14,cursor:"pointer"}}>Annuler</button>
               </div>
             </div>
           </div>
