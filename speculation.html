@@ -362,11 +362,19 @@ function App() {
   const rawRowsRef  = useRef({BOUTEILLES: [], 'VINS CLAIRS': []});
   const dragColRef  = useRef(null);
   const cotLoadedRef = useRef(false);
+  const pendingSaveRef = useRef(false);
   const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
   const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
+  // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
+  useEffect(()=>{
+    if(pendingSaveRef.current&&gToken&&driveWbRef.current){
+      pendingSaveRef.current=false;
+      saveToDrive();
+    }
+  },[bouteilles,vinsClairs]);
 
   const saveApiKey=(v)=>{setApiKey(v);localStorage.setItem("fcdh_api_key",v);};
   const saveGClientId=(v)=>{setGClientId(v);localStorage.setItem("fcdh_g_client_id",v);};
@@ -1029,6 +1037,7 @@ function App() {
                     newData=[...data,{...form,id:nid}];
                   }
                   setData(newData);
+                  pendingSaveRef.current=true;
                   // Retourner à la fiche précédente avec matchs recalculés
                   const src=prevModal.entry;
                   setModal({entry:src,matches:matchesFor(src,newData),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,src.client)||namesMatch(c.vendeur,src.client))});
