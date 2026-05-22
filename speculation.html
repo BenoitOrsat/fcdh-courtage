@@ -341,6 +341,10 @@ function App() {
   const [cotViewTab, setCotViewTab] = useState("BT");
   const [cotViewSearch, setCotViewSearch] = useState("");
   const [cotViewSort, setCotViewSort] = useState({col:"date", dir:-1});
+  const DEFAULT_COT_WIDTHS={date:80,numero:80,acheteur:150,vendeur:150,qte:70,prix:85,mention:180,code:80,memo:180};
+  const [cotColWidths, setCotColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_cot_widths');return s?{...DEFAULT_COT_WIDTHS,...JSON.parse(s)}:DEFAULT_COT_WIDTHS;}catch{return DEFAULT_COT_WIDTHS;}});
+  const cotResizeRef = useRef(null);
+  useEffect(()=>{localStorage.setItem('fcdh_cot_widths',JSON.stringify(cotColWidths));},[cotColWidths]);
   const [prevModal, setPrevModal] = useState(null);
   const [webRes, setWebRes]= useState({});
   const [webLoad, setWebLoad]=useState(false);
@@ -1045,7 +1049,24 @@ function App() {
           const col=COT_VIEW_COLS.find(c=>c.id===cotViewSort.col)||COT_VIEW_COLS[0];
           const sorted=[...filtered].sort((a,b)=>col.cmp(a,b)*cotViewSort.dir);
           const toggleSort=id=>setCotViewSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:1});
-          const SortTH=({id,label})=>{const active=cotViewSort.col===id;return <th onClick={()=>toggleSort(id)} style={{...thStyle,cursor:"pointer",userSelect:"none",background:active?"#e8edf8":G50,whiteSpace:"nowrap"}}>{label}{active?(cotViewSort.dir===1?" ▲":" ▼"):<span style={{color:G200}}> ⇅</span>}</th>;};
+          const onResizeStart=(e,id)=>{
+            e.preventDefault();e.stopPropagation();
+            const startX=e.clientX,startW=cotColWidths[id]||120;
+            cotResizeRef.current={id,startX,startW};
+            const onMove=ev=>{if(!cotResizeRef.current)return;const w=Math.max(40,startW+(ev.clientX-startX));setCotColWidths(p=>({...p,[id]:w}));};
+            const onUp=()=>{cotResizeRef.current=null;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+            document.addEventListener('mousemove',onMove);
+            document.addEventListener('mouseup',onUp);
+          };
+          const SortTH=({id,label})=>{
+            const active=cotViewSort.col===id;
+            return <th style={{...thStyle,width:cotColWidths[id],minWidth:cotColWidths[id],maxWidth:cotColWidths[id],position:"relative",userSelect:"none",background:active?"#e8edf8":G50,whiteSpace:"nowrap",overflow:"hidden"}}>
+              <span onClick={()=>toggleSort(id)} style={{cursor:"pointer",display:"block",paddingRight:10,overflow:"hidden",textOverflow:"ellipsis"}}>
+                {label}{active?(cotViewSort.dir===1?" ▲":" ▼"):<span style={{color:G200}}> ⇅</span>}
+              </span>
+              <div onMouseDown={e=>onResizeStart(e,id)} style={{position:"absolute",right:0,top:0,bottom:0,width:6,cursor:"col-resize",background:"transparent",zIndex:1}} title="Redimensionner"/>
+            </th>;
+          };
           return <div>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
               <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1px solid ${G200}`}}>
