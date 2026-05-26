@@ -9,9 +9,13 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 32px; height: 72px; display: flex; align-items: center; box-shadow: 0 2px 12px rgba(13,27,62,.4); }
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 32px; height: 72px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); }
     header h1 { font-size: 20px; font-weight: 800; color: #C9A84C; letter-spacing: 0.04em; }
     header p { font-size: 12px; color: #e8c97a; letter-spacing: 0.05em; margin-top: 2px; }
+    #header-user { display: flex; align-items: center; gap: 12px; }
+    #header-username { font-size: 12px; color: #e8c97a; font-weight: 600; }
+    #btn-logout { background: rgba(201,168,76,.15); border: 1px solid rgba(201,168,76,.4); color: #C9A84C; border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s; }
+    #btn-logout:hover { background: rgba(201,168,76,.3); }
     main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 60px 24px; }
     .title { font-size: 28px; font-weight: 800; color: #0d1b3e; margin-bottom: 8px; text-align: center; }
     .subtitle { font-size: 14px; color: #8a94aa; margin-bottom: 48px; text-align: center; }
@@ -25,13 +29,45 @@
     .card.soon { opacity: 0.5; cursor: default; pointer-events: none; }
     .card.soon .badge { background: #eef0f5; color: #8a94aa; }
     footer { text-align: center; padding: 24px; font-size: 11px; color: #8a94aa; }
+
+    /* Login overlay */
+    #login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    #login-box { background: #fff; border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 380px; box-shadow: 0 24px 64px rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; gap: 0; }
+    #login-box .logo { font-size: 22px; font-weight: 800; color: #0d1b3e; letter-spacing: 0.04em; text-align: center; }
+    #login-box .logo span { color: #C9A84C; }
+    #login-box .tagline { font-size: 12px; color: #8a94aa; margin-top: 4px; margin-bottom: 32px; text-align: center; }
+    #login-box label { align-self: flex-start; font-size: 11px; font-weight: 700; color: #0d1b3e; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    #login-box input { width: 100%; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; color: #0d1b3e; outline: none; transition: border-color 0.15s; margin-bottom: 18px; }
+    #login-box input:focus { border-color: #C9A84C; }
+    #login-box button { width: 100%; background: linear-gradient(135deg, #0d1b3e, #1a2f5a); color: #C9A84C; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 0.04em; margin-top: 6px; transition: opacity 0.15s; }
+    #login-box button:hover { opacity: 0.88; }
+    #login-error { font-size: 12px; color: #e05050; font-weight: 600; margin-top: 12px; min-height: 16px; }
   </style>
 </head>
 <body>
+
+  <!-- Login overlay -->
+  <div id="login-overlay">
+    <div id="login-box">
+      <div class="logo">FCDH <span>Courtiers</span></div>
+      <div class="tagline">Tableau de bord — Accès restreint</div>
+      <label for="inp-login">Identifiant</label>
+      <input type="text" id="inp-login" autocomplete="username" placeholder="votre.login"/>
+      <label for="inp-pwd">Mot de passe</label>
+      <input type="password" id="inp-pwd" autocomplete="current-password" placeholder="••••••••"/>
+      <button id="btn-login">Se connecter</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
   <header>
     <div>
       <h1>FCDH Courtiers Associés</h1>
       <p>Tableau de bord</p>
+    </div>
+    <div id="header-user">
+      <span id="header-username"></span>
+      <button id="btn-logout" onclick="logout()">Déconnexion</button>
     </div>
   </header>
   <main>
@@ -59,5 +95,54 @@
     </div>
   </main>
   <footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+  <script>
+    const USERS = [
+      { login: 'b.orsat', password: 'nadia' },
+      // Ajouter les autres utilisateurs ici
+    ];
+
+    function checkAuth() {
+      const user = sessionStorage.getItem('fcdh_user');
+      if (user) {
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('header-username').textContent = user;
+      }
+    }
+
+    function logout() {
+      sessionStorage.removeItem('fcdh_user');
+      document.getElementById('login-overlay').style.display = 'flex';
+      document.getElementById('inp-login').value = '';
+      document.getElementById('inp-pwd').value = '';
+      document.getElementById('login-error').textContent = '';
+      document.getElementById('inp-login').focus();
+    }
+
+    document.getElementById('btn-login').addEventListener('click', () => {
+      const login = document.getElementById('inp-login').value.trim();
+      const pwd = document.getElementById('inp-pwd').value;
+      const match = USERS.find(u => u.login === login && u.password === pwd);
+      if (match) {
+        sessionStorage.setItem('fcdh_user', login);
+        document.getElementById('login-overlay').style.display = 'none';
+        document.getElementById('header-username').textContent = login;
+        document.getElementById('login-error').textContent = '';
+      } else {
+        document.getElementById('login-error').textContent = 'Identifiant ou mot de passe incorrect.';
+        document.getElementById('inp-pwd').value = '';
+        document.getElementById('inp-pwd').focus();
+      }
+    });
+
+    document.getElementById('inp-pwd').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('btn-login').click();
+    });
+    document.getElementById('inp-login').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('inp-pwd').focus();
+    });
+
+    checkAuth();
+  </script>
 </body>
 </html>
