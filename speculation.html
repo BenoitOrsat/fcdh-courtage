@@ -245,6 +245,15 @@ function parseDateForSort(s) {
   const p = s.split("/");
   return p.length === 3 ? `${p[2]}${p[1]}${p[0]}` : "";
 }
+// Comparateur ascendant pour tri par colonne (× dir pour inverser)
+function getColComparator(col) {
+  if(col==="date")return (a,b)=>parseDateForSort(a.date).localeCompare(parseDateForSort(b.date));
+  if(col==="score")return (a,b)=>a._best-b._best;
+  if(col==="proposition")return (a,b)=>String(a.acheteur||"").localeCompare(String(b.acheteur||""),undefined,{sensitivity:"base"});
+  if(col==="qte")return (a,b)=>(parseQty(a.qte)||0)-(parseQty(b.qte)||0);
+  if(col==="prix")return (a,b)=>{const n=s=>parseFloat(String(s||"").replace(/[^0-9.,]/g,"").replace(",","."))||0;return n(a.prix)-n(b.prix);};
+  return (a,b)=>String(a[col]||"").localeCompare(String(b[col]||""),undefined,{sensitivity:"base"});
+}
 
 // ── Score helpers ─────────────────────────────────────────────────
 function parseQty(q) {
@@ -291,6 +300,10 @@ function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)retur
 function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
 
 
+const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,actions:70};
+const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,actions:70};
+const DEFAULT_HIST_WIDTHS={date:90,numero:60,acheteur:150,vendeur:150,qte:70,prix:85,mention:200,code:80};
+
 const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:""};
 const emptyVC ={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",vendange:"",formatVin:"Cuvée",qualite:"",cru:"",cepage:"",assemblage:"",crus:"",prix:"",commentaires:""};
 
@@ -317,7 +330,16 @@ const Txa=(p)=><textarea style={{...inp,resize:"none",height:60}} {...p}/>;
 const Field=({label,children})=><div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:10,fontWeight:700,color:G400,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</label>{children}</div>;
 const thStyle={padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:GOLD_L,textTransform:"uppercase",letterSpacing:"0.07em",whiteSpace:"nowrap",borderBottom:`2px solid ${GOLD}`,background:NAVY,userSelect:"none",position:"sticky",top:0,zIndex:1};
 const TH=({children})=><th style={thStyle}>{children}</th>;
-const DragTH=({colId,label,dragRef,onDrop})=><th draggable onDragStart={()=>{dragRef.current=colId;}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onDrop(colId);}} style={{...thStyle,cursor:"grab"}}>{label}</th>;
+const DragTH=({colId,label,dragRef,onDrop,colWidths,colSort,onSortToggle,onResizeStart})=>{
+  const active=colSort&&colSort.col===colId;
+  const w=colWidths?colWidths[colId]:undefined;
+  return <th draggable onDragStart={()=>{dragRef.current=colId;}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();onDrop(colId);}} style={{...thStyle,position:"relative",overflow:"hidden",background:active?"#1a3a6e":NAVY,...(w?{width:w,minWidth:w}:{})}}>
+    <span onClick={onSortToggle?(e)=>{e.stopPropagation();onSortToggle(colId);}:undefined} style={{display:"block",cursor:onSortToggle?"pointer":"grab",paddingRight:onResizeStart?10:0,overflow:"hidden",textOverflow:"ellipsis",userSelect:"none"}}>
+      {label}{onSortToggle&&(active?(colSort.dir===1?" ▲":" ▼"):<span style={{color:"rgba(255,255,255,0.3)",fontWeight:400}}> ⇅</span>)}
+    </span>
+    {onResizeStart&&<div onMouseDown={e=>onResizeStart(e,colId)} draggable="false" style={{position:"absolute",right:0,top:0,bottom:0,width:6,cursor:"col-resize",background:"transparent",zIndex:2}}/>}
+  </th>;
+};
 const TD=({children,style={}})=><td style={{padding:"9px 12px",fontSize:12,color:TEXT,whiteSpace:"nowrap",borderBottom:`1px solid ${G100}`,...style}}>{children}</td>;
 
 // ── App ───────────────────────────────────────────────────────────
@@ -341,10 +363,19 @@ function App() {
   const [cotViewTab, setCotViewTab] = useState("BT");
   const [cotViewSearch, setCotViewSearch] = useState("");
   const [cotViewSort, setCotViewSort] = useState({col:"date", dir:-1});
-  const DEFAULT_COT_WIDTHS={date:80,numero:80,acheteur:150,vendeur:150,qte:70,prix:85,mention:180,code:80,memo:180};
+  const DEFAULT_COT_WIDTHS={date:80,numero:80,acheteur:150,vendeur:150,qte:70,prix:85,mention:360,code:80,memo:180};
   const [cotColWidths, setCotColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_cot_widths');return s?{...DEFAULT_COT_WIDTHS,...JSON.parse(s)}:DEFAULT_COT_WIDTHS;}catch{return DEFAULT_COT_WIDTHS;}});
   const cotResizeRef = useRef(null);
+  const tableResizeRef = useRef(null);
+  const histResizeRef = useRef(null);
+  const [colSort, setColSort] = useState({col:null,dir:1});
+  const [btlColWidths, setBtlColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_widths');return s?{...DEFAULT_BTL_WIDTHS,...JSON.parse(s)}:DEFAULT_BTL_WIDTHS;}catch{return DEFAULT_BTL_WIDTHS;}});
+  const [vcColWidths,  setVcColWidths]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_widths');return s?{...DEFAULT_VC_WIDTHS,...JSON.parse(s)}:DEFAULT_VC_WIDTHS;}catch{return DEFAULT_VC_WIDTHS;}});
+  const [histColWidths, setHistColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_hist_widths');return s?{...DEFAULT_HIST_WIDTHS,...JSON.parse(s)}:DEFAULT_HIST_WIDTHS;}catch{return DEFAULT_HIST_WIDTHS;}});
   useEffect(()=>{localStorage.setItem('fcdh_cot_widths',JSON.stringify(cotColWidths));},[cotColWidths]);
+  useEffect(()=>{localStorage.setItem('fcdh_btl_widths',JSON.stringify(btlColWidths));},[btlColWidths]);
+  useEffect(()=>{localStorage.setItem('fcdh_vc_widths',JSON.stringify(vcColWidths));},[vcColWidths]);
+  useEffect(()=>{localStorage.setItem('fcdh_hist_widths',JSON.stringify(histColWidths));},[histColWidths]);
   const [prevModal, setPrevModal] = useState(null);
   const [webRes, setWebRes]= useState({});
   const [webLoad, setWebLoad]=useState(false);
@@ -375,6 +406,7 @@ function App() {
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
+  useEffect(()=>{setColSort({col:null,dir:1});},[tab]);
   // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
   useEffect(()=>{
     if(pendingSaveRef.current&&gToken&&driveWbRef.current){
@@ -619,10 +651,11 @@ function App() {
       if(search){const s=search.toLowerCase();return Object.values(r).some(v=>String(v).toLowerCase().includes(s));}
       return true;
     });
-    if(sortBy==="score")arr=[...arr].sort((a,b)=>b._best-a._best);
+    if(colSort.col){const cmp=getColComparator(colSort.col);arr=[...arr].sort((a,b)=>cmp(a,b)*colSort.dir);}
+    else if(sortBy==="score")arr=[...arr].sort((a,b)=>b._best-a._best);
     else arr=[...arr].sort((a,b)=>parseDateForSort(b.date).localeCompare(parseDateForSort(a.date)));
     return arr;
-  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,search,sortBy]);
+  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,search,sortBy,colSort]);
 
   const openForm=(entry=null)=>{
     setForm(entry?{...entry}:{...empty,date:new Date().toLocaleDateString("fr-FR")});
@@ -803,7 +836,7 @@ function App() {
         <button onClick={()=>setView("cotations")} style={{padding:"6px 16px",borderRadius:7,fontSize:12,fontWeight:600,border:`1.5px solid ${view==="cotations"?GOLD:G200}`,background:view==="cotations"?NAVY:"transparent",color:view==="cotations"?GOLD:G400,cursor:"pointer",marginRight:4}}>📊 Cotations</button>
       </div>
 
-      <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 16px"}}>
+      <div style={{padding:"20px 24px"}}>
 
         {/* ── Connect CTA (when no data) ── */}
         {!driveLoaded && bouteilles.length===0 && view==="liste" && (
@@ -901,16 +934,21 @@ function App() {
                   const col=COT_COLS.find(c=>c.id===cotSort.col)||COT_COLS[0];
                   const sorted=[...modal.cotations].sort((a,b)=>col.cmp(a,b)*cotSort.dir);
                   const toggleSort=id=>{setCotSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:1});};
+                  const onHistResize=(e,id)=>{e.preventDefault();e.stopPropagation();const startX=e.clientX,startW=histColWidths[id]||80;histResizeRef.current={id};const onMove=ev=>{const w=Math.max(40,startW+(ev.clientX-startX));setHistColWidths(p=>({...p,[id]:w}));};const onUp=()=>{histResizeRef.current=null;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);};
                   const SortTH=({id,label})=>{
                     const active=cotSort.col===id;
-                    return <th onClick={()=>toggleSort(id)} style={{...thStyle,cursor:"pointer",userSelect:"none",background:active?"#e8edf8":G50,whiteSpace:"nowrap"}}>
-                      {label}{active?(cotSort.dir===1?" ▲":" ▼"):<span style={{color:G200}}> ⇅</span>}
+                    const w=histColWidths[id];
+                    return <th style={{...thStyle,color:active?NAVY:G600,userSelect:"none",background:active?"#e8edf8":G100,whiteSpace:"nowrap",position:"relative",overflow:"hidden",...(w?{width:w,minWidth:w}:{})}}>
+                      <span onClick={()=>toggleSort(id)} style={{display:"block",cursor:"pointer",paddingRight:8,overflow:"hidden",textOverflow:"ellipsis"}}>
+                        {label}{active?(cotSort.dir===1?" ▲":" ▼"):<span style={{color:G400}}> ⇅</span>}
+                      </span>
+                      <div onMouseDown={e=>onHistResize(e,id)} draggable="false" style={{position:"absolute",right:0,top:0,bottom:0,width:6,cursor:"col-resize",background:"transparent",zIndex:2}}/>
                     </th>;
                   };
                   return modal.cotations.length===0
                     ?<div style={{textAlign:"center",padding:"40px 0",color:G400}}><div style={{fontSize:36,marginBottom:12}}>📭</div>Aucune cotation trouvée.</div>
                     :<div style={{overflowX:"auto"}}>
-                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                      <table style={{width:"100%",minWidth:COT_COLS.reduce((s,c)=>s+(histColWidths[c.id]||80),0),borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
                         <thead><tr>{COT_COLS.map(h=><SortTH key={h.id} id={h.id} label={h.label}/>)}</tr></thead>
                         <tbody>{sorted.map((c,i)=>(
                           <tr key={i} style={{background:namesMatch(c.acheteur,modal.entry.client)?"#dbeafe":"#d1fae5"}}>
@@ -1008,9 +1046,14 @@ function App() {
                 const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
                 const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
                 const setColOrder=tab==="bouteilles"?setBtlOrder:setVcOrder;
+                const colWidths=tab==="bouteilles"?btlColWidths:vcColWidths;
+                const setColWidths=tab==="bouteilles"?setBtlColWidths:setVcColWidths;
                 const ordered=colOrder.map(id=>colDefs.find(c=>c.id===id)).filter(Boolean);
-                return <table style={{width:"100%",borderCollapse:"collapse"}}>
-                  <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)}/>)}</tr></thead>
+                const totalWidth=ordered.reduce((s,c)=>s+(colWidths[c.id]||80),0);
+                const onResizeStart=(e,id)=>{e.preventDefault();e.stopPropagation();const startX=e.clientX,startW=colWidths[id]||80;tableResizeRef.current={id};const onMove=ev=>{const w=Math.max(40,startW+(ev.clientX-startX));setColWidths(p=>({...p,[id]:w}));};const onUp=()=>{tableResizeRef.current=null;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);};
+                const onSort=id=>{setColSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:id==="date"?-1:1});};
+                return <table style={{width:"100%",minWidth:totalWidth,borderCollapse:"collapse",tableLayout:"fixed"}}>
+                  <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
                   <tbody>{filtered.map(r=>(
                     <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
                       {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
