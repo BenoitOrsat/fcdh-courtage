@@ -69,19 +69,20 @@
       letter-spacing: .1em; text-transform: uppercase; padding: 3px 6px;
       border-bottom: 1px solid #0d1b3e; border-right: 1px solid #0d1b3e;
       position: sticky; top: 0; z-index: 4; text-align: center;
+      height: 26px; line-height: 18px;           /* hauteur fixe = offset exact de h-row */
     }
     thead tr.h-row th {
       background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
       padding: 5px 6px; border-bottom: 2px solid #C9A84C; border-right: 1px solid #1a2f5a;
-      position: sticky; top: 25px; z-index: 4; white-space: nowrap; text-align: center;
+      position: sticky; top: 26px; z-index: 4; white-space: nowrap; text-align: center;
     }
 
     /* Sticky left columns */
-    .s1 { position: sticky; left: 0;    z-index: 2; }
-    .s2 { position: sticky; left: 48px; z-index: 2; }
-    .s3 { position: sticky; left: 168px; z-index: 2; }
-    .s4 { position: sticky; left: 368px; z-index: 2; box-shadow: 2px 0 6px rgba(0,0,0,.06); }
-    thead .s1, thead .s2, thead .s3, thead .s4 { z-index: 6 !important; }
+    .s1 { position: sticky; left: 0;     z-index: 2; background: inherit; }
+    .s2 { position: sticky; left: 48px;  z-index: 2; background: inherit; }
+    .s3 { position: sticky; left: 168px; z-index: 2; background: inherit; }
+    .s4 { position: sticky; left: 368px; z-index: 2; background: inherit; box-shadow: 2px 0 6px rgba(0,0,0,.06); }
+    thead .s1, thead .s2, thead .s3, thead .s4 { z-index: 7 !important; }
 
     /* Data rows */
     tbody tr { background: white; }
@@ -557,7 +558,7 @@ function renderHead(gc) {
   const giftSpan  = gc.length;
   document.getElementById('tableHead').innerHTML = `
     <tr class="g-row">
-      <th class="s1 s2 s3 s4" colspan="4" style="text-align:left;padding-left:10px">Localisation</th>
+      <th colspan="4" style="position:sticky;left:0;z-index:7;text-align:left;padding-left:10px;background:#1a2f5a">Localisation</th>
       <th colspan="${visitSpan}" style="border-left:2px solid #C9A84C88">Visites par courtier</th>
       <th style="border-left:1px solid #0d1b3e">Total</th>
       ${giftSpan ? `<th colspan="${giftSpan}" style="border-left:2px solid #C9A84C">Cadeaux</th>` : ''}
