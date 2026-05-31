@@ -270,7 +270,8 @@
 
     <div class="step">
       <span class="step-num">3</span>
-      <span class="step-text">Cliquez <strong>Déployer → Nouveau déploiement</strong> · Type : <em>Application Web</em> · Exécuter en tant que : <em>Moi</em> · Accès : <em>Tout le monde</em>. Copiez l'URL générée.</span>
+      <span class="step-text">Cliquez <strong>Déployer → Nouveau déploiement</strong> · Type : <em>Application Web</em> · Exécuter en tant que : <em>Moi</em> · Accès : <em>Tout le monde</em>. Copiez l'URL générée.<br><br>
+      <em style="color:#d97706">⚠️ Script déjà déployé ?</em> Si vous avez déjà un déploiement, collez le nouveau code puis cliquez <strong>Déployer → Gérer les déploiements → ✏️ Modifier → Nouvelle version → Déployer</strong>. L'URL reste la même.</span>
     </div>
 
     <div class="step">
@@ -391,6 +392,11 @@ function doPost(e){
     else if(p.action==='addColumn'){
       const c=s.getLastColumn()+1;s.getRange(1,c).setValue(p.name);
       if(s.getLastRow()>1)s.getRange(2,c,s.getLastRow()-1,1).setValue(0);
+    }
+    else if(p.action==='removeColumn'){
+      const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
+      const c=h.indexOf(p.name)+1;
+      if(c>0)s.deleteColumn(c);
     }
     else if(p.action==='importData'){
       const ex=read(s),exH=ex.headers;
@@ -572,7 +578,7 @@ function renderHead(gc) {
       <th style="min-width:50px;border-left:1px solid #1a2f5a;color:#6ee7b7">TOTAL</th>
       ${gc.map(g => `
         <th style="min-width:90px;border-left:${g===gc[0]?'2px solid #C9A84C':'1px solid #1a2f5a'}">
-          <div class="gift-th">${esc(g)}<button class="rm-col" onclick="removeColumn('${esc(g)}')" title="Supprimer cette colonne">✕</button></div>
+          <div class="gift-th">${esc(g)}<button class="rm-col" data-col="${esc(g)}" title="Supprimer cette colonne">✕</button></div>
         </th>`).join('')}
     </tr>`;
 }
@@ -760,21 +766,38 @@ async function submitAddCol() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  REMOVE GIFT COLUMN  (adds action to Apps Script too)
+//  REMOVE GIFT COLUMN
 // ═══════════════════════════════════════════════════════════════
 async function removeColumn(name) {
   if (!confirm(`Supprimer la colonne "${name}" et toutes ses données ?`)) return;
+
+  // Suppression optimiste côté client
+  const colIdx = ci(name);
+  if (colIdx >= 0) {
+    headers = headers.filter((_, i) => i !== colIdx);
+    rows    = rows.map(r => r.filter((_, i) => i !== colIdx));
+    applyData({ headers, rows });
+  }
+
+  // Synchronisation serveur
   try {
     setSyncLabel('Suppression…', 'spin');
     const result = await apiPost({ action: 'removeColumn', name });
-    if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
-    applyData({ headers, rows });
+    if (result.headers && result.rows) { headers = result.headers; rows = result.rows; applyData({ headers, rows }); }
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
-    setSyncLabel('Erreur', 'error');
-    alert('Erreur : ' + err.message);
+    setSyncLabel('⚠️ Script à mettre à jour', 'error');
   }
 }
+
+// Délégation d'événement pour les boutons ✕ (rm-col)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.rm-col');
+  if (!btn) return;
+  e.stopPropagation();
+  const col = btn.dataset.col;
+  if (col) removeColumn(col);
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  SETTINGS
