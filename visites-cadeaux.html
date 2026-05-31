@@ -25,6 +25,12 @@
     .sync-dot.spin  { background: #fbbf24; animation: pulse .8s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
+    /* ── Tabs ── */
+    .tab-bar { background: #ffffff; border-bottom: 2px solid #dde1eb; padding: 0 20px; display: flex; flex-shrink: 0; }
+    .tab-btn { padding: 10px 22px; font-size: 13px; font-weight: 700; color: #6b7280; background: none; border: none; cursor: pointer; font-family: inherit; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s; white-space: nowrap; }
+    .tab-btn:hover { color: #0d1b3e; background: #f8f9fb; }
+    .tab-btn.active { color: #0d1b3e; border-bottom-color: #C9A84C; }
+
     /* ── Toolbar ── */
     .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
     .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; font-family: inherit; white-space: nowrap; }
@@ -69,7 +75,7 @@
       letter-spacing: .1em; text-transform: uppercase; padding: 3px 6px;
       border-bottom: 1px solid #0d1b3e; border-right: 1px solid #0d1b3e;
       position: sticky; top: 0; z-index: 4; text-align: center;
-      height: 26px; line-height: 18px;           /* hauteur fixe = offset exact de h-row */
+      height: 26px; line-height: 18px;
     }
     thead tr.h-row th {
       background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
@@ -94,7 +100,6 @@
     }
     td.text-left { text-align: left; }
     td.pressoir-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-    /* Inherit sticky bg */
     tbody tr:nth-child(even) .s1,tbody tr:nth-child(even) .s2,
     tbody tr:nth-child(even) .s3,tbody tr:nth-child(even) .s4 { background: #f9fafb; }
     tbody tr:nth-child(odd) .s1,tbody tr:nth-child(odd) .s2,
@@ -179,6 +184,12 @@
   </button>
 </header>
 
+<!-- ── Tabs ─────────────────────────────────────────────────── -->
+<div class="tab-bar">
+  <button class="tab-btn" data-tab="vendanges" onclick="switchTab('vendanges')">🍾 Visite Vendanges</button>
+  <button class="tab-btn" data-tab="voeux"     onclick="switchTab('voeux')">🥂 Visites Vœux</button>
+</div>
+
 <!-- ── Toolbar ──────────────────────────────────────────────── -->
 <div class="toolbar">
   <button class="btn btn-dark" onclick="document.getElementById('xlsxInput').click()">📂 Importer Excel</button>
@@ -216,9 +227,7 @@
 <div class="stats-bar" id="statsBar" style="display:none">
   <div class="stat"><div class="stat-v" id="sPressoirs">0</div><div class="stat-l">Pressoirs</div></div>
   <div class="stat"><div class="stat-v" id="sTotal">0</div><div class="stat-l">Visites totales</div></div>
-  <!-- visit cols stats injected by JS -->
   <div id="statsVisits" style="display:contents"></div>
-  <!-- gift cols stats injected by JS -->
   <div id="statsGifts" style="display:contents"></div>
 </div>
 
@@ -256,7 +265,7 @@
 
     <div class="step">
       <span class="step-num">1</span>
-      <span class="step-text">Créez un <strong>Google Sheet vierge</strong> (sheets.google.com → Nouveau).</span>
+      <span class="step-text">Créez un <strong>Google Sheet vierge</strong> (sheets.google.com → Nouveau). Le script créera automatiquement deux onglets : <strong>Vendanges</strong> et <strong>Voeux</strong>.</span>
     </div>
 
     <div class="step">
@@ -352,19 +361,22 @@
 // ═══════════════════════════════════════════════════════════════
 const FIXED  = ['Secteur', 'Commune', 'Pressoir', 'Courtier'];
 const VISITS = ['EC', 'MAA', 'EH', 'JPNC', 'ASM', 'EB', 'BO'];
-const CACHE_KEY  = 'fcdh_cache_v2';
 const URL_KEY    = 'fcdh_script_url';
 const REFRESH_MS = 15000;
 
-// Apps Script source (shown in settings modal)
-const APPS_SCRIPT = `const SHEET = 'Pressoirs';
-const FIXED = ['Secteur','Commune','Pressoir','Courtier'];
+const TABS = {
+  vendanges: { label: '🍾 Visite Vendanges', sheet: 'Vendanges' },
+  voeux:     { label: '🥂 Visites Vœux',     sheet: 'Voeux'     }
+};
+
+// Apps Script source (shown in settings modal — sheet-aware version)
+const APPS_SCRIPT = `const FIXED = ['Secteur','Commune','Pressoir','Courtier'];
 const VISITS = ['EC','MAA','EH','JPNC','ASM','EB','BO'];
 
-function getSheet(){
+function getSheet(name){
   const ss=SpreadsheetApp.getActiveSpreadsheet();
-  let s=ss.getSheetByName(SHEET);
-  if(!s){s=ss.insertSheet(SHEET);s.appendRow([...FIXED,...VISITS]);s.getRange(1,1,1,FIXED.length+VISITS.length).setFontWeight('bold');}
+  let s=ss.getSheetByName(name);
+  if(!s){s=ss.insertSheet(name);s.appendRow([...FIXED,...VISITS]);s.getRange(1,1,1,FIXED.length+VISITS.length).setFontWeight('bold');}
   return s;
 }
 function read(s){
@@ -372,14 +384,16 @@ function read(s){
   const v=s.getRange(1,1,s.getLastRow(),s.getLastColumn()).getValues();
   return{headers:v[0],rows:v.slice(1).filter(r=>r[0]!=='')};
 }
-function doGet(){
-  return ContentService.createTextOutput(JSON.stringify(read(getSheet())))
+function doGet(e){
+  const name=(e&&e.parameter&&e.parameter.sheet)||'Vendanges';
+  return ContentService.createTextOutput(JSON.stringify(read(getSheet(name))))
     .setMimeType(ContentService.MimeType.JSON);
 }
 function doPost(e){
   const lk=LockService.getScriptLock();lk.waitLock(15000);
   try{
-    const p=JSON.parse(e.postData.contents),s=getSheet();
+    const p=JSON.parse(e.postData.contents);
+    const s=getSheet(p.sheet||'Vendanges');
     if(p.action==='increment'){
       const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
       const c=h.indexOf(p.col);
@@ -425,20 +439,42 @@ function doPost(e){
 //  STATE
 // ═══════════════════════════════════════════════════════════════
 let scriptUrl    = localStorage.getItem(URL_KEY) || '';
+let activeTab    = localStorage.getItem('fcdh_active_tab') || 'vendanges';
 let headers      = [];
-let rows         = [];       // array of arrays
-let filteredRows = [];       // indexes into rows
+let rows         = [];
+let filteredRows = [];
 let refreshTimer = null;
 let pauseUntil   = 0;
 let fromCache    = false;
-// Colonnes supprimées localement (persiste jusqu'à confirmation du serveur)
-let deletedCols  = new Set(JSON.parse(localStorage.getItem('fcdh_deleted_cols') || '[]'));
+
+// Per-tab state: headers/rows are synced from globals; deletedCols is persistent
+const tabState = {
+  vendanges: {
+    headers: [], rows: [],
+    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_vendanges') || '[]'))
+  },
+  voeux: {
+    headers: [], rows: [],
+    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_voeux') || '[]'))
+  }
+};
+
+// Per-tab localStorage key helpers
+function cacheKey()   { return 'fcdh_cache_'   + activeTab; }
+function deletedKey() { return 'fcdh_deleted_' + activeTab; }
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scriptCode').textContent = APPS_SCRIPT;
+
+  // Validate stored activeTab
+  if (!TABS[activeTab]) activeTab = 'vendanges';
+
+  // Highlight active tab button
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+
   if (scriptUrl) {
     document.getElementById('scriptUrlInput').value = scriptUrl;
     loadData();
@@ -450,10 +486,81 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  API
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  if (tab === activeTab) return;
+
+  // Save current globals back to tabState before leaving
+  tabState[activeTab].headers = headers;
+  tabState[activeTab].rows    = rows;
+
+  activeTab = tab;
+  localStorage.setItem('fcdh_active_tab', tab);
+
+  // Update tab button UI
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+
+  // Reset filter inputs
+  document.getElementById('fSearch').value  = '';
+  document.getElementById('fSecteur').innerHTML  = '<option value="">Tous</option>';
+  document.getElementById('fCourtier').innerHTML = '<option value="">Tous</option>';
+
+  // Restore in-memory state for new tab
+  headers      = tabState[activeTab].headers;
+  rows         = tabState[activeTab].rows;
+  filteredRows = [];
+  fromCache    = false;
+
+  if (rows.length) {
+    // We already have data for this tab — show immediately
+    document.getElementById('setupState').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('mainTable').style.display  = '';
+    document.getElementById('filtersBar').style.display = '';
+    document.getElementById('statsBar').style.display   = '';
+    document.getElementById('btnAddRow').disabled = false;
+    document.getElementById('btnAddCol').disabled = false;
+    document.getElementById('cacheBadge').style.display = 'none';
+    populateFilterOptions();
+    applyFilters();
+    renderStats();
+  } else {
+    // Try localStorage cache for this tab
+    const cache = JSON.parse(localStorage.getItem(cacheKey()) || '{}');
+    if (cache.headers && cache.rows) {
+      applyData(cache);
+      fromCache = true;
+      document.getElementById('cacheBadge').style.display = '';
+    } else {
+      // Nothing to show yet
+      document.getElementById('setupState').style.display = scriptUrl ? 'none' : '';
+      document.getElementById('emptyState').style.display = scriptUrl ? '' : 'none';
+      document.getElementById('mainTable').style.display  = 'none';
+      document.getElementById('filtersBar').style.display = 'none';
+      document.getElementById('statsBar').style.display   = 'none';
+      document.getElementById('btnAddRow').disabled = !scriptUrl;
+      document.getElementById('btnAddCol').disabled = !scriptUrl;
+      document.getElementById('cacheBadge').style.display = 'none';
+    }
+  }
+
+  // Restart refresh cycle for the new tab
+  clearInterval(refreshTimer);
+  if (scriptUrl) {
+    loadData(!rows.length); // show spinner only if no data displayed yet
+    startRefresh();
+  } else {
+    setSyncLabel('Non configuré', '');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  API  (always pass current sheet name)
 // ═══════════════════════════════════════════════════════════════
 async function apiFetch() {
-  const r = await fetch(scriptUrl + '?t=' + Date.now());
+  const sheet = encodeURIComponent(TABS[activeTab].sheet);
+  const r = await fetch(scriptUrl + '?sheet=' + sheet + '&t=' + Date.now());
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -461,7 +568,7 @@ async function apiFetch() {
 async function apiPost(data) {
   const r = await fetch(scriptUrl, {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify({ ...data, sheet: TABS[activeTab].sheet })
   });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
@@ -476,13 +583,13 @@ async function loadData(showSpinner = true) {
   try {
     const data = await apiFetch();
     applyData(data);
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ headers: data.headers, rows: data.rows, ts: Date.now() }));
+    localStorage.setItem(cacheKey(), JSON.stringify({ headers: data.headers, rows: data.rows, ts: Date.now() }));
     fromCache = false;
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
     document.getElementById('cacheBadge').style.display = 'none';
   } catch (err) {
     setSyncLabel('Erreur de connexion', 'error');
-    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    const cache = JSON.parse(localStorage.getItem(cacheKey()) || '{}');
     if (cache.headers && !headers.length) {
       applyData(cache);
       fromCache = true;
@@ -494,14 +601,19 @@ async function loadData(showSpinner = true) {
 function applyData(data) {
   let h = data.headers || [];
   let r = data.rows    || [];
-  // Filtrer les colonnes supprimées localement (en attente de confirmation serveur)
-  if (deletedCols.size) {
-    const keep = h.reduce((acc, col, i) => { if (!deletedCols.has(col)) acc.push(i); return acc; }, []);
+  // Filter locally-deleted columns
+  const dc = tabState[activeTab].deletedCols;
+  if (dc.size) {
+    const keep = h.reduce((acc, col, i) => { if (!dc.has(col)) acc.push(i); return acc; }, []);
     h = keep.map(i => h[i]);
     r = r.map(row => keep.map(i => row[i]));
   }
   headers = h;
   rows    = r;
+  // Persist in tabState
+  tabState[activeTab].headers = headers;
+  tabState[activeTab].rows    = rows;
+
   if (headers.length) {
     document.getElementById('setupState').style.display = 'none';
     document.getElementById('emptyState').style.display = rows.length ? 'none' : '';
@@ -644,6 +756,7 @@ async function increment(rowIdx, col, delta) {
 
   // Optimistic update
   rows[rowIdx][colI] = Math.max(0, (Number(rows[rowIdx][colI]) || 0) + delta);
+  tabState[activeTab].rows = rows;
   renderTable();
   renderStats();
 
@@ -711,7 +824,8 @@ function importXlsx(file) {
     }
 
     if (!imported.length) { alert('Aucune ligne valide trouvée dans le fichier.'); return; }
-    const ok = confirm(`${imported.length} pressoirs trouvés.\nLes compteurs existants seront conservés pour les pressoirs connus.\n\nContinuer ?`);
+    const tabLabel = TABS[activeTab].label;
+    const ok = confirm(`${imported.length} pressoirs trouvés.\nImport vers : ${tabLabel}\nLes compteurs existants seront conservés pour les pressoirs connus.\n\nContinuer ?`);
     if (!ok) return;
 
     try {
@@ -745,7 +859,6 @@ async function submitAddRow() {
     if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
     applyData({ headers, rows });
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
-    // Reset form
     ['nr_secteur','nr_commune','nr_pressoir','nr_courtier'].forEach(id => { document.getElementById(id).value = ''; });
   } catch (err) {
     setSyncLabel('Erreur', 'error');
@@ -781,40 +894,42 @@ async function submitAddCol() {
 async function removeColumn(name) {
   if (!confirm(`Supprimer la colonne "${name}" et toutes ses données ?`)) return;
 
-  // 1. Persister la suppression localement (résiste au refresh)
-  deletedCols.add(name);
-  localStorage.setItem('fcdh_deleted_cols', JSON.stringify([...deletedCols]));
+  // 1. Persist deletion locally (survives refresh)
+  const dc = tabState[activeTab].deletedCols;
+  dc.add(name);
+  localStorage.setItem(deletedKey(), JSON.stringify([...dc]));
 
-  // 2. Mise à jour immédiate de l'affichage
+  // 2. Immediate UI update
   const colIdx = headers.indexOf(name);
   if (colIdx >= 0) {
     headers = headers.filter((_, i) => i !== colIdx);
     rows    = rows.map(r => r.filter((_, i) => i !== colIdx));
+    tabState[activeTab].headers = headers;
+    tabState[activeTab].rows    = rows;
     populateFilterOptions();
     applyFilters();
     renderStats();
   }
 
-  // 3. Synchronisation serveur
+  // 3. Server sync
   try {
     setSyncLabel('Suppression…', 'spin');
     const result = await apiPost({ action: 'removeColumn', name });
     if (result.headers && result.rows) {
       if (!result.headers.includes(name)) {
-        // Serveur a confirmé → retirer de la liste locale
-        deletedCols.delete(name);
-        localStorage.setItem('fcdh_deleted_cols', JSON.stringify([...deletedCols]));
+        // Server confirmed → remove from local set
+        dc.delete(name);
+        localStorage.setItem(deletedKey(), JSON.stringify([...dc]));
       }
-      applyData(result); // applyData filtre automatiquement si la col est encore dans deletedCols
+      applyData(result);
     }
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
     setSyncLabel('⚠️ Script à mettre à jour', 'error');
-    // La colonne reste masquée grâce au localStorage même si le serveur n'a pas répondu
   }
 }
 
-// Délégation d'événement pour les boutons ✕ (rm-col)
+// Event delegation for ✕ remove-column buttons
 document.addEventListener('click', e => {
   const btn = e.target.closest('.rm-col');
   if (!btn) return;
@@ -832,7 +947,8 @@ async function testConnection() {
   if (!url) { el.textContent = '⚠️ Saisissez une URL.'; el.className = 'test-result test-error'; return; }
   el.textContent = '⏳ Test en cours…'; el.className = 'test-result';
   try {
-    const r = await fetch(url + '?t=' + Date.now());
+    const sheet = encodeURIComponent(TABS[activeTab].sheet);
+    const r = await fetch(url + '?sheet=' + sheet + '&t=' + Date.now());
     const d = await r.json();
     if (d.headers !== undefined) {
       el.textContent = '✅ Connexion réussie — ' + (d.rows?.length || 0) + ' lignes dans le Sheet.';
@@ -881,7 +997,6 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.addEventListener('click', e => {
   if (e.target.classList.contains('modal-bg')) closeModal(e.target.id);
-  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
