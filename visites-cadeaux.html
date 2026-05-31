@@ -431,6 +431,8 @@ let filteredRows = [];       // indexes into rows
 let refreshTimer = null;
 let pauseUntil   = 0;
 let fromCache    = false;
+// Colonnes supprimées localement (persiste jusqu'à confirmation du serveur)
+let deletedCols  = new Set(JSON.parse(localStorage.getItem('fcdh_deleted_cols') || '[]'));
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
@@ -490,8 +492,16 @@ async function loadData(showSpinner = true) {
 }
 
 function applyData(data) {
-  headers = data.headers || [];
-  rows    = data.rows    || [];
+  let h = data.headers || [];
+  let r = data.rows    || [];
+  // Filtrer les colonnes supprimées localement (en attente de confirmation serveur)
+  if (deletedCols.size) {
+    const keep = h.reduce((acc, col, i) => { if (!deletedCols.has(col)) acc.push(i); return acc; }, []);
+    h = keep.map(i => h[i]);
+    r = r.map(row => keep.map(i => row[i]));
+  }
+  headers = h;
+  rows    = r;
   if (headers.length) {
     document.getElementById('setupState').style.display = 'none';
     document.getElementById('emptyState').style.display = rows.length ? 'none' : '';
@@ -640,9 +650,9 @@ async function increment(rowIdx, col, delta) {
   try {
     setSyncLabel('Sauvegarde…', 'spin');
     const result = await apiPost({ action: 'increment', rowIdx, col, delta });
-    if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
+    if (result.headers && result.rows) applyData(result);
+    else applyFilters();
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
-    applyFilters();
   } catch (err) {
     setSyncLabel('Erreur — rechargement…', 'error');
     await loadData(false);
@@ -771,22 +781,36 @@ async function submitAddCol() {
 async function removeColumn(name) {
   if (!confirm(`Supprimer la colonne "${name}" et toutes ses données ?`)) return;
 
-  // Suppression optimiste côté client
-  const colIdx = ci(name);
+  // 1. Persister la suppression localement (résiste au refresh)
+  deletedCols.add(name);
+  localStorage.setItem('fcdh_deleted_cols', JSON.stringify([...deletedCols]));
+
+  // 2. Mise à jour immédiate de l'affichage
+  const colIdx = headers.indexOf(name);
   if (colIdx >= 0) {
     headers = headers.filter((_, i) => i !== colIdx);
     rows    = rows.map(r => r.filter((_, i) => i !== colIdx));
-    applyData({ headers, rows });
+    populateFilterOptions();
+    applyFilters();
+    renderStats();
   }
 
-  // Synchronisation serveur
+  // 3. Synchronisation serveur
   try {
     setSyncLabel('Suppression…', 'spin');
     const result = await apiPost({ action: 'removeColumn', name });
-    if (result.headers && result.rows) { headers = result.headers; rows = result.rows; applyData({ headers, rows }); }
+    if (result.headers && result.rows) {
+      if (!result.headers.includes(name)) {
+        // Serveur a confirmé → retirer de la liste locale
+        deletedCols.delete(name);
+        localStorage.setItem('fcdh_deleted_cols', JSON.stringify([...deletedCols]));
+      }
+      applyData(result); // applyData filtre automatiquement si la col est encore dans deletedCols
+    }
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
     setSyncLabel('⚠️ Script à mettre à jour', 'error');
+    // La colonne reste masquée grâce au localStorage même si le serveur n'a pas répondu
   }
 }
 
