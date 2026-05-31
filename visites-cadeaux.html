@@ -265,7 +265,8 @@
 
     <div class="step">
       <span class="step-num">1</span>
-      <span class="step-text">Créez un <strong>Google Sheet vierge</strong> (sheets.google.com → Nouveau). Le script créera automatiquement deux onglets : <strong>Vendanges</strong> et <strong>Voeux</strong>.</span>
+      <span class="step-text">Créez un <strong>Google Sheet vierge</strong> (sheets.google.com → Nouveau). Le script créera automatiquement deux onglets : <strong>Vendanges</strong> et <strong>Voeux</strong>.<br><br>
+      <em style="color:#dc2626">⚠️ Script déjà déployé avec l'ancienne version ?</em> Vous devez <strong>obligatoirement</strong> mettre à jour le code Apps Script ci-dessous et déployer une nouvelle version, sinon les deux onglets liront et écriront dans la même feuille.</span>
     </div>
 
     <div class="step">
@@ -579,17 +580,20 @@ async function apiPost(data) {
 // ═══════════════════════════════════════════════════════════════
 async function loadData(showSpinner = true) {
   if (!scriptUrl) return;
+  const tab = activeTab; // capture onglet actif AVANT l'await
   if (showSpinner) setSyncLabel('Synchronisation…', 'spin');
   try {
     const data = await apiFetch();
+    if (activeTab !== tab) return; // onglet changé pendant la requête → on jette la réponse
     applyData(data);
-    localStorage.setItem(cacheKey(), JSON.stringify({ headers: data.headers, rows: data.rows, ts: Date.now() }));
+    localStorage.setItem('fcdh_cache_' + tab, JSON.stringify({ headers: data.headers, rows: data.rows, ts: Date.now() }));
     fromCache = false;
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
     document.getElementById('cacheBadge').style.display = 'none';
   } catch (err) {
+    if (activeTab !== tab) return;
     setSyncLabel('Erreur de connexion', 'error');
-    const cache = JSON.parse(localStorage.getItem(cacheKey()) || '{}');
+    const cache = JSON.parse(localStorage.getItem('fcdh_cache_' + tab) || '{}');
     if (cache.headers && !headers.length) {
       applyData(cache);
       fromCache = true;
@@ -750,6 +754,7 @@ document.addEventListener('click', e => {
 //  INCREMENT
 // ═══════════════════════════════════════════════════════════════
 async function increment(rowIdx, col, delta) {
+  const tab = activeTab; // capture onglet actif AVANT l'await
   pauseUntil = Date.now() + 3000;
   const colI = ci(col);
   if (colI < 0) return;
@@ -763,10 +768,12 @@ async function increment(rowIdx, col, delta) {
   try {
     setSyncLabel('Sauvegarde…', 'spin');
     const result = await apiPost({ action: 'increment', rowIdx, col, delta });
+    if (activeTab !== tab) return; // onglet changé → on jette
     if (result.headers && result.rows) applyData(result);
     else applyFilters();
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
+    if (activeTab !== tab) return;
     setSyncLabel('Erreur — rechargement…', 'error');
     await loadData(false);
   }
@@ -855,7 +862,9 @@ async function submitAddRow() {
   try {
     closeModal('modalAddRow');
     setSyncLabel('Ajout en cours…', 'spin');
+    const tab = activeTab;
     const result = await apiPost({ action: 'addRow', data: { Secteur: secteur, Commune: commune, Pressoir: pressoir, Courtier: courtier } });
+    if (activeTab !== tab) return;
     if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
     applyData({ headers, rows });
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
@@ -877,7 +886,9 @@ async function submitAddCol() {
   try {
     closeModal('modalAddCol');
     setSyncLabel('Ajout colonne…', 'spin');
+    const tab = activeTab;
     const result = await apiPost({ action: 'addColumn', name });
+    if (activeTab !== tab) return;
     if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
     applyData({ headers, rows });
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
@@ -912,9 +923,11 @@ async function removeColumn(name) {
   }
 
   // 3. Server sync
+  const tab = activeTab;
   try {
     setSyncLabel('Suppression…', 'spin');
     const result = await apiPost({ action: 'removeColumn', name });
+    if (activeTab !== tab) return;
     if (result.headers && result.rows) {
       if (!result.headers.includes(name)) {
         // Server confirmed → remove from local set
@@ -925,6 +938,7 @@ async function removeColumn(name) {
     }
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
+    if (activeTab !== tab) return;
     setSyncLabel('⚠️ Script à mettre à jour', 'error');
   }
 }
