@@ -330,6 +330,27 @@ const Txa=(p)=><textarea style={{...inp,resize:"none",height:60}} {...p}/>;
 const Field=({label,children})=><div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:10,fontWeight:700,color:G400,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</label>{children}</div>;
 const thStyle={padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:GOLD_L,textTransform:"uppercase",letterSpacing:"0.07em",whiteSpace:"nowrap",borderBottom:`2px solid ${GOLD}`,background:NAVY,userSelect:"none",position:"sticky",top:0,zIndex:1};
 const TH=({children})=><th style={thStyle}>{children}</th>;
+const MultiSelect=({label,options,selected,onChange})=>{
+  const [open,setOpen]=React.useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const toggle=v=>onChange(selected.includes(v)?selected.filter(x=>x!==v):[...selected,v]);
+  const txt=selected.length===0?label:selected.length===1?selected[0]:`${label} (${selected.length})`;
+  return <div ref={ref} style={{position:"relative",display:"inline-block"}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{border:`1.5px solid ${selected.length>0?NAVY:G200}`,borderRadius:8,padding:"7px 10px",fontSize:12,color:selected.length>0?GOLD:G600,background:selected.length>0?NAVY:WHITE,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",outline:"none"}}>
+      <span>{txt}</span><span style={{fontSize:9,opacity:0.6}}>▾</span>
+    </button>
+    {open&&<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,background:WHITE,border:`1px solid ${G200}`,borderRadius:8,boxShadow:"0 4px 16px rgba(13,27,62,.15)",zIndex:30,minWidth:170,maxHeight:240,overflowY:"auto",padding:"4px 0"}}>
+      {options.map(opt=><label key={opt} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",cursor:"pointer",fontSize:12,color:TEXT}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""}>
+        <input type="checkbox" checked={selected.includes(opt)} onChange={()=>toggle(opt)} style={{cursor:"pointer",accentColor:NAVY}}/>{opt}
+      </label>)}
+      {selected.length>0&&<div style={{borderTop:`1px solid ${G100}`,padding:"4px 12px"}}>
+        <button onClick={()=>{onChange([]);setOpen(false);}} style={{fontSize:11,color:G400,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"inherit"}}>Effacer</button>
+      </div>}
+    </div>}
+  </div>;
+};
+
 const DragTH=({colId,label,dragRef,onDrop,colWidths,colSort,onSortToggle,onResizeStart})=>{
   const active=colSort&&colSort.col===colId;
   const w=colWidths?colWidths[colId]:undefined;
@@ -354,6 +375,9 @@ function App() {
   const [fCourtier, setFC] = useState("");
   const [fBesoin, setFB]   = useState("");
   const [fStatuts, setFS]  = useState([]);
+  const [fFormats, setFFormats]   = useState([]);
+  const [fCouleurs, setFCouleurs] = useState([]);
+  const [fQualites, setFQualites] = useState([]);
   const [search, setSearch]= useState("");
   const [sortBy, setSortBy]= useState("date");
   const [delId, setDelId]  = useState(null);
@@ -406,7 +430,7 @@ function App() {
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
-  useEffect(()=>{setColSort({col:null,dir:1});},[tab]);
+  useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);},[tab]);
   // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
   useEffect(()=>{
     if(pendingSaveRef.current&&gToken&&driveWbRef.current){
@@ -648,6 +672,9 @@ function App() {
       if(fCourtier&&r.courtier!==fCourtier)return false;
       if(fBesoin&&r.besoin!==fBesoin)return false;
       if(fStatuts.length>0&&!fStatuts.includes(r.statut))return false;
+      if(fFormats.length>0){const v=tab==="bouteilles"?r.format:r.formatVin;if(!fFormats.includes(v))return false;}
+      if(fCouleurs.length>0&&!fCouleurs.includes(r.couleur))return false;
+      if(fQualites.length>0&&!fQualites.includes(r.qualite))return false;
       if(search){const s=search.toLowerCase();return Object.values(r).some(v=>String(v).toLowerCase().includes(s));}
       return true;
     });
@@ -655,7 +682,7 @@ function App() {
     else if(sortBy==="score")arr=[...arr].sort((a,b)=>b._best-a._best);
     else arr=[...arr].sort((a,b)=>parseDateForSort(b.date).localeCompare(parseDateForSort(a.date)));
     return arr;
-  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,search,sortBy,colSort]);
+  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,fFormats,fCouleurs,fQualites,search,sortBy,colSort,tab]);
 
   const openForm=(entry=null)=>{
     setForm(entry?{...entry}:{...empty,date:new Date().toLocaleDateString("fr-FR")});
@@ -1029,17 +1056,25 @@ function App() {
         {/* ── Liste ── */}
         {view==="liste" && (bouteilles.length>0||vinsClairs.length>0) && (
           <>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
-              <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
-              <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
-              <select value={fBesoin}   onChange={e=>setFB(e.target.value)} style={selStyle}><option value="">Vend & Recherche</option><option>Vend</option><option>Recherche</option></select>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+              {/* Ligne 1 : recherche + sélecteurs + tri */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
+                <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
+                <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
+                <select value={fBesoin} onChange={e=>setFB(e.target.value)} style={selStyle}><option value="">Vend & Recherche</option><option>Vend</option><option>Recherche</option></select>
+                <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={selStyle}><option value="date">Date ↓</option><option value="score">Score ↓</option></select>
+                <span style={{fontSize:11,color:G400,marginLeft:"auto",whiteSpace:"nowrap"}}>{filtered.length} entrée(s)</span>
+              </div>
+              {/* Ligne 2 : statuts + filtres qualité/format/couleur */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
                 {STATUTS.map(s=>{const sc=STATUT_COLORS[s]||{bg:G100,col:G600,bdr:G200};const on=fStatuts.includes(s);return <span key={s} onClick={()=>setFS(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])} style={{background:on?sc.bg:G50,color:on?sc.col:G400,border:`1.5px solid ${on?sc.bdr:G200}`,borderRadius:99,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>{s}</span>;})}
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
+                <span style={{color:G200,margin:"0 2px"}}>|</span>
+                <MultiSelect label="Format" options={tab==="bouteilles"?FORMATS_BTL:FORMATS_VC} selected={fFormats} onChange={setFFormats}/>
+                {tab==="bouteilles"&&<MultiSelect label="Couleur" options={COULEURS} selected={fCouleurs} onChange={setFCouleurs}/>}
+                <MultiSelect label="Qualité" options={tab==="bouteilles"?QUALITES_BTL:QUALITES_VC} selected={fQualites} onChange={setFQualites}/>
               </div>
-              <select value={sortBy}    onChange={e=>setSortBy(e.target.value)} style={selStyle}><option value="date">Date ↓</option><option value="score">Score ↓</option></select>
-              <span style={{fontSize:11,color:G400,marginLeft:"auto"}}>{filtered.length} entrée(s)</span>
             </div>
             <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflow:"auto",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
               {(()=>{
@@ -1191,13 +1226,13 @@ function App() {
                   <Field label="Stade"><Sel value={form.stade} onChange={e=>f("stade",e.target.value)}><option value="">--</option>{STADES.map(v=><option key={v}>{v}</option>)}</Sel></Field>
                   <Field label="Qualité"><Sel value={form.qualite} onChange={e=>f("qualite",e.target.value)}><option value="">--</option>{QUALITES_BTL.map(v=><option key={v}>{v}</option>)}</Sel></Field>
                   <Field label="Cru"><Sel value={form.cru} onChange={e=>f("cru",e.target.value)}><option value="">--</option>{CRUS.map(v=><option key={v}>{v}</option>)}</Sel></Field>
-                  <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)} placeholder="60% PN / 40% CH"/></Field>
+                  <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)}/></Field>
                   <Field label="Millésime">
-                    <input list="millesimes-list" value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} placeholder="2020" style={{...inp}}/>
+                    <input list="millesimes-list" value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} style={{...inp}}/>
                     <datalist id="millesimes-list">{MILLESIMES.map(y=><option key={y} value={y}/>)}</datalist>
                   </Field>
                   <Field label="Tirage"><Inp value={form.tirage||""} onChange={e=>f("tirage",e.target.value)}/></Field>
-                  <Field label="Prix souhaité"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)} placeholder="10,50 €"/></Field>
+                  <Field label="Prix souhaité"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)}/></Field>
                 </div>
                 :<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
                   <Field label="Vendange"><Inp value={form.vendange||""} onChange={e=>f("vendange",e.target.value)} placeholder="2025 ou Ass"/></Field>
