@@ -32,7 +32,7 @@ const STATUTS   = ["en attente","en dégustation","conclue","abandon"];
 const FORMATS_BTL  = ["Bouteille","Demie","Magnum","Jero"];
 const COULEURS     = ["verte","blanche","dépolie","noire","chêne/antique","feuille morte"];
 const STADES       = ["S/L","S/P","DN"];
-const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","ROSÉ DE SAIGNÉE","BSA","BIO DEMETER","ROUGE","TRES QUALI","BRUT NATURE"];
+const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","ROSÉ DE SAIGNÉE","BSA","ROUGE"];
 const CRUS         = ["Sans Revendication","1er Cru","Grand Cru","1er Cru / Grand Cru"];
 const MILLESIMES   = (()=>{const a=[];for(let y=2027;y>=2000;y--)a.push(String(y));return a;})();
 const CEPAGES      = ["CH","PN","PM","PN/CH","PM/PN","CH/PM","PN/PM/CH","CH PM PN","PN/PM","PM/PN"];
@@ -300,7 +300,7 @@ function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)retur
 function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
 
 
-const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,actions:70};
+const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,modele:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,actions:70};
 const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,actions:70};
 const DEFAULT_HIST_WIDTHS={date:90,numero:60,acheteur:150,vendeur:150,qte:70,prix:85,mention:200,code:80};
 
@@ -426,7 +426,7 @@ function App() {
   const cotLoadedRef = useRef(false);
   const pendingSaveRef = useRef(false);
   const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
-  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
+  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','actions'];}});
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
@@ -742,9 +742,10 @@ function App() {
       {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x))}/></div></TD>},
       {id:"qte",     label:"Qté",      cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"format",  label:"Format",   cell:r=><TD style={{color:G600}}>{r.format}</TD>},
+      {id:"modele",  label:"Modèle",   cell:r=><TD style={{color:G600}}>{r.modele}</TD>},
       {id:"couleur", label:"Couleur",  cell:r=><TD style={{color:G600}}>{r.couleur}</TD>},
       {id:"stade",   label:"Stade",    cell:r=><TD style={{color:G600}}>{r.stade}</TD>},
-      {id:"qualite", label:"Qualité",  cell:r=><TD style={{fontSize:11,color:G600}}>{r.qualite}</TD>},
+      {id:"qualite", label:"Qualité",  cell:r=>{const qu=(r.qualite||"").toUpperCase();const s=qu.startsWith("BLANC DE BLANCS")?{color:"#B45309",fontWeight:700}:qu.startsWith("BLANC DE NOIRS")||qu.startsWith("BDN")?{color:"#7C3AED",fontWeight:700}:qu.startsWith("ROSÉ")?{color:"#DB2777",fontWeight:700}:{color:G600};return <TD style={{fontSize:11,...s}}>{r.qualite}</TD>;}},
       {id:"cru",     label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"millesime",label:"Mill.",   cell:r=><TD style={{color:G600}}>{r.millesime}</TD>},
       {id:"prix",    label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
@@ -762,7 +763,7 @@ function App() {
       {id:"qte",      label:"Qté (hl)", cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"vendange", label:"Vendange", cell:r=><TD style={{color:G600}}>{r.vendange}</TD>},
       {id:"formatVin",label:"Format",   cell:r=><TD style={{fontSize:11,color:G600}}>{r.formatVin}</TD>},
-      {id:"qualite",  label:"Qualité",  cell:r=><TD style={{fontSize:11,color:G600}}>{r.qualite}</TD>},
+      {id:"qualite",  label:"Qualité",  cell:r=>{const qu=(r.qualite||"").toUpperCase();const s=qu==="ROUGE"?{color:"#DC2626",fontWeight:700}:{color:G600};return <TD style={{fontSize:11,...s}}>{r.qualite}</TD>;}},
       {id:"cru",      label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"cepage",   label:"Cépage",   cell:r=><TD style={{fontWeight:600}}>{r.cepage}</TD>},
       {id:"prix",     label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
