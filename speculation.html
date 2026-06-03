@@ -745,7 +745,7 @@ function App() {
       {id:"modele",  label:"Modèle",   cell:r=><TD style={{color:G600}}>{r.modele}</TD>},
       {id:"couleur", label:"Couleur",  cell:r=><TD style={{color:G600}}>{r.couleur}</TD>},
       {id:"stade",   label:"Stade",    cell:r=><TD style={{color:G600}}>{r.stade}</TD>},
-      {id:"qualite", label:"Qualité",  cell:r=>{const qu=(r.qualite||"").toUpperCase();const s=qu.startsWith("BLANC DE BLANCS")?{color:"#B45309",fontWeight:700}:qu.startsWith("BLANC DE NOIRS")||qu.startsWith("BDN")?{color:"#7C3AED",fontWeight:700}:qu.startsWith("ROSÉ")?{color:"#DB2777",fontWeight:700}:{color:G600};return <TD style={{fontSize:11,...s}}>{r.qualite}</TD>;}},
+      {id:"qualite", label:"Qualité",  cell:r=>{const qu=(r.qualite||"").toUpperCase();const s=qu.startsWith("BLANC DE BLANCS")?{color:"#EAB308",fontWeight:700}:qu.startsWith("BLANC DE NOIRS")||qu.startsWith("BDN")?{color:"#7C3AED",fontWeight:700}:qu.startsWith("ROSÉ")?{color:"#DB2777",fontWeight:700}:{color:G600};return <TD style={{fontSize:11,...s}}>{r.qualite}</TD>;}},
       {id:"cru",     label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"millesime",label:"Mill.",   cell:r=><TD style={{color:G600}}>{r.millesime}</TD>},
       {id:"prix",    label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
