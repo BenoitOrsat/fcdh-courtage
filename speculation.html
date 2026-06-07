@@ -430,7 +430,7 @@ function App() {
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
-  useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);},[tab]);
+  useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);setFB("");},[tab]);
   // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
   useEffect(()=>{
     if(pendingSaveRef.current&&gToken&&driveWbRef.current){
@@ -1058,17 +1058,17 @@ function App() {
         {view==="liste" && (bouteilles.length>0||vinsClairs.length>0) && (
           <>
             <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
-              {/* Ligne 1 : recherche + sélecteurs + tri */}
+              {/* Ligne 1 : recherche + sélecteurs */}
               <div style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
                 <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
                 <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
-                <select value={fBesoin} onChange={e=>setFB(e.target.value)} style={selStyle}><option value="">Vend & Recherche</option><option>Vend</option><option>Recherche</option></select>
-                <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={selStyle}><option value="date">Date ↓</option><option value="score">Score ↓</option></select>
                 <span style={{fontSize:11,color:G400,marginLeft:"auto",whiteSpace:"nowrap"}}>{filtered.length} entrée(s)</span>
               </div>
-              {/* Ligne 2 : statuts + filtres qualité/format/couleur */}
+              {/* Ligne 2 : besoin + statuts + filtres qualité/format/couleur */}
               <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
+                {["Tous","Vend","Recherche"].map(v=>{const val=v==="Tous"?"":v;const on=fBesoin===val;const bc=v==="Vend"?BESOIN_COLORS["Vend"]:v==="Recherche"?BESOIN_COLORS["Recherche"]:{bg:G100,col:G600,bdr:G200};return <span key={v} onClick={()=>setFB(val)} style={{background:on?(v==="Tous"?NAVY:bc.bg):G50,color:on?(v==="Tous"?GOLD:bc.col):G400,border:`1.5px solid ${on?(v==="Tous"?NAVY:bc.bdr):G200}`,borderRadius:99,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>{v}</span>;})}
+                <span style={{color:G200,margin:"0 2px"}}>|</span>
                 {STATUTS.map(s=>{const sc=STATUT_COLORS[s]||{bg:G100,col:G600,bdr:G200};const on=fStatuts.includes(s);return <span key={s} onClick={()=>setFS(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])} style={{background:on?sc.bg:G50,color:on?sc.col:G400,border:`1.5px solid ${on?sc.bdr:G200}`,borderRadius:99,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>{s}</span>;})}
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
                 <span style={{color:G200,margin:"0 2px"}}>|</span>
