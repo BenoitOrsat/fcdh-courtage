@@ -905,7 +905,7 @@ function App() {
         <button onClick={()=>setView("cotations")} style={{padding:"6px 16px",borderRadius:7,fontSize:12,fontWeight:600,border:`1.5px solid ${view==="cotations"?GOLD:G200}`,background:view==="cotations"?NAVY:"transparent",color:view==="cotations"?GOLD:G400,cursor:"pointer",marginRight:4}}>📊 Cotations</button>
       </div>
 
-      <div style={{padding:"20px 24px"}}>
+      <div style={{padding:"20px 24px",overflowX:"hidden"}}>
 
         {/* ── Connect CTA (when no data) ── */}
         {!driveLoaded && bouteilles.length===0 && view==="liste" && (
@@ -1148,7 +1148,7 @@ function App() {
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
               </div>
             </div>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 270px)",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 270px)",width:"100%",minWidth:0,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
               {(()=>{
                 const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
                 const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
