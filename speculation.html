@@ -382,6 +382,7 @@ function App() {
   const [vinsClairs, setVinsClairs] = useState([]);
   const [form, setForm]   = useState(null);
   const [editId, setEditId] = useState(null);
+  const [dupEntry, setDupEntry] = useState(null);
   const [fCampagne, setFCamp] = useState(CAMPAGNE);
   const [fCourtier, setFC] = useState("");
   const [fBesoin, setFB]   = useState("");
@@ -740,7 +741,7 @@ function App() {
     setOrder(prev=>{const a=[...prev],f=a.indexOf(dragColRef.current),t=a.indexOf(dropId);if(f<0||t<0)return prev;a.splice(f,1);a.splice(t,0,dragColRef.current);return a;});
   };
   const COLS = useMemo(()=>{
-    const actCell = r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
+    const actCell = r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDupEntry(r)} style={{padding:"4px 8px",background:"#dbeafe",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>⧉</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
     return {
     bouteilles:[
       {id:"score",   label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
@@ -891,6 +892,35 @@ function App() {
               <button onClick={signInGoogle} style={{padding:"10px 24px",background:NAVY,color:GOLD,border:"none",borderRadius:9,fontWeight:700,fontSize:14,cursor:"pointer"}}>📊 Connecter Google Drive</button>
             </div>
             {gError && <div style={{marginTop:16,fontSize:12,color:"#dc2626"}}>{gError}</div>}
+          </div>
+        )}
+
+        {/* ── Confirm duplicate ── */}
+        {dupEntry && (
+          <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60}}>
+            <div style={{background:WHITE,borderRadius:14,padding:28,maxWidth:400,width:"100%",margin:"0 16px",boxShadow:"0 8px 40px rgba(13,27,62,.25)"}}>
+              <div style={{fontWeight:700,fontSize:16,color:NAVY,marginBottom:8}}>⧉ Dupliquer cette entrée ?</div>
+              <div style={{fontSize:13,color:TEXT,fontWeight:600,marginBottom:4}}>{dupEntry.client}</div>
+              <div style={{fontSize:12,color:G400,marginBottom:16}}>{dupEntry.courtier} · {dupEntry.campagne} · {dupEntry.besoin}</div>
+              <div style={{fontSize:12,color:G400,marginBottom:20,background:G50,borderRadius:8,padding:"10px 14px",lineHeight:1.7}}>
+                Une nouvelle entrée sera créée avec les mêmes informations.<br/>
+                <span style={{color:NAVY,fontWeight:600}}>Date</span> → aujourd'hui &nbsp;·&nbsp;
+                <span style={{color:NAVY,fontWeight:600}}>Statut</span> → en attente &nbsp;·&nbsp;
+                <span style={{color:NAVY,fontWeight:600}}>Campagne</span> → {CAMPAGNE}
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>{
+                  const {id:_id,_row,_sheet,_best,...rest}=dupEntry;
+                  setForm({...rest,date:new Date().toLocaleDateString("fr-FR"),statut:"en attente",campagne:CAMPAGNE});
+                  setEditId(null);
+                  setDupEntry(null);
+                  setView("form");
+                }} style={{flex:1,background:NAVY,color:GOLD,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>
+                  ⧉ Dupliquer
+                </button>
+                <button onClick={()=>setDupEntry(null)} style={{flex:1,background:G100,color:G600,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Annuler</button>
+              </div>
+            </div>
           </div>
         )}
 
