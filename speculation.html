@@ -311,8 +311,8 @@ function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)retur
 function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
 
 
-const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,modele:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,actions:70};
-const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,actions:70};
+const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,modele:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,commentaires:200,actions:70};
+const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,commentaires:200,actions:70};
 const DEFAULT_HIST_WIDTHS={date:90,numero:60,acheteur:150,vendeur:150,qte:70,prix:85,mention:200,code:80};
 
 const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:""};
@@ -357,6 +357,29 @@ const MultiSelect=({label,options,selected,onChange})=>{
       </label>)}
       {selected.length>0&&<div style={{borderTop:`1px solid ${G100}`,padding:"4px 12px"}}>
         <button onClick={()=>{onChange([]);setOpen(false);}} style={{fontSize:11,color:G400,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"inherit"}}>Effacer</button>
+      </div>}
+    </div>}
+  </div>;
+};
+
+const ColumnToggler=({colDefs,hidden,setHidden})=>{
+  const [open,setOpen]=React.useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const hideable=colDefs.filter(c=>c.id!=='score'&&c.id!=='actions');
+  const toggle=id=>setHidden(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+  const nb=hidden.filter(id=>hideable.some(c=>c.id===id)).length;
+  return <div ref={ref} style={{position:"relative",display:"inline-block"}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{border:`1.5px solid ${nb>0?NAVY:G200}`,borderRadius:8,padding:"7px 10px",fontSize:12,color:nb>0?GOLD:G600,background:nb>0?NAVY:WHITE,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",outline:"none"}}>
+      <span>⊞{nb>0?` ${nb} masq.`:""}</span><span style={{fontSize:9,opacity:0.6}}>▾</span>
+    </button>
+    {open&&<div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:WHITE,border:`1px solid ${G200}`,borderRadius:8,boxShadow:"0 4px 16px rgba(13,27,62,.15)",zIndex:30,minWidth:180,maxHeight:340,overflowY:"auto",padding:"4px 0"}}>
+      <div style={{padding:"6px 12px 4px",fontSize:10,fontWeight:700,color:G400,textTransform:"uppercase",letterSpacing:"0.08em"}}>Colonnes visibles</div>
+      {hideable.map(col=>{const vis=!hidden.includes(col.id);return <label key={col.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",cursor:"pointer",fontSize:12,color:TEXT}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""}>
+        <input type="checkbox" checked={vis} onChange={()=>toggle(col.id)} style={{cursor:"pointer",accentColor:NAVY}}/>{col.label||col.id}
+      </label>;})}
+      {nb>0&&<div style={{borderTop:`1px solid ${G100}`,padding:"5px 12px"}}>
+        <button onClick={()=>{setHidden([]);setOpen(false);}} style={{fontSize:11,color:G400,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"inherit"}}>Tout afficher</button>
       </div>}
     </div>}
   </div>;
@@ -438,10 +461,14 @@ function App() {
   const cotLoadedRef = useRef(false);
   const pendingSaveRef = useRef(false);
   const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
-  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','actions'];}});
-  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
+  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];}});
+  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];}});
+  const [btlHidden, setBtlHidden] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_hidden');return s?JSON.parse(s):[];}catch{return [];}});
+  const [vcHidden,  setVcHidden]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_hidden');return s?JSON.parse(s):[];}catch{return [];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
+  useEffect(()=>{localStorage.setItem('fcdh_btl_hidden',JSON.stringify(btlHidden));},[btlHidden]);
+  useEffect(()=>{localStorage.setItem('fcdh_vc_hidden',JSON.stringify(vcHidden));},[vcHidden]);
   useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);setFB("");},[tab]);
   // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
   useEffect(()=>{
@@ -761,6 +788,7 @@ function App() {
       {id:"cru",     label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"millesime",label:"Mill.",   cell:r=><TD style={{color:G600}}>{r.millesime}</TD>},
       {id:"prix",    label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
+      {id:"commentaires",label:"Commentaire",cell:r=><TD style={{fontSize:11,color:G400,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.commentaires}>{r.commentaires}</TD>},
       {id:"actions", label:"",         cell:r=>actCell(r)},
     ],
     vinsclairs:[
@@ -779,6 +807,7 @@ function App() {
       {id:"cru",      label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"cepage",   label:"Cépage",   cell:r=><TD style={{fontWeight:600}}>{r.cepage}</TD>},
       {id:"prix",     label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
+      {id:"commentaires",label:"Commentaire",cell:r=><TD style={{fontSize:11,color:G400,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.commentaires}>{r.commentaires}</TD>},
       {id:"actions",  label:"",         cell:r=>actCell(r)},
     ],
   };},[openForm,openModal,setBouteilles,setVinsClairs,setDelId]);
@@ -1104,6 +1133,7 @@ function App() {
                 <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
                 <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
                 <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
+                <ColumnToggler colDefs={tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs} hidden={tab==="bouteilles"?btlHidden:vcHidden} setHidden={tab==="bouteilles"?setBtlHidden:setVcHidden}/>
                 <span style={{fontSize:11,color:G400,marginLeft:"auto",whiteSpace:"nowrap"}}>{filtered.length} entrée(s)</span>
               </div>
               {/* Ligne 2 : besoin + statuts + filtres qualité/format/couleur */}
@@ -1118,18 +1148,19 @@ function App() {
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
               </div>
             </div>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflow:"auto",maxHeight:"calc(100vh - 270px)",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 270px)",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
               {(()=>{
                 const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
                 const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
                 const setColOrder=tab==="bouteilles"?setBtlOrder:setVcOrder;
                 const colWidths=tab==="bouteilles"?btlColWidths:vcColWidths;
                 const setColWidths=tab==="bouteilles"?setBtlColWidths:setVcColWidths;
-                const ordered=colOrder.map(id=>colDefs.find(c=>c.id===id)).filter(Boolean);
+                const hidden=tab==="bouteilles"?btlHidden:vcHidden;
+                const ordered=colOrder.map(id=>colDefs.find(c=>c.id===id)).filter(Boolean).filter(c=>!hidden.includes(c.id));
                 const totalWidth=ordered.reduce((s,c)=>s+(colWidths[c.id]||80),0);
                 const onResizeStart=(e,id)=>{e.preventDefault();e.stopPropagation();const startX=e.clientX,startW=colWidths[id]||80;tableResizeRef.current={id};const onMove=ev=>{const w=Math.max(40,startW+(ev.clientX-startX));setColWidths(p=>({...p,[id]:w}));};const onUp=()=>{tableResizeRef.current=null;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);};
                 const onSort=id=>{setColSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:id==="date"?-1:1});};
-                return <table style={{width:"100%",minWidth:totalWidth,borderCollapse:"collapse",tableLayout:"fixed"}}>
+                return <table style={{tableLayout:"fixed",borderCollapse:"collapse",width:totalWidth}}>
                   <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
                   <tbody>{filtered.map(r=>(
                     <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
