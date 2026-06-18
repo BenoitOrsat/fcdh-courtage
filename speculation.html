@@ -4,11 +4,22 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FCDH Courtiers Associés</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // Affiche les erreurs JS à l'écran au lieu d'une page blanche silencieuse
+    window.addEventListener('error', function(e) {
+      var d = document.getElementById('root');
+      if (d && !d.innerHTML) {
+        d.innerHTML = '<div style="padding:40px;font-family:monospace;color:#dc2626;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;margin:40px">'
+          + '<b>Erreur JavaScript :</b><br/>' + e.message
+          + '<br/><small>Ligne ' + e.lineno + ' dans ' + (e.filename || 'script') + '</small></div>';
+      }
+    });
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <style>
