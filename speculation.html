@@ -1118,7 +1118,7 @@ function App() {
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
               </div>
             </div>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflow:"auto",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflow:"auto",maxHeight:"calc(100vh - 270px)",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
               {(()=>{
                 const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
                 const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
