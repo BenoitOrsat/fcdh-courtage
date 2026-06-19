@@ -25,7 +25,7 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     /* ── Toolbar ── */
-    .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+    .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; position: relative; }
     .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; font-family: inherit; white-space: nowrap; }
     .btn-dark  { background: #0d1b3e; color: #C9A84C; }
     .btn-dark:hover  { background: #1a2f5a; }
@@ -39,6 +39,14 @@
     .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
     .toolbar-sep { width: 1px; height: 24px; background: #e5e7eb; flex-shrink: 0; }
     .cache-badge { font-size: 10px; color: #f59e0b; font-weight: 600; padding: 3px 8px; background: #fef3c7; border-radius: 99px; }
+
+    /* ── Column panel ── */
+    .col-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: white; border: 1px solid #dde1eb; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 12px; z-index: 100; min-width: 220px; }
+    .col-panel.open { display: block; }
+    .col-panel-title { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .col-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: #374151; cursor: pointer; user-select: none; }
+    .col-item input[type=checkbox] { accent-color: #C9A84C; width: 14px; height: 14px; cursor: pointer; }
+    .col-panel-footer { display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #edf0f5; padding-top: 10px; }
 
     /* ── Filters ── */
     .filters { background: #f8f9fb; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
@@ -57,14 +65,18 @@
     .stat-l { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; white-space: nowrap; }
 
     /* ── Table ── */
-    .table-outer { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .table-outer  { flex: 1; overflow-y: auto; overflow-x: hidden; }
     .table-scroll { overflow-x: auto; min-width: 0; }
     table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: 100%; }
     thead th {
       background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
       padding: 7px 10px; border-bottom: 2px solid #C9A84C; border-right: 1px solid #1a2f5a;
       position: sticky; top: 0; z-index: 4; white-space: nowrap; text-align: left;
+      user-select: none;
     }
+    thead th.draggable { cursor: grab; }
+    thead th.draggable:active { cursor: grabbing; }
+    thead th.drag-over { background: #1a3a6e; outline: 2px dashed #C9A84C; outline-offset: -2px; }
     thead th:last-child { border-right: none; }
     tbody tr { background: white; }
     tbody tr:nth-child(even) { background: #f9fafb; }
@@ -74,21 +86,24 @@
       vertical-align: middle; color: #1f2937; white-space: nowrap;
     }
     td:last-child { border-right: none; }
-    td.td-comment { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    td.td-nom { font-weight: 600; }
+    td.td-comment  { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    td.td-clients  { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+    td.td-nom      { font-weight: 600; }
+    td.td-highlight { background: #fefce8 !important; }
 
     /* Badges */
     .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
     .badge-acheteur { background: #dbeafe; color: #1d4ed8; }
     .badge-vendeur  { background: #dcfce7; color: #15803d; }
-    .badge-encours  { background: #fef3c7; color: #b45309; }
-    .badge-valide   { background: #dcfce7; color: #15803d; }
-    .badge-annule   { background: #fee2e2; color: #dc2626; }
+    .badge-attente  { background: #f3f4f6; color: #6b7280; }
+    .badge-etude    { background: #dbeafe; color: #1d4ed8; }
+    .badge-conclu   { background: #dcfce7; color: #15803d; }
+    .badge-abandon  { background: #fee2e2; color: #dc2626; }
 
-    /* Action buttons in row */
+    /* Row actions */
     .row-actions { display: flex; gap: 4px; }
 
-    /* Empty / setup state */
+    /* Empty / setup states */
     .center-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; gap: 14px; }
     .center-icon  { font-size: 56px; }
     .center-title { font-size: 18px; font-weight: 800; color: #0d1b3e; }
@@ -97,19 +112,21 @@
     /* ── Modals ── */
     .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 50; align-items: center; justify-content: center; }
     .modal-bg.open { display: flex; }
-    .modal { background: white; border-radius: 16px; padding: 28px; width: 95%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .modal { background: white; border-radius: 16px; padding: 28px; width: 95%; max-width: 580px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
     .modal.wide { max-width: 780px; }
     .modal-title { font-size: 16px; font-weight: 800; color: #0d1b3e; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-    .form-row { margin-bottom: 14px; }
+    .form-row   { margin-bottom: 14px; }
     .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
     .form-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 5px; }
     .form-input { width: 100%; padding: 9px 12px; border: 1px solid #dde1eb; border-radius: 8px; font-size: 13px; font-family: inherit; color: #0d1b3e; }
     .form-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 2px rgba(201,168,76,.15); }
+    .form-input.highlighted { border-color: #3b82f6; background: #eff6ff; }
     select.form-input { background: white; cursor: pointer; }
     textarea.form-input { resize: vertical; min-height: 70px; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
 
-    /* Settings modal steps */
+    /* Settings steps */
     .step { background: #f8f9fb; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
     .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #0d1b3e; color: #C9A84C; border-radius: 50%; font-size: 11px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
     .step-text { font-size: 12px; color: #374151; line-height: 1.6; }
@@ -145,11 +162,23 @@
 </header>
 
 <!-- ── Toolbar ── -->
-<div class="toolbar">
+<div class="toolbar" id="toolbar">
   <button class="btn btn-green" id="btnAdd" onclick="openAdd()" disabled>➕ Nouvelle demande</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-ghost" id="btnCols" onclick="toggleColPanel()">Colonnes ▾</button>
   <div class="toolbar-sep"></div>
   <button class="btn btn-ghost" onclick="openModal('modalSettings')">⚙️ Configuration</button>
   <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
+
+  <!-- Column visibility panel -->
+  <div class="col-panel" id="colPanel">
+    <div class="col-panel-title">Afficher / masquer</div>
+    <div id="colCheckboxes"></div>
+    <div class="col-panel-footer">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="resetColOrder()">Réinitialiser</button>
+      <button class="btn btn-dark"  style="font-size:11px;padding:4px 10px" onclick="toggleColPanel()">Fermer</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── Filters ── -->
@@ -174,9 +203,10 @@
     <span class="f-label">Statut</span>
     <select class="f-input" id="fStatut" onchange="applyFilters()">
       <option value="">Tous</option>
-      <option>En cours</option>
-      <option>Validé</option>
-      <option>Annulé</option>
+      <option>En attente</option>
+      <option>En cours d'étude</option>
+      <option>Conclu</option>
+      <option>Abandon</option>
     </select>
   </div>
   <div class="f-group">
@@ -190,10 +220,11 @@
 <div class="stats-bar" id="statsBar" style="display:none">
   <div class="stat"><div class="stat-v" id="sTotal">0</div><div class="stat-l">Demandes</div></div>
   <div class="stat"><div class="stat-v" id="sAcheteurs" style="color:#93c5fd">0</div><div class="stat-l">Acheteurs</div></div>
-  <div class="stat"><div class="stat-v" id="sVendeurs" style="color:#86efac">0</div><div class="stat-l">Vendeurs</div></div>
-  <div class="stat"><div class="stat-v" id="sEnCours" style="color:#fcd34d">0</div><div class="stat-l">En cours</div></div>
-  <div class="stat"><div class="stat-v" id="sValides" style="color:#4ade80">0</div><div class="stat-l">Validés</div></div>
-  <div class="stat"><div class="stat-v" id="sAnnules" style="color:#f87171">0</div><div class="stat-l">Annulés</div></div>
+  <div class="stat"><div class="stat-v" id="sVendeurs"  style="color:#86efac">0</div><div class="stat-l">Vendeurs</div></div>
+  <div class="stat"><div class="stat-v" id="sAttente"   style="color:#d1d5db">0</div><div class="stat-l">En attente</div></div>
+  <div class="stat"><div class="stat-v" id="sEtude"     style="color:#93c5fd">0</div><div class="stat-l">En étude</div></div>
+  <div class="stat"><div class="stat-v" id="sConclu"    style="color:#4ade80">0</div><div class="stat-l">Conclus</div></div>
+  <div class="stat"><div class="stat-v" id="sAbandon"   style="color:#f87171">0</div><div class="stat-l">Abandons</div></div>
 </div>
 
 <!-- ── Table ── -->
@@ -201,7 +232,7 @@
   <div class="center-state" id="setupState">
     <div class="center-icon">⚙️</div>
     <div class="center-title">Configuration requise</div>
-    <div class="center-sub">Connectez cet outil à un Google Sheet pour commencer. La configuration ne prend que 5 minutes.</div>
+    <div class="center-sub">Connectez cet outil à un Google Sheet pour commencer.</div>
     <button class="btn btn-dark" style="margin-top:8px" onclick="openModal('modalSettings')">⚙️ Configurer maintenant</button>
   </div>
   <div class="center-state" id="emptyState" style="display:none">
@@ -221,12 +252,10 @@
 <div class="modal-bg" id="modalSettings">
   <div class="modal wide">
     <div class="modal-title">⚙️ Configuration Google Sheets</div>
-
     <div class="step">
       <span class="step-num">1</span>
-      <span class="step-text">Créez un <strong>Google Sheet vierge</strong> (sheets.google.com → Nouveau). Le script créera automatiquement l'onglet <strong>Demandes</strong> avec tous les en-têtes.</span>
+      <span class="step-text">Ouvrez votre Google Sheet <strong>Offres et demandes raisins</strong> dans <em>Mon Drive / Vendanges</em>.</span>
     </div>
-
     <div class="step">
       <span class="step-num">2</span>
       <span class="step-text">Dans le Sheet, ouvrez <strong>Extensions → Apps Script</strong>. Supprimez le code existant et collez celui-ci :</span>
@@ -235,12 +264,10 @@
         <pre id="scriptCode"></pre>
       </div>
     </div>
-
     <div class="step">
       <span class="step-num">3</span>
       <span class="step-text">Cliquez <strong>Déployer → Nouveau déploiement</strong> · Type : <em>Application Web</em> · Exécuter en tant que : <em>Moi</em> · Accès : <em>Tout le monde</em>. Copiez l'URL générée.</span>
     </div>
-
     <div class="step">
       <span class="step-num">4</span>
       <span class="step-text">Collez l'URL ci-dessous et testez la connexion.</span>
@@ -252,10 +279,9 @@
         <div class="test-result" id="testResult"></div>
       </div>
     </div>
-
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalSettings')">Annuler</button>
-      <button class="btn btn-dark" onclick="saveSettings()">💾 Enregistrer</button>
+      <button class="btn btn-dark"  onclick="saveSettings()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
@@ -299,18 +325,27 @@
         </datalist>
       </div>
       <div>
-        <label class="form-label">Millésime</label>
-        <input class="form-input" type="number" id="f_millesime" placeholder="ex : 2024" min="1990" max="2100">
+        <label class="form-label">Vendange(s) concernée(s)</label>
+        <input class="form-input" type="text" id="f_vendanges" placeholder="ex : 2024 ou 2023, 2024">
       </div>
     </div>
 
-    <div class="form-row-2">
+    <div class="form-row-3">
       <div>
-        <label class="form-label">Quantité (kg)</label>
+        <label class="form-label">Quantité</label>
         <input class="form-input" type="number" id="f_quantite" placeholder="ex : 5000" min="0">
       </div>
       <div>
-        <label class="form-label">Prix (€/kg)</label>
+        <label class="form-label">Unité</label>
+        <select class="form-input" id="f_unite">
+          <option value="">—</option>
+          <option>kg</option>
+          <option>hl</option>
+          <option>marc (4 000 kg)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Prix indicatif (€)</label>
         <input class="form-input" type="number" id="f_prix" placeholder="ex : 7.50" step="0.01" min="0">
       </div>
     </div>
@@ -318,10 +353,11 @@
     <div class="form-row-2">
       <div>
         <label class="form-label">Statut</label>
-        <select class="form-input" id="f_statut">
-          <option>En cours</option>
-          <option>Validé</option>
-          <option>Annulé</option>
+        <select class="form-input" id="f_statut" onchange="onStatutChange()">
+          <option>En attente</option>
+          <option>En cours d'étude</option>
+          <option>Conclu</option>
+          <option>Abandon</option>
         </select>
       </div>
       <div>
@@ -332,6 +368,11 @@
           <option>ASM</option><option>EB</option><option>BO</option>
         </select>
       </div>
+    </div>
+
+    <div class="form-row" id="rowClients">
+      <label class="form-label">Clients proposés</label>
+      <input class="form-input" id="f_clients" placeholder="Noms des clients proposés…">
     </div>
 
     <div class="form-row">
@@ -353,7 +394,7 @@
     <p style="font-size:13px;color:#374151;line-height:1.6">Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.</p>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalDelete')">Annuler</button>
-      <button class="btn btn-red" id="confirmDeleteBtn" onclick="confirmDelete()">Supprimer</button>
+      <button class="btn btn-red"   onclick="confirmDelete()">Supprimer</button>
     </div>
   </div>
 </div>
@@ -364,26 +405,58 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════════
-const HEADERS   = ['Date','Type','Nom','Cépage','Quantité (kg)','Prix (€/kg)','Millésime','Statut','Courtier','Commentaire'];
-const URL_KEY   = 'fcdh_raisins_url';
-const CACHE_KEY = 'fcdh_raisins_cache';
-const REFRESH_MS = 20000;
+const HEADERS = [
+  'Date', 'Type', 'Nom', 'Cépage', 'Quantité', 'Unité',
+  'Prix indicatif (€)', 'Vendange(s)', 'Statut', 'Clients proposés',
+  'Courtier', 'Commentaire'
+];
 
-const FIELD_MAP = {
-  'Date'          : 'f_date',
-  'Type'          : 'f_type',
-  'Nom'           : 'f_nom',
-  'Cépage'        : 'f_cepage',
-  'Quantité (kg)' : 'f_quantite',
-  'Prix (€/kg)'   : 'f_prix',
-  'Millésime'     : 'f_millesime',
-  'Statut'        : 'f_statut',
-  'Courtier'      : 'f_courtier',
-  'Commentaire'   : 'f_commentaire',
+const COL_WIDTHS = {
+  'Date'              : '92px',
+  'Type'              : '90px',
+  'Nom'               : '180px',
+  'Cépage'            : '120px',
+  'Quantité'          : '75px',
+  'Unité'             : '115px',
+  'Prix indicatif (€)': '105px',
+  'Vendange(s)'       : '120px',
+  'Statut'            : '130px',
+  'Clients proposés'  : '180px',
+  'Courtier'          : '70px',
+  'Commentaire'       : '200px',
 };
 
-// Apps Script source
-const APPS_SCRIPT = `const HEADERS = ['Date','Type','Nom','Cépage','Quantité (kg)','Prix (€/kg)','Millésime','Statut','Courtier','Commentaire'];
+const COL_ALIGN = {
+  'Quantité'          : 'right',
+  'Prix indicatif (€)': 'right',
+};
+
+const FIELD_MAP = {
+  'Date'              : 'f_date',
+  'Type'              : 'f_type',
+  'Nom'               : 'f_nom',
+  'Cépage'            : 'f_cepage',
+  'Quantité'          : 'f_quantite',
+  'Unité'             : 'f_unite',
+  'Prix indicatif (€)': 'f_prix',
+  'Vendange(s)'       : 'f_vendanges',
+  'Statut'            : 'f_statut',
+  'Clients proposés'  : 'f_clients',
+  'Courtier'          : 'f_courtier',
+  'Commentaire'       : 'f_commentaire',
+};
+
+const URL_KEY    = 'fcdh_raisins_url';
+const CACHE_KEY  = 'fcdh_raisins_cache';
+const ORDER_KEY  = 'fcdh_raisins_col_order';
+const HIDDEN_KEY = 'fcdh_raisins_col_hidden';
+const REFRESH_MS = 20000;
+
+const APPS_SCRIPT = `const HEADERS = [
+  'Date','Type','Nom','Cépage','Quantité','Unité',
+  'Prix indicatif (€)','Vendange(s)','Statut','Clients proposés',
+  'Courtier','Commentaire'
+];
 
 function getSheet(){
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -398,11 +471,11 @@ function getSheet(){
 
 function read(s){
   if(s.getLastRow() < 1) return {headers:[], rows:[]};
-  const v = s.getRange(1, 1, s.getLastRow(), s.getLastColumn()).getValues();
+  const v = s.getRange(1,1,s.getLastRow(),s.getLastColumn()).getValues();
   const rows = v.slice(1)
-    .map((r,i) => ({idx:i, data:r}))
+    .map((r,i) => ({idx:i, data:r.map(c => c instanceof Date ? c.toISOString() : c)}))
     .filter(r => r.data.some(c => c !== ''));
-  return {headers: v[0], rows};
+  return {headers:v[0], rows};
 }
 
 function doGet(e){
@@ -414,38 +487,51 @@ function doGet(e){
 function doPost(e){
   const lk = LockService.getScriptLock();
   lk.waitLock(15000);
-  try {
+  try{
     const p = JSON.parse(e.postData.contents);
     const s = getSheet();
     if(p.action === 'addRow'){
       s.appendRow(HEADERS.map(h => p.data[h] !== undefined ? p.data[h] : ''));
-    }
-    else if(p.action === 'updateRow'){
-      const rowNum = p.rowIdx + 2;
-      s.getRange(rowNum, 1, 1, HEADERS.length)
+    } else if(p.action === 'updateRow'){
+      s.getRange(p.rowIdx+2,1,1,HEADERS.length)
        .setValues([HEADERS.map(h => p.data[h] !== undefined ? p.data[h] : '')]);
-    }
-    else if(p.action === 'deleteRow'){
-      s.deleteRow(p.rowIdx + 2);
+    } else if(p.action === 'deleteRow'){
+      s.deleteRow(p.rowIdx+2);
     }
     return ContentService
       .createTextOutput(JSON.stringify(read(s)))
       .setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    lk.releaseLock();
-  }
+  } finally { lk.releaseLock(); }
 }`;
 
 // ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
 let scriptUrl    = localStorage.getItem(URL_KEY) || '';
-let rows         = [];   // [{idx, data:[...]}]
-let filteredIdxs = [];   // indices into rows[]
+let rows         = [];
+let filteredIdxs = [];
 let refreshTimer = null;
 let pauseUntil   = 0;
-let editingIdx   = null; // rowIdx being edited
+let editingIdx   = null;
 let deletingIdx  = null;
+
+// Column order & visibility (persisted)
+let colOrder  = loadColOrder();
+let colHidden = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
+
+function loadColOrder() {
+  const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+  if (!saved) return [...HEADERS];
+  // Merge: keep saved order, append any new HEADERS not yet in saved
+  const merged = saved.filter(c => HEADERS.includes(c));
+  HEADERS.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  return merged;
+}
+
+function saveColState() {
+  localStorage.setItem(ORDER_KEY,  JSON.stringify(colOrder));
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...colHidden]));
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
@@ -453,6 +539,7 @@ let deletingIdx  = null;
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('scriptCode').textContent = APPS_SCRIPT;
   document.getElementById('f_date').value = todayStr();
+  onStatutChange();
 
   if (scriptUrl) {
     document.getElementById('scriptUrlInput').value = scriptUrl;
@@ -461,6 +548,17 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     setSyncLabel('Non configuré', '');
   }
+
+  setupDragDrop();
+
+  // Close col panel when clicking outside
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('colPanel');
+    const btn   = document.getElementById('btnCols');
+    if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) {
+      panel.classList.remove('open');
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -471,12 +569,8 @@ async function apiFetch() {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
-
 async function apiPost(data) {
-  const r = await fetch(scriptUrl, {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
+  const r = await fetch(scriptUrl, { method: 'POST', body: JSON.stringify(data) });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -504,7 +598,7 @@ async function loadData(showSpinner = true) {
 }
 
 function applyData(data) {
-  rows = (data.rows || []);
+  rows = data.rows || [];
   showTable(rows.length > 0);
   if (rows.length) {
     populateFilterOptions();
@@ -527,10 +621,10 @@ function startRefresh() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  DISPLAY
+//  DISPLAY STATES
 // ═══════════════════════════════════════════════════════════════
 function showTable(hasRows) {
-  document.getElementById('setupState').style.display = 'none';
+  document.getElementById('setupState').style.display  = 'none';
   document.getElementById('emptyState').style.display  = hasRows ? 'none' : '';
   document.getElementById('tableScroll').style.display = hasRows ? '' : 'none';
   document.getElementById('filtersBar').style.display  = hasRows ? '' : 'none';
@@ -541,116 +635,194 @@ function showTable(hasRows) {
 //  FILTERS
 // ═══════════════════════════════════════════════════════════════
 function populateFilterOptions() {
-  const cepageIdx   = hi('Cépage');
-  const courtierIdx = hi('Courtier');
-  const cepages   = [...new Set(rows.map(r => r.data[cepageIdx]).filter(Boolean))].sort();
-  const courtiers = [...new Set(rows.map(r => r.data[courtierIdx]).filter(Boolean))].sort();
+  const cepages   = [...new Set(rows.map(r => r.data[hi('Cépage')]).filter(Boolean))].sort();
+  const courtiers = [...new Set(rows.map(r => r.data[hi('Courtier')]).filter(Boolean))].sort();
   document.getElementById('fCepage').innerHTML   = '<option value="">Tous</option>' + cepages.map(c => `<option>${esc(c)}</option>`).join('');
   document.getElementById('fCourtier').innerHTML = '<option value="">Tous</option>' + courtiers.map(c => `<option>${esc(c)}</option>`).join('');
 }
 
 function applyFilters() {
-  const search   = document.getElementById('fSearch').value.toLowerCase().trim();
-  const fType    = document.getElementById('fType').value;
-  const fCepage  = document.getElementById('fCepage').value;
-  const fStatut  = document.getElementById('fStatut').value;
-  const fCourtier= document.getElementById('fCourtier').value;
-
-  const nomIdx     = hi('Nom');
-  const typeIdx    = hi('Type');
-  const cepageIdx  = hi('Cépage');
-  const statutIdx  = hi('Statut');
-  const courtierIdx= hi('Courtier');
-  const commentIdx = hi('Commentaire');
+  const search    = document.getElementById('fSearch').value.toLowerCase().trim();
+  const fType     = document.getElementById('fType').value;
+  const fCepage   = document.getElementById('fCepage').value;
+  const fStatut   = document.getElementById('fStatut').value;
+  const fCourtier = document.getElementById('fCourtier').value;
 
   filteredIdxs = rows.map((_,i) => i).filter(i => {
     const d = rows[i].data;
-    if (search && !String(d[nomIdx]||'').toLowerCase().includes(search)
-                && !String(d[cepageIdx]||'').toLowerCase().includes(search)
-                && !String(d[commentIdx]||'').toLowerCase().includes(search)) return false;
-    if (fType    && d[typeIdx]    !== fType)    return false;
-    if (fCepage  && d[cepageIdx]  !== fCepage)  return false;
-    if (fStatut  && d[statutIdx]  !== fStatut)  return false;
-    if (fCourtier && d[courtierIdx] !== fCourtier) return false;
+    if (search && !['Nom','Cépage','Commentaire','Clients proposés'].some(col => String(d[hi(col)]||'').toLowerCase().includes(search))) return false;
+    if (fType    && d[hi('Type')]    !== fType)    return false;
+    if (fCepage  && d[hi('Cépage')] !== fCepage)  return false;
+    if (fStatut  && d[hi('Statut')] !== fStatut)  return false;
+    if (fCourtier && d[hi('Courtier')] !== fCourtier) return false;
     return true;
   });
 
   renderTable();
-  const total = rows.length;
-  const shown = filteredIdxs.length;
+  const total = rows.length, shown = filteredIdxs.length;
   document.getElementById('fCount').textContent = shown === total
     ? total + ' demande' + (total > 1 ? 's' : '')
     : shown + ' / ' + total + ' demandes';
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  COLUMN PANEL
+// ═══════════════════════════════════════════════════════════════
+function toggleColPanel() {
+  const panel = document.getElementById('colPanel');
+  if (!panel.classList.contains('open')) buildColPanel();
+  panel.classList.toggle('open');
+}
+
+function buildColPanel() {
+  const html = colOrder.map(col => `
+    <label class="col-item">
+      <input type="checkbox" ${colHidden.has(col) ? '' : 'checked'} onchange="toggleCol('${esc(col)}', this.checked)">
+      ${esc(col)}
+    </label>`).join('');
+  document.getElementById('colCheckboxes').innerHTML = html;
+}
+
+function toggleCol(col, visible) {
+  if (visible) colHidden.delete(col);
+  else         colHidden.add(col);
+  saveColState();
+  if (rows.length) renderTable();
+}
+
+function resetColOrder() {
+  colOrder  = [...HEADERS];
+  colHidden = new Set();
+  saveColState();
+  buildColPanel();
+  if (rows.length) renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  RENDER TABLE
 // ═══════════════════════════════════════════════════════════════
+function visibleCols() {
+  return colOrder.filter(c => !colHidden.has(c));
+}
+
 function renderTable() {
   renderHead();
   renderBody();
 }
 
+let dragSrcCol = null;
+
 function renderHead() {
-  document.getElementById('tableHead').innerHTML = `<tr>
-    <th style="min-width:90px">Date</th>
-    <th style="min-width:90px">Type</th>
-    <th style="min-width:180px">Nom</th>
-    <th style="min-width:120px">Cépage</th>
-    <th style="min-width:90px;text-align:right">Qté (kg)</th>
-    <th style="min-width:90px;text-align:right">Prix (€/kg)</th>
-    <th style="min-width:80px;text-align:center">Millésime</th>
-    <th style="min-width:100px">Statut</th>
-    <th style="min-width:70px;text-align:center">Courtier</th>
-    <th style="min-width:200px">Commentaire</th>
-    <th style="min-width:80px;text-align:center">Actions</th>
-  </tr>`;
+  const cols = visibleCols();
+  const ths = cols.map(col => {
+    const w = COL_WIDTHS[col] || '100px';
+    return `<th class="draggable" data-col="${esc(col)}" style="min-width:${w}" draggable="true">${esc(col)}</th>`;
+  });
+  ths.push('<th style="min-width:80px;text-align:center">Actions</th>');
+  document.getElementById('tableHead').innerHTML = '<tr>' + ths.join('') + '</tr>';
 }
 
 function renderBody() {
-  const nomIdx     = hi('Nom');
-  const typeIdx    = hi('Type');
-  const cepageIdx  = hi('Cépage');
-  const qteIdx     = hi('Quantité (kg)');
-  const prixIdx    = hi('Prix (€/kg)');
-  const milIdx     = hi('Millésime');
+  const cols = visibleCols();
   const statutIdx  = hi('Statut');
-  const courtierIdx= hi('Courtier');
-  const commentIdx = hi('Commentaire');
-  const dateIdx    = hi('Date');
+  const clientsIdx = hi('Clients proposés');
 
   let html = '';
   for (const i of filteredIdxs) {
     const d   = rows[i].data;
-    const idx = rows[i].idx;
-
-    const type   = d[typeIdx]   || '';
     const statut = d[statutIdx] || '';
-    const qte    = d[qteIdx]    !== '' && d[qteIdx] !== null ? Number(d[qteIdx]).toLocaleString('fr-FR') : '';
-    const prix   = d[prixIdx]   !== '' && d[prixIdx] !== null ? Number(d[prixIdx]).toFixed(2) + ' €' : '';
-    const dateRaw = d[dateIdx];
-    const dateStr = formatDate(dateRaw);
+    const isEtude = statut === "En cours d'étude";
 
-    html += `<tr data-i="${i}">
-      <td>${esc(dateStr)}</td>
-      <td>${typeBadge(type)}</td>
-      <td class="td-nom">${esc(d[nomIdx])}</td>
-      <td>${esc(d[cepageIdx])}</td>
-      <td style="text-align:right">${esc(qte)}</td>
-      <td style="text-align:right">${esc(prix)}</td>
-      <td style="text-align:center">${esc(d[milIdx])}</td>
-      <td>${statutBadge(statut)}</td>
-      <td style="text-align:center;font-weight:600">${esc(d[courtierIdx])}</td>
-      <td class="td-comment" title="${esc(d[commentIdx])}">${esc(d[commentIdx])}</td>
-      <td>
-        <div class="row-actions">
-          <button class="btn btn-ghost btn-icon" title="Modifier" onclick="openEdit(${i})">✏️</button>
-          <button class="btn btn-red   btn-icon" title="Supprimer" onclick="openDeleteConfirm(${i})">🗑️</button>
-        </div>
-      </td>
-    </tr>`;
+    const tds = cols.map(col => {
+      const idx = hi(col);
+      let val = d[idx];
+      let display = '';
+      let extra   = '';
+
+      if (col === 'Date') {
+        display = formatDate(val);
+      } else if (col === 'Type') {
+        display = typeBadge(String(val || ''));
+      } else if (col === 'Statut') {
+        display = statutBadge(String(val || ''));
+      } else if (col === 'Quantité') {
+        display = esc(val !== '' && val !== null ? Number(val).toLocaleString('fr-FR') : '');
+      } else if (col === 'Prix indicatif (€)') {
+        display = val !== '' && val !== null ? esc(Number(val).toFixed(2)) + ' €' : '';
+      } else if (col === 'Clients proposés') {
+        extra = isEtude && !val ? ' td-highlight' : '';
+        display = `<span title="${esc(val)}">${esc(val)}</span>`;
+        return `<td class="td-clients${extra}">${display}</td>`;
+      } else if (col === 'Commentaire') {
+        return `<td class="td-comment" title="${esc(val)}">${esc(val)}</td>`;
+      } else if (col === 'Nom') {
+        return `<td class="td-nom">${esc(val)}</td>`;
+      } else {
+        display = esc(val);
+      }
+
+      const align = COL_ALIGN[col] ? ` style="text-align:${COL_ALIGN[col]}"` : '';
+      return `<td${align}>${display}</td>`;
+    });
+
+    tds.push(`<td>
+      <div class="row-actions">
+        <button class="btn btn-ghost btn-icon" title="Modifier"   onclick="openEdit(${i})">✏️</button>
+        <button class="btn btn-red   btn-icon" title="Supprimer"  onclick="openDeleteConfirm(${i})">🗑️</button>
+      </div>
+    </td>`);
+
+    html += `<tr data-i="${i}">${tds.join('')}</tr>`;
   }
   document.getElementById('tableBody').innerHTML = html;
+}
+
+// ── Drag & drop columns ──────────────────────────────────────
+function setupDragDrop() {
+  const thead = document.getElementById('tableHead');
+
+  thead.addEventListener('dragstart', e => {
+    const th = e.target.closest('th[data-col]');
+    if (!th) return;
+    dragSrcCol = th.dataset.col;
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  thead.addEventListener('dragover', e => {
+    const th = e.target.closest('th[data-col]');
+    if (!th || th.dataset.col === dragSrcCol) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    thead.querySelectorAll('th.drag-over').forEach(el => el.classList.remove('drag-over'));
+    th.classList.add('drag-over');
+  });
+
+  thead.addEventListener('dragleave', e => {
+    const th = e.target.closest('th[data-col]');
+    if (th) th.classList.remove('drag-over');
+  });
+
+  thead.addEventListener('drop', e => {
+    e.preventDefault();
+    const th = e.target.closest('th[data-col]');
+    if (!th || !dragSrcCol) return;
+    const dropCol = th.dataset.col;
+    if (dragSrcCol === dropCol) { dragSrcCol = null; return; }
+    thead.querySelectorAll('th.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+    const srcIdx = colOrder.indexOf(dragSrcCol);
+    const dstIdx = colOrder.indexOf(dropCol);
+    colOrder.splice(srcIdx, 1);
+    colOrder.splice(dstIdx, 0, dragSrcCol);
+    dragSrcCol = null;
+    saveColState();
+    renderTable();
+  });
+
+  thead.addEventListener('dragend', () => {
+    thead.querySelectorAll('th.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrcCol = null;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -659,35 +831,38 @@ function renderBody() {
 function renderStats() {
   const typeIdx   = hi('Type');
   const statutIdx = hi('Statut');
-  const acheteurs = rows.filter(r => r.data[typeIdx]   === 'Acheteur').length;
-  const vendeurs  = rows.filter(r => r.data[typeIdx]   === 'Vendeur').length;
-  const enCours   = rows.filter(r => r.data[statutIdx] === 'En cours').length;
-  const valides   = rows.filter(r => r.data[statutIdx] === 'Validé').length;
-  const annules   = rows.filter(r => r.data[statutIdx] === 'Annulé').length;
   document.getElementById('sTotal').textContent    = rows.length;
-  document.getElementById('sAcheteurs').textContent= acheteurs;
-  document.getElementById('sVendeurs').textContent = vendeurs;
-  document.getElementById('sEnCours').textContent  = enCours;
-  document.getElementById('sValides').textContent  = valides;
-  document.getElementById('sAnnules').textContent  = annules;
+  document.getElementById('sAcheteurs').textContent = rows.filter(r => r.data[typeIdx]   === 'Acheteur').length;
+  document.getElementById('sVendeurs').textContent  = rows.filter(r => r.data[typeIdx]   === 'Vendeur').length;
+  document.getElementById('sAttente').textContent   = rows.filter(r => r.data[statutIdx] === 'En attente').length;
+  document.getElementById('sEtude').textContent     = rows.filter(r => r.data[statutIdx] === "En cours d'étude").length;
+  document.getElementById('sConclu').textContent    = rows.filter(r => r.data[statutIdx] === 'Conclu').length;
+  document.getElementById('sAbandon').textContent   = rows.filter(r => r.data[statutIdx] === 'Abandon').length;
 }
 
 // ═══════════════════════════════════════════════════════════════
-//  ADD / EDIT FORM
+//  FORM — ADD / EDIT
 // ═══════════════════════════════════════════════════════════════
+function onStatutChange() {
+  const statut = document.getElementById('f_statut').value;
+  const el = document.getElementById('f_clients');
+  el.classList.toggle('highlighted', statut === "En cours d'étude");
+}
+
 function openAdd() {
   editingIdx = null;
-  document.getElementById('formTitle').textContent   = '➕ Nouvelle demande';
+  document.getElementById('formTitle').textContent     = '➕ Nouvelle demande';
   document.getElementById('formSubmitBtn').textContent = 'Ajouter';
   clearForm();
-  document.getElementById('f_date').value  = todayStr();
-  document.getElementById('f_statut').value = 'En cours';
+  document.getElementById('f_date').value   = todayStr();
+  document.getElementById('f_statut').value = 'En attente';
+  onStatutChange();
   openModal('modalForm');
 }
 
 function openEdit(i) {
   editingIdx = i;
-  document.getElementById('formTitle').textContent   = '✏️ Modifier la demande';
+  document.getElementById('formTitle').textContent     = '✏️ Modifier la demande';
   document.getElementById('formSubmitBtn').textContent = 'Enregistrer';
   clearForm();
   const d = rows[i].data;
@@ -699,6 +874,7 @@ function openEdit(i) {
     if (header === 'Date' && val) val = formatDateInput(val);
     el.value = val !== null && val !== undefined ? val : '';
   });
+  onStatutChange();
   openModal('modalForm');
 }
 
@@ -724,13 +900,9 @@ async function submitForm() {
     closeModal('modalForm');
     pauseUntil = Date.now() + 4000;
     setSyncLabel('Sauvegarde…', 'spin');
-
-    let result;
-    if (editingIdx === null) {
-      result = await apiPost({ action: 'addRow', data });
-    } else {
-      result = await apiPost({ action: 'updateRow', rowIdx: rows[editingIdx].idx, data });
-    }
+    const result = editingIdx === null
+      ? await apiPost({ action: 'addRow', data })
+      : await apiPost({ action: 'updateRow', rowIdx: rows[editingIdx].idx, data });
     applyData(result);
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
@@ -775,8 +947,7 @@ async function testConnection() {
   if (!url) { el.textContent = '⚠️ Saisissez une URL.'; el.className = 'test-result test-error'; return; }
   el.textContent = '⏳ Test en cours…'; el.className = 'test-result';
   try {
-    const r = await fetch(url + '?t=' + Date.now());
-    const d = await r.json();
+    const d = await (await fetch(url + '?t=' + Date.now())).json();
     if (d.headers !== undefined) {
       el.textContent = '✅ Connexion réussie — ' + (d.rows?.length || 0) + ' demande(s) dans le Sheet.';
       el.className = 'test-result test-ok';
@@ -809,21 +980,10 @@ function copyScript() {
 // ═══════════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════
-function hi(col) {
-  return HEADERS.indexOf(col);
-}
-
-function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function nowStr() {
-  return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-}
-
-function todayStr() {
-  return new Date().toISOString().split('T')[0];
-}
+function hi(col)  { return HEADERS.indexOf(col); }
+function esc(s)   { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nowStr() { return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
 
 function formatDate(val) {
   if (!val) return '';
@@ -840,7 +1000,6 @@ function formatDate(val) {
 function formatDateInput(val) {
   if (!val) return '';
   if (/^\d{4}-\d{2}-\d{2}/.test(String(val))) return String(val).substring(0, 10);
-  // Try parsing
   const d = new Date(val);
   if (!isNaN(d)) return d.toISOString().split('T')[0];
   return '';
@@ -853,16 +1012,16 @@ function typeBadge(type) {
 }
 
 function statutBadge(statut) {
-  if (statut === 'En cours') return `<span class="badge badge-encours">En cours</span>`;
-  if (statut === 'Validé')   return `<span class="badge badge-valide">Validé</span>`;
-  if (statut === 'Annulé')   return `<span class="badge badge-annule">Annulé</span>`;
+  if (statut === 'En attente')       return `<span class="badge badge-attente">En attente</span>`;
+  if (statut === "En cours d'étude") return `<span class="badge badge-etude">En cours d'étude</span>`;
+  if (statut === 'Conclu')           return `<span class="badge badge-conclu">Conclu</span>`;
+  if (statut === 'Abandon')          return `<span class="badge badge-abandon">Abandon</span>`;
   return esc(statut);
 }
 
 function setSyncLabel(txt, state) {
   document.getElementById('syncLabel').textContent = txt;
-  const dot = document.getElementById('syncDot');
-  dot.className = 'sync-dot' + (state ? ' ' + state : '');
+  document.getElementById('syncDot').className = 'sync-dot' + (state ? ' ' + state : '');
 }
 
 // ── Modals
