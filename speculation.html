@@ -451,6 +451,7 @@ function App() {
   const [gLoading, setGLoading]   = useState(false);
   const [gError, setGError]       = useState("");
   const [gSaved, setGSaved]       = useState(false);
+  const [isDirty, setIsDirty]     = useState(false);
   const [driveLoaded, setDriveLoaded]=useState(false);
   const [cotationsBT, setCotationsBT] = useState([]);
   const [cotationsVC, setCotationsVC] = useState([]);
@@ -470,6 +471,11 @@ function App() {
   useEffect(()=>{localStorage.setItem('fcdh_btl_hidden',JSON.stringify(btlHidden));},[btlHidden]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_hidden',JSON.stringify(vcHidden));},[vcHidden]);
   useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);setFB("");},[tab]);
+  useEffect(()=>{
+    const h=(e)=>{if(isDirty){e.preventDefault();e.returnValue='';}};
+    window.addEventListener('beforeunload',h);
+    return ()=>window.removeEventListener('beforeunload',h);
+  },[isDirty]);
   // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
   useEffect(()=>{
     if(pendingSaveRef.current&&gToken&&driveWbRef.current){
@@ -682,6 +688,7 @@ function App() {
         'VINS CLAIRS': vinsClairs.map(e=>e._row).filter(r=>r!==undefined),
       };
       setGSaved(true);
+      setIsDirty(false);
       setTimeout(()=>setGSaved(false), 3000);
     } catch(e) {
       setGError("Sauvegarde : " + e.message);
@@ -733,6 +740,7 @@ function App() {
     let saved;
     if(editId){saved={...form,id:editId};setData(prev=>prev.map(r=>r.id===editId?saved:r));}
     else{const nid=Math.max(0,...data.map(r=>r.id))+1;saved={...form,id:nid};setData(prev=>[...prev,saved]);}
+    setIsDirty(true);
     setModal({entry:saved,matches:matchesFor(saved),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,saved.client)||namesMatch(c.vendeur,saved.client))});
     setMTab("matches");setView("liste");setPrevModal(null);
   };
@@ -874,6 +882,7 @@ function App() {
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           {gError && <span style={{fontSize:11,color:"#fca5a5",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={gError}>⚠️ {gError}</span>}
+          {isDirty && !gSaved && <span style={{fontSize:12,color:"#fbbf24",fontWeight:600,display:"flex",alignItems:"center",gap:4}}><span style={{width:7,height:7,borderRadius:"50%",background:"#fbbf24",display:"inline-block"}}/>Non sauvegardé</span>}
           {gSaved && <span style={{fontSize:12,color:"#6ee7b7",fontWeight:600}}>✓ Sauvegardé</span>}
 
           {!driveLoaded
@@ -960,7 +969,7 @@ function App() {
               <div style={{fontWeight:700,fontSize:16,color:NAVY,marginBottom:6}}>Supprimer cette entrée ?</div>
               <div style={{fontSize:13,color:G400,marginBottom:20}}>L'entrée sera définitivement supprimée de l'application et de Google Drive lors de la prochaine sauvegarde.</div>
               <div style={{display:"flex",gap:10}}>
-                <button onClick={()=>{setData(prev=>prev.filter(r=>r.id!==delId));setDelId(null);}} style={{flex:1,background:"#dc2626",color:WHITE,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>Supprimer</button>
+                <button onClick={()=>{setData(prev=>prev.filter(r=>r.id!==delId));setIsDirty(true);setDelId(null);}} style={{flex:1,background:"#dc2626",color:WHITE,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>Supprimer</button>
                 <button onClick={()=>setDelId(null)} style={{flex:1,background:G100,color:G600,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Annuler</button>
               </div>
             </div>
@@ -1269,6 +1278,7 @@ function App() {
                     newData=[...data,{...form,id:nid}];
                   }
                   setData(newData);
+                  setIsDirty(true);
                   pendingSaveRef.current=true;
                   // Retourner à la fiche précédente avec matchs recalculés
                   const src=prevModal.entry;
