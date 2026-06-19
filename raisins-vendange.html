@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raisins à la Vendange — FCDH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Header ── */
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); flex-shrink: 0; gap: 16px; }
+    .hdr-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .back-btn { color: #C9A84C; text-decoration: none; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: .8; }
+    .back-btn:hover { opacity: 1; }
+    .hdr-title { font-size: 14px; font-weight: 800; color: #C9A84C; white-space: nowrap; }
+    .hdr-sub   { font-size: 10px; color: #e8c97a; opacity: .7; margin-top: 1px; }
+    .sync-pill { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.07); border-radius: 99px; padding: 4px 12px; font-size: 11px; color: #e8c97a; white-space: nowrap; flex-shrink: 0; cursor: pointer; border: none; font-family: inherit; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
+    .sync-dot.ok    { background: #4ade80; }
+    .sync-dot.error { background: #f87171; }
+    .sync-dot.spin  { background: #fbbf24; animation: pulse .8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Toolbar ── */
+    .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; font-family: inherit; white-space: nowrap; }
+    .btn-dark  { background: #0d1b3e; color: #C9A84C; }
+    .btn-dark:hover  { background: #1a2f5a; }
+    .btn-green { background: #15803d; color: white; }
+    .btn-green:hover { background: #166534; }
+    .btn-ghost { background: #f3f4f6; color: #374151; }
+    .btn-ghost:hover { background: #e5e7eb; }
+    .btn-red   { background: #fee2e2; color: #dc2626; }
+    .btn-red:hover { background: #fecaca; }
+    .btn-icon  { padding: 5px 8px; font-size: 13px; }
+    .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+    .toolbar-sep { width: 1px; height: 24px; background: #e5e7eb; flex-shrink: 0; }
+    .cache-badge { font-size: 10px; color: #f59e0b; font-weight: 600; padding: 3px 8px; background: #fef3c7; border-radius: 99px; }
+
+    /* ── Filters ── */
+    .filters { background: #f8f9fb; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+    .f-group { display: flex; align-items: center; gap: 5px; }
+    .f-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .f-input { height: 28px; padding: 0 8px; border: 1px solid #dde1eb; border-radius: 6px; font-size: 12px; font-family: inherit; background: white; color: #0d1b3e; }
+    .f-input:focus { outline: none; border-color: #C9A84C; }
+    input.f-input { min-width: 160px; }
+    .f-count { font-size: 11px; color: #9ca3af; margin-left: auto; font-weight: 600; white-space: nowrap; }
+
+    /* ── Stats ── */
+    .stats-bar { background: #0d1b3e; padding: 5px 20px; display: flex; gap: 0; flex-shrink: 0; overflow-x: auto; }
+    .stat { display: flex; flex-direction: column; align-items: center; padding: 0 16px; border-right: 1px solid #1a2f5a; }
+    .stat:last-child { border-right: none; }
+    .stat-v { font-size: 15px; font-weight: 800; color: #C9A84C; line-height: 1; }
+    .stat-l { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; white-space: nowrap; }
+
+    /* ── Table ── */
+    .table-outer { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .table-scroll { overflow-x: auto; min-width: 0; }
+    table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: 100%; }
+    thead th {
+      background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
+      padding: 7px 10px; border-bottom: 2px solid #C9A84C; border-right: 1px solid #1a2f5a;
+      position: sticky; top: 0; z-index: 4; white-space: nowrap; text-align: left;
+    }
+    thead th:last-child { border-right: none; }
+    tbody tr { background: white; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:hover td { background: #eff6ff !important; }
+    td {
+      padding: 6px 10px; border-bottom: 1px solid #edf0f5; border-right: 1px solid #edf0f5;
+      vertical-align: middle; color: #1f2937; white-space: nowrap;
+    }
+    td:last-child { border-right: none; }
+    td.td-comment { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    td.td-nom { font-weight: 600; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+    .badge-acheteur { background: #dbeafe; color: #1d4ed8; }
+    .badge-vendeur  { background: #dcfce7; color: #15803d; }
+    .badge-encours  { background: #fef3c7; color: #b45309; }
+    .badge-valide   { background: #dcfce7; color: #15803d; }
+    .badge-annule   { background: #fee2e2; color: #dc2626; }
+
+    /* Action buttons in row */
+    .row-actions { display: flex; gap: 4px; }
+
+    /* Empty / setup state */
+    .center-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; gap: 14px; }
+    .center-icon  { font-size: 56px; }
+    .center-title { font-size: 18px; font-weight: 800; color: #0d1b3e; }
+    .center-sub   { font-size: 13px; color: #6b7280; text-align: center; max-width: 400px; line-height: 1.6; }
+
+    /* ── Modals ── */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 50; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: white; border-radius: 16px; padding: 28px; width: 95%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .modal.wide { max-width: 780px; }
+    .modal-title { font-size: 16px; font-weight: 800; color: #0d1b3e; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .form-row { margin-bottom: 14px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .form-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 5px; }
+    .form-input { width: 100%; padding: 9px 12px; border: 1px solid #dde1eb; border-radius: 8px; font-size: 13px; font-family: inherit; color: #0d1b3e; }
+    .form-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 2px rgba(201,168,76,.15); }
+    select.form-input { background: white; cursor: pointer; }
+    textarea.form-input { resize: vertical; min-height: 70px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+    /* Settings modal steps */
+    .step { background: #f8f9fb; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #0d1b3e; color: #C9A84C; border-radius: 50%; font-size: 11px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+    .step-text { font-size: 12px; color: #374151; line-height: 1.6; }
+    .code-wrap { position: relative; background: #0d1b3e; border-radius: 8px; padding: 14px; margin: 8px 0; }
+    .code-wrap pre { font-family: 'Courier New', monospace; font-size: 10.5px; color: #e2e8f0; white-space: pre; overflow-x: auto; line-height: 1.5; max-height: 260px; overflow-y: auto; }
+    .copy-code-btn { position: absolute; top: 8px; right: 8px; background: #C9A84C; color: #0d1b3e; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .copy-code-btn:hover { background: #d4b05c; }
+    .url-row { display: flex; gap: 8px; }
+    .url-row .form-input { flex: 1; }
+    .test-result { font-size: 11px; margin-top: 6px; font-weight: 600; }
+    .test-ok    { color: #16a34a; }
+    .test-error { color: #dc2626; }
+
+    footer { text-align: center; padding: 8px; font-size: 10px; color: #8a94aa; background: white; border-top: 1px solid #edf0f5; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="hdr-left">
+    <a class="back-btn" href="index.html">← Tableau de bord</a>
+    <span style="color:#1a2f5a">|</span>
+    <div>
+      <div class="hdr-title">🍇 Raisins à la Vendange</div>
+      <div class="hdr-sub">FCDH Courtiers Associés</div>
+    </div>
+  </div>
+  <button class="sync-pill" onclick="manualRefresh()" title="Actualiser">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncLabel">Non configuré</span>
+  </button>
+</header>
+
+<!-- ── Toolbar ── -->
+<div class="toolbar">
+  <button class="btn btn-green" id="btnAdd" onclick="openAdd()" disabled>➕ Nouvelle demande</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-ghost" onclick="openModal('modalSettings')">⚙️ Configuration</button>
+  <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
+</div>
+
+<!-- ── Filters ── -->
+<div class="filters" id="filtersBar" style="display:none">
+  <div class="f-group">
+    <span class="f-label">Recherche</span>
+    <input class="f-input" type="text" id="fSearch" placeholder="Nom, cépage, commentaire…" oninput="applyFilters()">
+  </div>
+  <div class="f-group">
+    <span class="f-label">Type</span>
+    <select class="f-input" id="fType" onchange="applyFilters()">
+      <option value="">Tous</option>
+      <option>Acheteur</option>
+      <option>Vendeur</option>
+    </select>
+  </div>
+  <div class="f-group">
+    <span class="f-label">Cépage</span>
+    <select class="f-input" id="fCepage" onchange="applyFilters()"><option value="">Tous</option></select>
+  </div>
+  <div class="f-group">
+    <span class="f-label">Statut</span>
+    <select class="f-input" id="fStatut" onchange="applyFilters()">
+      <option value="">Tous</option>
+      <option>En cours</option>
+      <option>Validé</option>
+      <option>Annulé</option>
+    </select>
+  </div>
+  <div class="f-group">
+    <span class="f-label">Courtier</span>
+    <select class="f-input" id="fCourtier" onchange="applyFilters()"><option value="">Tous</option></select>
+  </div>
+  <span class="f-count" id="fCount"></span>
+</div>
+
+<!-- ── Stats ── -->
+<div class="stats-bar" id="statsBar" style="display:none">
+  <div class="stat"><div class="stat-v" id="sTotal">0</div><div class="stat-l">Demandes</div></div>
+  <div class="stat"><div class="stat-v" id="sAcheteurs" style="color:#93c5fd">0</div><div class="stat-l">Acheteurs</div></div>
+  <div class="stat"><div class="stat-v" id="sVendeurs" style="color:#86efac">0</div><div class="stat-l">Vendeurs</div></div>
+  <div class="stat"><div class="stat-v" id="sEnCours" style="color:#fcd34d">0</div><div class="stat-l">En cours</div></div>
+  <div class="stat"><div class="stat-v" id="sValides" style="color:#4ade80">0</div><div class="stat-l">Validés</div></div>
+  <div class="stat"><div class="stat-v" id="sAnnules" style="color:#f87171">0</div><div class="stat-l">Annulés</div></div>
+</div>
+
+<!-- ── Table ── -->
+<div class="table-outer" id="tableOuter">
+  <div class="center-state" id="setupState">
+    <div class="center-icon">⚙️</div>
+    <div class="center-title">Configuration requise</div>
+    <div class="center-sub">Connectez cet outil à un Google Sheet pour commencer. La configuration ne prend que 5 minutes.</div>
+    <button class="btn btn-dark" style="margin-top:8px" onclick="openModal('modalSettings')">⚙️ Configurer maintenant</button>
+  </div>
+  <div class="center-state" id="emptyState" style="display:none">
+    <div class="center-icon">🍇</div>
+    <div class="center-title">Aucune demande</div>
+    <div class="center-sub">Cliquez sur "Nouvelle demande" pour enregistrer la première demande acheteur ou vendeur.</div>
+  </div>
+  <div class="table-scroll" id="tableScroll" style="display:none">
+    <table id="mainTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Modal : Paramètres ── -->
+<div class="modal-bg" id="modalSettings">
+  <div class="modal wide">
+    <div class="modal-title">⚙️ Configuration Google Sheets</div>
+
+    <div class="step">
+      <span class="step-num">1</span>
+      <span class="step-text">Créez un <strong>Google Sheet vierge</strong> (sheets.google.com → Nouveau). Le script créera automatiquement l'onglet <strong>Demandes</strong> avec tous les en-têtes.</span>
+    </div>
+
+    <div class="step">
+      <span class="step-num">2</span>
+      <span class="step-text">Dans le Sheet, ouvrez <strong>Extensions → Apps Script</strong>. Supprimez le code existant et collez celui-ci :</span>
+      <div class="code-wrap">
+        <button class="copy-code-btn" onclick="copyScript()">Copier</button>
+        <pre id="scriptCode"></pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <span class="step-num">3</span>
+      <span class="step-text">Cliquez <strong>Déployer → Nouveau déploiement</strong> · Type : <em>Application Web</em> · Exécuter en tant que : <em>Moi</em> · Accès : <em>Tout le monde</em>. Copiez l'URL générée.</span>
+    </div>
+
+    <div class="step">
+      <span class="step-num">4</span>
+      <span class="step-text">Collez l'URL ci-dessous et testez la connexion.</span>
+      <div style="margin-top:10px">
+        <div class="url-row">
+          <input class="form-input" type="url" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/…/exec">
+          <button class="btn btn-ghost" onclick="testConnection()">Tester</button>
+        </div>
+        <div class="test-result" id="testResult"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalSettings')">Annuler</button>
+      <button class="btn btn-dark" onclick="saveSettings()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Ajouter / Modifier demande ── -->
+<div class="modal-bg" id="modalForm">
+  <div class="modal">
+    <div class="modal-title" id="formTitle">➕ Nouvelle demande</div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="f_date">
+      </div>
+      <div>
+        <label class="form-label">Type *</label>
+        <select class="form-input" id="f_type">
+          <option value="">— Choisir —</option>
+          <option>Acheteur</option>
+          <option>Vendeur</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Nom *</label>
+      <input class="form-input" type="text" id="f_nom" placeholder="Nom du client ou de la société">
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Cépage</label>
+        <input class="form-input" type="text" id="f_cepage" placeholder="ex : Pinot Noir" list="cepageList">
+        <datalist id="cepageList">
+          <option>Pinot Noir</option>
+          <option>Chardonnay</option>
+          <option>Pinot Meunier</option>
+          <option>Pinot Blanc</option>
+          <option>Arbane</option>
+          <option>Petit Meslier</option>
+        </datalist>
+      </div>
+      <div>
+        <label class="form-label">Millésime</label>
+        <input class="form-input" type="number" id="f_millesime" placeholder="ex : 2024" min="1990" max="2100">
+      </div>
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Quantité (kg)</label>
+        <input class="form-input" type="number" id="f_quantite" placeholder="ex : 5000" min="0">
+      </div>
+      <div>
+        <label class="form-label">Prix (€/kg)</label>
+        <input class="form-input" type="number" id="f_prix" placeholder="ex : 7.50" step="0.01" min="0">
+      </div>
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Statut</label>
+        <select class="form-input" id="f_statut">
+          <option>En cours</option>
+          <option>Validé</option>
+          <option>Annulé</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Courtier</label>
+        <select class="form-input" id="f_courtier">
+          <option value="">— Choisir —</option>
+          <option>EC</option><option>MAA</option><option>EH</option><option>JPNC</option>
+          <option>ASM</option><option>EB</option><option>BO</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Commentaire</label>
+      <textarea class="form-input" id="f_commentaire" placeholder="Informations complémentaires…"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalForm')">Annuler</button>
+      <button class="btn btn-dark" id="formSubmitBtn" onclick="submitForm()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Confirmation suppression ── -->
+<div class="modal-bg" id="modalDelete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">🗑️ Supprimer la demande</div>
+    <p style="font-size:13px;color:#374151;line-height:1.6">Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalDelete')">Annuler</button>
+      <button class="btn btn-red" id="confirmDeleteBtn" onclick="confirmDelete()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const HEADERS   = ['Date','Type','Nom','Cépage','Quantité (kg)','Prix (€/kg)','Millésime','Statut','Courtier','Commentaire'];
+const URL_KEY   = 'fcdh_raisins_url';
+const CACHE_KEY = 'fcdh_raisins_cache';
+const REFRESH_MS = 20000;
+
+const FIELD_MAP = {
+  'Date'          : 'f_date',
+  'Type'          : 'f_type',
+  'Nom'           : 'f_nom',
+  'Cépage'        : 'f_cepage',
+  'Quantité (kg)' : 'f_quantite',
+  'Prix (€/kg)'   : 'f_prix',
+  'Millésime'     : 'f_millesime',
+  'Statut'        : 'f_statut',
+  'Courtier'      : 'f_courtier',
+  'Commentaire'   : 'f_commentaire',
+};
+
+// Apps Script source
+const APPS_SCRIPT = `const HEADERS = ['Date','Type','Nom','Cépage','Quantité (kg)','Prix (€/kg)','Millésime','Statut','Courtier','Commentaire'];
+
+function getSheet(){
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName('Demandes');
+  if(!s){
+    s = ss.insertSheet('Demandes');
+    s.appendRow(HEADERS);
+    s.getRange(1,1,1,HEADERS.length).setFontWeight('bold');
+  }
+  return s;
+}
+
+function read(s){
+  if(s.getLastRow() < 1) return {headers:[], rows:[]};
+  const v = s.getRange(1, 1, s.getLastRow(), s.getLastColumn()).getValues();
+  const rows = v.slice(1)
+    .map((r,i) => ({idx:i, data:r}))
+    .filter(r => r.data.some(c => c !== ''));
+  return {headers: v[0], rows};
+}
+
+function doGet(e){
+  return ContentService
+    .createTextOutput(JSON.stringify(read(getSheet())))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e){
+  const lk = LockService.getScriptLock();
+  lk.waitLock(15000);
+  try {
+    const p = JSON.parse(e.postData.contents);
+    const s = getSheet();
+    if(p.action === 'addRow'){
+      s.appendRow(HEADERS.map(h => p.data[h] !== undefined ? p.data[h] : ''));
+    }
+    else if(p.action === 'updateRow'){
+      const rowNum = p.rowIdx + 2;
+      s.getRange(rowNum, 1, 1, HEADERS.length)
+       .setValues([HEADERS.map(h => p.data[h] !== undefined ? p.data[h] : '')]);
+    }
+    else if(p.action === 'deleteRow'){
+      s.deleteRow(p.rowIdx + 2);
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify(read(s)))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lk.releaseLock();
+  }
+}`;
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let scriptUrl    = localStorage.getItem(URL_KEY) || '';
+let rows         = [];   // [{idx, data:[...]}]
+let filteredIdxs = [];   // indices into rows[]
+let refreshTimer = null;
+let pauseUntil   = 0;
+let editingIdx   = null; // rowIdx being edited
+let deletingIdx  = null;
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('scriptCode').textContent = APPS_SCRIPT;
+  document.getElementById('f_date').value = todayStr();
+
+  if (scriptUrl) {
+    document.getElementById('scriptUrlInput').value = scriptUrl;
+    loadData();
+    startRefresh();
+  } else {
+    setSyncLabel('Non configuré', '');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════════════════════════
+async function apiFetch() {
+  const r = await fetch(scriptUrl + '?t=' + Date.now());
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function apiPost(data) {
+  const r = await fetch(scriptUrl, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD / REFRESH
+// ═══════════════════════════════════════════════════════════════
+async function loadData(showSpinner = true) {
+  if (!scriptUrl) return;
+  if (showSpinner) setSyncLabel('Synchronisation…', 'spin');
+  try {
+    const data = await apiFetch();
+    applyData(data);
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: data.rows, ts: Date.now() }));
+    document.getElementById('cacheBadge').style.display = 'none';
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur de connexion', 'error');
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    if (cache.rows && !rows.length) {
+      applyData(cache);
+      document.getElementById('cacheBadge').style.display = '';
+    }
+  }
+}
+
+function applyData(data) {
+  rows = (data.rows || []);
+  showTable(rows.length > 0);
+  if (rows.length) {
+    populateFilterOptions();
+    applyFilters();
+    renderStats();
+  }
+  document.getElementById('btnAdd').disabled = false;
+}
+
+async function manualRefresh() {
+  if (!scriptUrl) { openModal('modalSettings'); return; }
+  await loadData(true);
+}
+
+function startRefresh() {
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (scriptUrl && Date.now() > pauseUntil) loadData(false);
+  }, REFRESH_MS);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DISPLAY
+// ═══════════════════════════════════════════════════════════════
+function showTable(hasRows) {
+  document.getElementById('setupState').style.display = 'none';
+  document.getElementById('emptyState').style.display  = hasRows ? 'none' : '';
+  document.getElementById('tableScroll').style.display = hasRows ? '' : 'none';
+  document.getElementById('filtersBar').style.display  = hasRows ? '' : 'none';
+  document.getElementById('statsBar').style.display    = hasRows ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTERS
+// ═══════════════════════════════════════════════════════════════
+function populateFilterOptions() {
+  const cepageIdx   = hi('Cépage');
+  const courtierIdx = hi('Courtier');
+  const cepages   = [...new Set(rows.map(r => r.data[cepageIdx]).filter(Boolean))].sort();
+  const courtiers = [...new Set(rows.map(r => r.data[courtierIdx]).filter(Boolean))].sort();
+  document.getElementById('fCepage').innerHTML   = '<option value="">Tous</option>' + cepages.map(c => `<option>${esc(c)}</option>`).join('');
+  document.getElementById('fCourtier').innerHTML = '<option value="">Tous</option>' + courtiers.map(c => `<option>${esc(c)}</option>`).join('');
+}
+
+function applyFilters() {
+  const search   = document.getElementById('fSearch').value.toLowerCase().trim();
+  const fType    = document.getElementById('fType').value;
+  const fCepage  = document.getElementById('fCepage').value;
+  const fStatut  = document.getElementById('fStatut').value;
+  const fCourtier= document.getElementById('fCourtier').value;
+
+  const nomIdx     = hi('Nom');
+  const typeIdx    = hi('Type');
+  const cepageIdx  = hi('Cépage');
+  const statutIdx  = hi('Statut');
+  const courtierIdx= hi('Courtier');
+  const commentIdx = hi('Commentaire');
+
+  filteredIdxs = rows.map((_,i) => i).filter(i => {
+    const d = rows[i].data;
+    if (search && !String(d[nomIdx]||'').toLowerCase().includes(search)
+                && !String(d[cepageIdx]||'').toLowerCase().includes(search)
+                && !String(d[commentIdx]||'').toLowerCase().includes(search)) return false;
+    if (fType    && d[typeIdx]    !== fType)    return false;
+    if (fCepage  && d[cepageIdx]  !== fCepage)  return false;
+    if (fStatut  && d[statutIdx]  !== fStatut)  return false;
+    if (fCourtier && d[courtierIdx] !== fCourtier) return false;
+    return true;
+  });
+
+  renderTable();
+  const total = rows.length;
+  const shown = filteredIdxs.length;
+  document.getElementById('fCount').textContent = shown === total
+    ? total + ' demande' + (total > 1 ? 's' : '')
+    : shown + ' / ' + total + ' demandes';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════════════════
+function renderTable() {
+  renderHead();
+  renderBody();
+}
+
+function renderHead() {
+  document.getElementById('tableHead').innerHTML = `<tr>
+    <th style="min-width:90px">Date</th>
+    <th style="min-width:90px">Type</th>
+    <th style="min-width:180px">Nom</th>
+    <th style="min-width:120px">Cépage</th>
+    <th style="min-width:90px;text-align:right">Qté (kg)</th>
+    <th style="min-width:90px;text-align:right">Prix (€/kg)</th>
+    <th style="min-width:80px;text-align:center">Millésime</th>
+    <th style="min-width:100px">Statut</th>
+    <th style="min-width:70px;text-align:center">Courtier</th>
+    <th style="min-width:200px">Commentaire</th>
+    <th style="min-width:80px;text-align:center">Actions</th>
+  </tr>`;
+}
+
+function renderBody() {
+  const nomIdx     = hi('Nom');
+  const typeIdx    = hi('Type');
+  const cepageIdx  = hi('Cépage');
+  const qteIdx     = hi('Quantité (kg)');
+  const prixIdx    = hi('Prix (€/kg)');
+  const milIdx     = hi('Millésime');
+  const statutIdx  = hi('Statut');
+  const courtierIdx= hi('Courtier');
+  const commentIdx = hi('Commentaire');
+  const dateIdx    = hi('Date');
+
+  let html = '';
+  for (const i of filteredIdxs) {
+    const d   = rows[i].data;
+    const idx = rows[i].idx;
+
+    const type   = d[typeIdx]   || '';
+    const statut = d[statutIdx] || '';
+    const qte    = d[qteIdx]    !== '' && d[qteIdx] !== null ? Number(d[qteIdx]).toLocaleString('fr-FR') : '';
+    const prix   = d[prixIdx]   !== '' && d[prixIdx] !== null ? Number(d[prixIdx]).toFixed(2) + ' €' : '';
+    const dateRaw = d[dateIdx];
+    const dateStr = formatDate(dateRaw);
+
+    html += `<tr data-i="${i}">
+      <td>${esc(dateStr)}</td>
+      <td>${typeBadge(type)}</td>
+      <td class="td-nom">${esc(d[nomIdx])}</td>
+      <td>${esc(d[cepageIdx])}</td>
+      <td style="text-align:right">${esc(qte)}</td>
+      <td style="text-align:right">${esc(prix)}</td>
+      <td style="text-align:center">${esc(d[milIdx])}</td>
+      <td>${statutBadge(statut)}</td>
+      <td style="text-align:center;font-weight:600">${esc(d[courtierIdx])}</td>
+      <td class="td-comment" title="${esc(d[commentIdx])}">${esc(d[commentIdx])}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-icon" title="Modifier" onclick="openEdit(${i})">✏️</button>
+          <button class="btn btn-red   btn-icon" title="Supprimer" onclick="openDeleteConfirm(${i})">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  document.getElementById('tableBody').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════════════
+function renderStats() {
+  const typeIdx   = hi('Type');
+  const statutIdx = hi('Statut');
+  const acheteurs = rows.filter(r => r.data[typeIdx]   === 'Acheteur').length;
+  const vendeurs  = rows.filter(r => r.data[typeIdx]   === 'Vendeur').length;
+  const enCours   = rows.filter(r => r.data[statutIdx] === 'En cours').length;
+  const valides   = rows.filter(r => r.data[statutIdx] === 'Validé').length;
+  const annules   = rows.filter(r => r.data[statutIdx] === 'Annulé').length;
+  document.getElementById('sTotal').textContent    = rows.length;
+  document.getElementById('sAcheteurs').textContent= acheteurs;
+  document.getElementById('sVendeurs').textContent = vendeurs;
+  document.getElementById('sEnCours').textContent  = enCours;
+  document.getElementById('sValides').textContent  = valides;
+  document.getElementById('sAnnules').textContent  = annules;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ADD / EDIT FORM
+// ═══════════════════════════════════════════════════════════════
+function openAdd() {
+  editingIdx = null;
+  document.getElementById('formTitle').textContent   = '➕ Nouvelle demande';
+  document.getElementById('formSubmitBtn').textContent = 'Ajouter';
+  clearForm();
+  document.getElementById('f_date').value  = todayStr();
+  document.getElementById('f_statut').value = 'En cours';
+  openModal('modalForm');
+}
+
+function openEdit(i) {
+  editingIdx = i;
+  document.getElementById('formTitle').textContent   = '✏️ Modifier la demande';
+  document.getElementById('formSubmitBtn').textContent = 'Enregistrer';
+  clearForm();
+  const d = rows[i].data;
+  Object.entries(FIELD_MAP).forEach(([header, fieldId]) => {
+    const idx = hi(header);
+    const el  = document.getElementById(fieldId);
+    if (!el || idx < 0) return;
+    let val = d[idx];
+    if (header === 'Date' && val) val = formatDateInput(val);
+    el.value = val !== null && val !== undefined ? val : '';
+  });
+  openModal('modalForm');
+}
+
+function clearForm() {
+  Object.values(FIELD_MAP).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function submitForm() {
+  const type = document.getElementById('f_type').value;
+  const nom  = document.getElementById('f_nom').value.trim();
+  if (!type) { alert('Veuillez choisir un type (Acheteur ou Vendeur).'); return; }
+  if (!nom)  { alert('Veuillez saisir un nom.'); return; }
+
+  const data = {};
+  Object.entries(FIELD_MAP).forEach(([header, fieldId]) => {
+    data[header] = document.getElementById(fieldId).value.trim();
+  });
+
+  try {
+    closeModal('modalForm');
+    pauseUntil = Date.now() + 4000;
+    setSyncLabel('Sauvegarde…', 'spin');
+
+    let result;
+    if (editingIdx === null) {
+      result = await apiPost({ action: 'addRow', data });
+    } else {
+      result = await apiPost({ action: 'updateRow', rowIdx: rows[editingIdx].idx, data });
+    }
+    applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur', 'error');
+    alert('Erreur : ' + err.message);
+    await loadData(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════════════════════
+function openDeleteConfirm(i) {
+  deletingIdx = i;
+  openModal('modalDelete');
+}
+
+async function confirmDelete() {
+  if (deletingIdx === null) return;
+  const rowIdx = rows[deletingIdx].idx;
+  closeModal('modalDelete');
+  try {
+    pauseUntil = Date.now() + 4000;
+    setSyncLabel('Suppression…', 'spin');
+    const result = await apiPost({ action: 'deleteRow', rowIdx });
+    applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur', 'error');
+    alert('Erreur : ' + err.message);
+    await loadData(false);
+  }
+  deletingIdx = null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════════
+async function testConnection() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  const el  = document.getElementById('testResult');
+  if (!url) { el.textContent = '⚠️ Saisissez une URL.'; el.className = 'test-result test-error'; return; }
+  el.textContent = '⏳ Test en cours…'; el.className = 'test-result';
+  try {
+    const r = await fetch(url + '?t=' + Date.now());
+    const d = await r.json();
+    if (d.headers !== undefined) {
+      el.textContent = '✅ Connexion réussie — ' + (d.rows?.length || 0) + ' demande(s) dans le Sheet.';
+      el.className = 'test-result test-ok';
+    } else { throw new Error('Format inattendu'); }
+  } catch(e) {
+    el.textContent = '❌ Échec : ' + e.message;
+    el.className = 'test-result test-error';
+  }
+}
+
+function saveSettings() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url) { alert('Saisissez l\'URL du script.'); return; }
+  scriptUrl = url;
+  localStorage.setItem(URL_KEY, url);
+  closeModal('modalSettings');
+  document.getElementById('setupState').style.display = 'none';
+  loadData(true);
+  startRefresh();
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(APPS_SCRIPT).then(() => {
+    const btn = document.querySelector('.copy-code-btn');
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = 'Copier', 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+function hi(col) {
+  return HEADERS.indexOf(col);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function nowStr() {
+  return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function formatDate(val) {
+  if (!val) return '';
+  if (val instanceof Date || (typeof val === 'number')) {
+    const d = new Date(val);
+    return d.toLocaleDateString('fr-FR');
+  }
+  // "2024-05-10" → "10/05/2024"
+  if (/^\d{4}-\d{2}-\d{2}/.test(String(val))) {
+    const [y,m,d] = String(val).split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return String(val);
+}
+
+function formatDateInput(val) {
+  if (!val) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(String(val))) return String(val).substring(0, 10);
+  // Try parsing
+  const d = new Date(val);
+  if (!isNaN(d)) return d.toISOString().split('T')[0];
+  return '';
+}
+
+function typeBadge(type) {
+  if (type === 'Acheteur') return `<span class="badge badge-acheteur">Acheteur</span>`;
+  if (type === 'Vendeur')  return `<span class="badge badge-vendeur">Vendeur</span>`;
+  return esc(type);
+}
+
+function statutBadge(statut) {
+  if (statut === 'En cours') return `<span class="badge badge-encours">En cours</span>`;
+  if (statut === 'Validé')   return `<span class="badge badge-valide">Validé</span>`;
+  if (statut === 'Annulé')   return `<span class="badge badge-annule">Annulé</span>`;
+  return esc(statut);
+}
+
+function setSyncLabel(txt, state) {
+  document.getElementById('syncLabel').textContent = txt;
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot' + (state ? ' ' + state : '');
+}
+
+// ── Modals
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-bg')) closeModal(e.target.id);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+});
+</script>
+</body>
+</html>
