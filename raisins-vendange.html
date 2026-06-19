@@ -827,16 +827,14 @@ function todayStr() {
 
 function formatDate(val) {
   if (!val) return '';
-  if (val instanceof Date || (typeof val === 'number')) {
-    const d = new Date(val);
-    return d.toLocaleDateString('fr-FR');
-  }
-  // "2024-05-10" → "10/05/2024"
-  if (/^\d{4}-\d{2}-\d{2}/.test(String(val))) {
-    const [y,m,d] = String(val).split('-');
+  const s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const [y, m, d] = s.substring(0, 10).split('-');
     return `${d}/${m}/${y}`;
   }
-  return String(val);
+  const d = new Date(val);
+  if (!isNaN(d)) return d.toLocaleDateString('fr-FR');
+  return s;
 }
 
 function formatDateInput(val) {
