@@ -1148,8 +1148,7 @@ function App() {
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
               </div>
             </div>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflowX:"auto",overflowY:"auto",maxHeight:"calc(100vh - 270px)",width:"100%",minWidth:0,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
-              {(()=>{
+            {(()=>{
                 const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
                 const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
                 const setColOrder=tab==="bouteilles"?setBtlOrder:setVcOrder;
@@ -1160,17 +1159,21 @@ function App() {
                 const totalWidth=ordered.reduce((s,c)=>s+(colWidths[c.id]||80),0);
                 const onResizeStart=(e,id)=>{e.preventDefault();e.stopPropagation();const startX=e.clientX,startW=colWidths[id]||80;tableResizeRef.current={id};const onMove=ev=>{const w=Math.max(40,startW+(ev.clientX-startX));setColWidths(p=>({...p,[id]:w}));};const onUp=()=>{tableResizeRef.current=null;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);};
                 const onSort=id=>{setColSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:id==="date"?-1:1});};
-                return <table style={{tableLayout:"fixed",borderCollapse:"collapse",width:totalWidth}}>
-                  <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
-                  <tbody>{filtered.map(r=>(
-                    <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
-                      {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
-                    </tr>
-                  ))}</tbody>
-                </table>;
+                return <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflowX:"auto",width:"100%",minWidth:0,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+                  <div style={{overflowY:"auto",maxHeight:"calc(100vh - 270px)"}}>
+                    {filtered.length===0
+                      ?<div style={{textAlign:"center",padding:"48px 0",color:G400}}>Aucune entrée trouvée</div>
+                      :<table style={{tableLayout:"fixed",borderCollapse:"collapse",width:totalWidth}}>
+                        <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
+                        <tbody>{filtered.map(r=>(
+                          <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
+                            {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
+                          </tr>
+                        ))}</tbody>
+                      </table>}
+                  </div>
+                </div>;
               })()}
-              {filtered.length===0&&<div style={{textAlign:"center",padding:"48px 0",color:G400}}>Aucune entrée trouvée</div>}
-            </div>
             <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",fontSize:11}}>
               <span style={{fontWeight:700,color:G400}}>Score :</span>
               {[{l:"★ ≥10 Excellent",bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},{l:"★ 6-9 Bon",bg:"#fef9c3",col:"#92400e",bdr:"#fde68a"},{l:"★ 3-5 Partiel",bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"},{l:"— Aucun",bg:G100,col:G400,bdr:G200}].map(s=>(
