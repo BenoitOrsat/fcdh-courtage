@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raisins à la Vendange — FCDH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Header ── */
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); flex-shrink: 0; gap: 16px; }
+    .hdr-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .back-btn { color: #C9A84C; text-decoration: none; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: .8; }
+    .back-btn:hover { opacity: 1; }
+    .hdr-title { font-size: 14px; font-weight: 800; color: #C9A84C; white-space: nowrap; }
+    .hdr-sub   { font-size: 10px; color: #e8c97a; opacity: .7; margin-top: 1px; }
+    .sync-pill { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.07); border-radius: 99px; padding: 4px 12px; font-size: 11px; color: #e8c97a; white-space: nowrap; flex-shrink: 0; cursor: pointer; border: none; font-family: inherit; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
+    .sync-dot.ok    { background: #4ade80; }
+    .sync-dot.error { background: #f87171; }
+    .sync-dot.spin  { background: #fbbf24; animation: pulse .8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Toolbar ── */
+    .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; position: relative; }
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; font-family: inherit; white-space: nowrap; }
+    .btn-dark  { background: #0d1b3e; color: #C9A84C; }
+    .btn-dark:hover  { background: #1a2f5a; }
+    .btn-green { background: #15803d; color: white; }
+    .btn-green:hover { background: #166534; }
+    .btn-ghost { background: #f3f4f6; color: #374151; }
+    .btn-ghost:hover { background: #e5e7eb; }
+    .btn-red   { background: #fee2e2; color: #dc2626; }
+    .btn-red:hover { background: #fecaca; }
+    .btn-icon  { padding: 5px 8px; font-size: 13px; }
+    .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+    .toolbar-sep { width: 1px; height: 24px; background: #e5e7eb; flex-shrink: 0; }
+    .cache-badge { font-size: 10px; color: #f59e0b; font-weight: 600; padding: 3px 8px; background: #fef3c7; border-radius: 99px; }
+
+    /* ── Column panel ── */
+    .col-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: white; border: 1px solid #dde1eb; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 12px; z-index: 100; min-width: 220px; }
+    .col-panel.open { display: block; }
+    .col-panel-title { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .col-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: #374151; cursor: pointer; user-select: none; }
+    .col-item input[type=checkbox] { accent-color: #C9A84C; width: 14px; height: 14px; cursor: pointer; }
+    .col-panel-footer { display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #edf0f5; padding-top: 10px; }
+
+    /* ── Filters ── */
+    .filters { background: #f8f9fb; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+    .f-group { display: flex; align-items: center; gap: 5px; }
+    .f-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .f-input { height: 28px; padding: 0 8px; border: 1px solid #dde1eb; border-radius: 6px; font-size: 12px; font-family: inherit; background: white; color: #0d1b3e; }
+    .f-input:focus { outline: none; border-color: #C9A84C; }
+    input.f-input { min-width: 160px; }
+    .f-count { font-size: 11px; color: #9ca3af; margin-left: auto; font-weight: 600; white-space: nowrap; }
+
+    /* ── Stats ── */
+    .stats-bar { background: #0d1b3e; padding: 5px 20px; display: flex; gap: 0; flex-shrink: 0; overflow-x: auto; }
+    .stat { display: flex; flex-direction: column; align-items: center; padding: 0 16px; border-right: 1px solid #1a2f5a; }
+    .stat:last-child { border-right: none; }
+    .stat-v { font-size: 15px; font-weight: 800; color: #C9A84C; line-height: 1; }
+    .stat-l { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; white-space: nowrap; }
+
+    /* ── Table ── */
+    .table-outer  { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .table-scroll { overflow-x: auto; min-width: 0; }
+    table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: 100%; }
+    thead th {
+      background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
+      padding: 7px 10px; border-bottom: 2px solid #C9A84C; border-right: 1px solid #1a2f5a;
+      position: sticky; top: 0; z-index: 4; white-space: nowrap; text-align: left;
+      user-select: none;
+    }
+    thead th.draggable { cursor: grab; }
+    thead th.draggable:active { cursor: grabbing; }
+    thead th.drag-over { background: #1a3a6e; outline: 2px dashed #C9A84C; outline-offset: -2px; }
+    thead th:last-child { border-right: none; }
+    tbody tr { background: white; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:hover td { background: #eff6ff !important; }
+    td {
+      padding: 6px 10px; border-bottom: 1px solid #edf0f5; border-right: 1px solid #edf0f5;
+      vertical-align: middle; color: #1f2937; white-space: nowrap;
+    }
+    td:last-child { border-right: none; }
+    td.td-comment  { max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+    td.td-clients  { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+    td.td-nom      { font-weight: 600; }
+    td.td-highlight { background: #fefce8 !important; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: .04em; }
+    .badge-acheteur { background: #dbeafe; color: #1d4ed8; }
+    .badge-vendeur  { background: #dcfce7; color: #15803d; }
+    .badge-attente  { background: #f3f4f6; color: #6b7280; }
+    .badge-etude    { background: #dbeafe; color: #1d4ed8; }
+    .badge-conclu   { background: #dcfce7; color: #15803d; }
+    .badge-abandon  { background: #fee2e2; color: #dc2626; }
+
+    /* Row actions */
+    .row-actions { display: flex; gap: 4px; }
+
+    /* Empty / setup states */
+    .center-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; gap: 14px; }
+    .center-icon  { font-size: 56px; }
+    .center-title { font-size: 18px; font-weight: 800; color: #0d1b3e; }
+    .center-sub   { font-size: 13px; color: #6b7280; text-align: center; max-width: 400px; line-height: 1.6; }
+
+    /* ── Modals ── */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 50; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: white; border-radius: 16px; padding: 28px; width: 95%; max-width: 580px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .modal.wide { max-width: 780px; }
+    .modal-title { font-size: 16px; font-weight: 800; color: #0d1b3e; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .form-row   { margin-bottom: 14px; }
+    .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .form-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 5px; }
+    .form-input { width: 100%; padding: 9px 12px; border: 1px solid #dde1eb; border-radius: 8px; font-size: 13px; font-family: inherit; color: #0d1b3e; }
+    .form-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 2px rgba(201,168,76,.15); }
+    .form-input.highlighted { border-color: #3b82f6; background: #eff6ff; }
+    select.form-input { background: white; cursor: pointer; }
+    textarea.form-input { resize: vertical; min-height: 70px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+    /* Settings steps */
+    .step { background: #f8f9fb; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #0d1b3e; color: #C9A84C; border-radius: 50%; font-size: 11px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+    .step-text { font-size: 12px; color: #374151; line-height: 1.6; }
+    .code-wrap { position: relative; background: #0d1b3e; border-radius: 8px; padding: 14px; margin: 8px 0; }
+    .code-wrap pre { font-family: 'Courier New', monospace; font-size: 10.5px; color: #e2e8f0; white-space: pre; overflow-x: auto; line-height: 1.5; max-height: 260px; overflow-y: auto; }
+    .copy-code-btn { position: absolute; top: 8px; right: 8px; background: #C9A84C; color: #0d1b3e; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .copy-code-btn:hover { background: #d4b05c; }
+    .url-row { display: flex; gap: 8px; }
+    .url-row .form-input { flex: 1; }
+    .test-result { font-size: 11px; margin-top: 6px; font-weight: 600; }
+    .test-ok    { color: #16a34a; }
+    .test-error { color: #dc2626; }
+
+    footer { text-align: center; padding: 8px; font-size: 10px; color: #8a94aa; background: white; border-top: 1px solid #edf0f5; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="hdr-left">
+    <a class="back-btn" href="index.html">← Tableau de bord</a>
+    <span style="color:#1a2f5a">|</span>
+    <div>
+      <div class="hdr-title">🍇 Raisins à la Vendange</div>
+      <div class="hdr-sub">FCDH Courtiers Associés</div>
+    </div>
+  </div>
+  <button class="sync-pill" onclick="manualRefresh()" title="Actualiser">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncLabel">Non configuré</span>
+  </button>
+</header>
+
+<!-- ── Toolbar ── -->
+<div class="toolbar" id="toolbar">
+  <button class="btn btn-green" id="btnAdd" onclick="openAdd()" disabled>➕ Nouvelle demande</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-ghost" id="btnCols" onclick="toggleColPanel()">Colonnes ▾</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-ghost" onclick="openModal('modalSettings')">⚙️ Configuration</button>
+  <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
+
+  <!-- Column visibility panel -->
+  <div class="col-panel" id="colPanel">
+    <div class="col-panel-title">Afficher / masquer</div>
+    <div id="colCheckboxes"></div>
+    <div class="col-panel-footer">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="resetColOrder()">Réinitialiser</button>
+      <button class="btn btn-dark"  style="font-size:11px;padding:4px 10px" onclick="toggleColPanel()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Filters ── -->
+<div class="filters" id="filtersBar" style="display:none">
+  <div class="f-group">
+    <span class="f-label">Recherche</span>
+    <input class="f-input" type="text" id="fSearch" placeholder="Nom, cépage, commentaire…" oninput="applyFilters()">
+  </div>
+  <div class="f-group">
+    <span class="f-label">Type</span>
+    <select class="f-input" id="fType" onchange="applyFilters()">
+      <option value="">Tous</option>
+      <option>Acheteur</option>
+      <option>Vendeur</option>
+    </select>
+  </div>
+  <div class="f-group">
+    <span class="f-label">Cépage</span>
+    <select class="f-input" id="fCepage" onchange="applyFilters()"><option value="">Tous</option></select>
+  </div>
+  <div class="f-group">
+    <span class="f-label">Statut</span>
+    <select class="f-input" id="fStatut" onchange="applyFilters()">
+      <option value="">Tous</option>
+      <option>En attente</option>
+      <option>En cours d'étude</option>
+      <option>Conclu</option>
+      <option>Abandon</option>
+    </select>
+  </div>
+  <div class="f-group">
+    <span class="f-label">Courtier</span>
+    <select class="f-input" id="fCourtier" onchange="applyFilters()"><option value="">Tous</option></select>
+  </div>
+  <span class="f-count" id="fCount"></span>
+</div>
+
+<!-- ── Stats ── -->
+<div class="stats-bar" id="statsBar" style="display:none">
+  <div class="stat"><div class="stat-v" id="sTotal">0</div><div class="stat-l">Demandes</div></div>
+  <div class="stat"><div class="stat-v" id="sAcheteurs" style="color:#93c5fd">0</div><div class="stat-l">Acheteurs</div></div>
+  <div class="stat"><div class="stat-v" id="sVendeurs"  style="color:#86efac">0</div><div class="stat-l">Vendeurs</div></div>
+  <div class="stat"><div class="stat-v" id="sAttente"   style="color:#d1d5db">0</div><div class="stat-l">En attente</div></div>
+  <div class="stat"><div class="stat-v" id="sEtude"     style="color:#93c5fd">0</div><div class="stat-l">En étude</div></div>
+  <div class="stat"><div class="stat-v" id="sConclu"    style="color:#4ade80">0</div><div class="stat-l">Conclus</div></div>
+  <div class="stat"><div class="stat-v" id="sAbandon"   style="color:#f87171">0</div><div class="stat-l">Abandons</div></div>
+</div>
+
+<!-- ── Table ── -->
+<div class="table-outer" id="tableOuter">
+  <div class="center-state" id="setupState">
+    <div class="center-icon">⚙️</div>
+    <div class="center-title">Configuration requise</div>
+    <div class="center-sub">Connectez cet outil à un Google Sheet pour commencer.</div>
+    <button class="btn btn-dark" style="margin-top:8px" onclick="openModal('modalSettings')">⚙️ Configurer maintenant</button>
+  </div>
+  <div class="center-state" id="emptyState" style="display:none">
+    <div class="center-icon">🍇</div>
+    <div class="center-title">Aucune demande</div>
+    <div class="center-sub">Cliquez sur "Nouvelle demande" pour enregistrer la première demande acheteur ou vendeur.</div>
+  </div>
+  <div class="table-scroll" id="tableScroll" style="display:none">
+    <table id="mainTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Modal : Paramètres ── -->
+<div class="modal-bg" id="modalSettings">
+  <div class="modal wide">
+    <div class="modal-title">⚙️ Configuration Google Sheets</div>
+    <div class="step">
+      <span class="step-num">1</span>
+      <span class="step-text">Ouvrez votre Google Sheet <strong>Offres et demandes raisins</strong> dans <em>Mon Drive / Vendanges</em>.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <span class="step-text">Dans le Sheet, ouvrez <strong>Extensions → Apps Script</strong>. Supprimez le code existant et collez celui-ci :</span>
+      <div class="code-wrap">
+        <button class="copy-code-btn" onclick="copyScript()">Copier</button>
+        <pre id="scriptCode"></pre>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <span class="step-text">Cliquez <strong>Déployer → Nouveau déploiement</strong> · Type : <em>Application Web</em> · Exécuter en tant que : <em>Moi</em> · Accès : <em>Tout le monde</em>. Copiez l'URL générée.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span>
+      <span class="step-text">Collez l'URL ci-dessous et testez la connexion.</span>
+      <div style="margin-top:10px">
+        <div class="url-row">
+          <input class="form-input" type="url" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/…/exec">
+          <button class="btn btn-ghost" onclick="testConnection()">Tester</button>
+        </div>
+        <div class="test-result" id="testResult"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalSettings')">Annuler</button>
+      <button class="btn btn-dark"  onclick="saveSettings()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Ajouter / Modifier demande ── -->
+<div class="modal-bg" id="modalForm">
+  <div class="modal">
+    <div class="modal-title" id="formTitle">➕ Nouvelle demande</div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="f_date">
+      </div>
+      <div>
+        <label class="form-label">Type *</label>
+        <select class="form-input" id="f_type">
+          <option value="">— Choisir —</option>
+          <option>Acheteur</option>
+          <option>Vendeur</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Nom *</label>
+      <input class="form-input" type="text" id="f_nom" placeholder="Nom du client ou de la société">
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Cépage</label>
+        <input class="form-input" type="text" id="f_cepage" placeholder="ex : Pinot Noir" list="cepageList">
+        <datalist id="cepageList">
+          <option>Pinot Noir</option>
+          <option>Chardonnay</option>
+          <option>Pinot Meunier</option>
+          <option>Pinot Blanc</option>
+          <option>Arbane</option>
+          <option>Petit Meslier</option>
+        </datalist>
+      </div>
+      <div>
+        <label class="form-label">Vendange(s) concernée(s)</label>
+        <input class="form-input" type="text" id="f_vendanges" placeholder="ex : 2024 ou 2023, 2024">
+      </div>
+    </div>
+
+    <div class="form-row-3">
+      <div>
+        <label class="form-label">Quantité</label>
+        <input class="form-input" type="number" id="f_quantite" placeholder="ex : 5000" min="0">
+      </div>
+      <div>
+        <label class="form-label">Unité</label>
+        <select class="form-input" id="f_unite">
+          <option value="">—</option>
+          <option>kg</option>
+          <option>hl</option>
+          <option>marc (4 000 kg)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Prix indicatif (€)</label>
+        <input class="form-input" type="number" id="f_prix" placeholder="ex : 7.50" step="0.01" min="0">
+      </div>
+    </div>
+
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Statut</label>
+        <select class="form-input" id="f_statut" onchange="onStatutChange()">
+          <option>En attente</option>
+          <option>En cours d'étude</option>
+          <option>Conclu</option>
+          <option>Abandon</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Courtier</label>
+        <select class="form-input" id="f_courtier">
+          <option value="">— Choisir —</option>
+          <option>EC</option><option>MAA</option><option>EH</option><option>JPNC</option>
+          <option>ASM</option><option>EB</option><option>BO</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row" id="rowClients">
+      <label class="form-label">Clients proposés</label>
+      <input class="form-input" id="f_clients" placeholder="Noms des clients proposés…">
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Commentaire</label>
+      <textarea class="form-input" id="f_commentaire" placeholder="Informations complémentaires…"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalForm')">Annuler</button>
+      <button class="btn btn-dark" id="formSubmitBtn" onclick="submitForm()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Confirmation suppression ── -->
+<div class="modal-bg" id="modalDelete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">🗑️ Supprimer la demande</div>
+    <p style="font-size:13px;color:#374151;line-height:1.6">Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalDelete')">Annuler</button>
+      <button class="btn btn-red"   onclick="confirmDelete()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const HEADERS = [
+  'Date', 'Type', 'Nom', 'Cépage', 'Quantité', 'Unité',
+  'Prix indicatif (€)', 'Vendange(s)', 'Statut', 'Clients proposés',
+  'Courtier', 'Commentaire'
+];
+
+const COL_WIDTHS = {
+  'Date'              : '92px',
+  'Type'              : '90px',
+  'Nom'               : '180px',
+  'Cépage'            : '120px',
+  'Quantité'          : '75px',
+  'Unité'             : '115px',
+  'Prix indicatif (€)': '105px',
+  'Vendange(s)'       : '120px',
+  'Statut'            : '130px',
+  'Clients proposés'  : '180px',
+  'Courtier'          : '70px',
+  'Commentaire'       : '200px',
+};
+
+const COL_ALIGN = {
+  'Quantité'          : 'right',
+  'Prix indicatif (€)': 'right',
+};
+
+const FIELD_MAP = {
+  'Date'              : 'f_date',
+  'Type'              : 'f_type',
+  'Nom'               : 'f_nom',
+  'Cépage'            : 'f_cepage',
+  'Quantité'          : 'f_quantite',
+  'Unité'             : 'f_unite',
+  'Prix indicatif (€)': 'f_prix',
+  'Vendange(s)'       : 'f_vendanges',
+  'Statut'            : 'f_statut',
+  'Clients proposés'  : 'f_clients',
+  'Courtier'          : 'f_courtier',
+  'Commentaire'       : 'f_commentaire',
+};
+
+const URL_KEY    = 'fcdh_raisins_url';
+const CACHE_KEY  = 'fcdh_raisins_cache';
+const ORDER_KEY  = 'fcdh_raisins_col_order';
+const HIDDEN_KEY = 'fcdh_raisins_col_hidden';
+const REFRESH_MS = 20000;
+
+const APPS_SCRIPT = `const HEADERS = [
+  'Date','Type','Nom','Cépage','Quantité','Unité',
+  'Prix indicatif (€)','Vendange(s)','Statut','Clients proposés',
+  'Courtier','Commentaire'
+];
+
+function getSheet(){
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName('Demandes');
+  if(!s){
+    s = ss.insertSheet('Demandes');
+    s.appendRow(HEADERS);
+    s.getRange(1,1,1,HEADERS.length).setFontWeight('bold');
+  }
+  return s;
+}
+
+function read(s){
+  if(s.getLastRow() < 1) return {headers:[], rows:[]};
+  const v = s.getRange(1,1,s.getLastRow(),s.getLastColumn()).getValues();
+  const rows = v.slice(1)
+    .map((r,i) => ({idx:i, data:r.map(c => c instanceof Date ? c.toISOString() : c)}))
+    .filter(r => r.data.some(c => c !== ''));
+  return {headers:v[0], rows};
+}
+
+function doGet(e){
+  return ContentService
+    .createTextOutput(JSON.stringify(read(getSheet())))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e){
+  const lk = LockService.getScriptLock();
+  lk.waitLock(15000);
+  try{
+    const p = JSON.parse(e.postData.contents);
+    const s = getSheet();
+    if(p.action === 'addRow'){
+      s.appendRow(HEADERS.map(h => p.data[h] !== undefined ? p.data[h] : ''));
+    } else if(p.action === 'updateRow'){
+      s.getRange(p.rowIdx+2,1,1,HEADERS.length)
+       .setValues([HEADERS.map(h => p.data[h] !== undefined ? p.data[h] : '')]);
+    } else if(p.action === 'deleteRow'){
+      s.deleteRow(p.rowIdx+2);
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify(read(s)))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally { lk.releaseLock(); }
+}`;
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let scriptUrl    = localStorage.getItem(URL_KEY) || '';
+let rows         = [];
+let filteredIdxs = [];
+let refreshTimer = null;
+let pauseUntil   = 0;
+let editingIdx   = null;
+let deletingIdx  = null;
+
+// Column order & visibility (persisted)
+let colOrder  = loadColOrder();
+let colHidden = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
+
+function loadColOrder() {
+  const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || 'null');
+  if (!saved) return [...HEADERS];
+  // Merge: keep saved order, append any new HEADERS not yet in saved
+  const merged = saved.filter(c => HEADERS.includes(c));
+  HEADERS.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  return merged;
+}
+
+function saveColState() {
+  localStorage.setItem(ORDER_KEY,  JSON.stringify(colOrder));
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...colHidden]));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('scriptCode').textContent = APPS_SCRIPT;
+  document.getElementById('f_date').value = todayStr();
+  onStatutChange();
+
+  if (scriptUrl) {
+    document.getElementById('scriptUrlInput').value = scriptUrl;
+    loadData();
+    startRefresh();
+  } else {
+    setSyncLabel('Non configuré', '');
+  }
+
+  setupDragDrop();
+
+  // Close col panel when clicking outside
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('colPanel');
+    const btn   = document.getElementById('btnCols');
+    if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) {
+      panel.classList.remove('open');
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════════════════════════
+async function apiFetch() {
+  const r = await fetch(scriptUrl + '?t=' + Date.now());
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPost(data) {
+  const r = await fetch(scriptUrl, { method: 'POST', body: JSON.stringify(data) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD / REFRESH
+// ═══════════════════════════════════════════════════════════════
+async function loadData(showSpinner = true) {
+  if (!scriptUrl) return;
+  if (showSpinner) setSyncLabel('Synchronisation…', 'spin');
+  try {
+    const data = await apiFetch();
+    applyData(data);
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ rows: data.rows, ts: Date.now() }));
+    document.getElementById('cacheBadge').style.display = 'none';
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur de connexion', 'error');
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    if (cache.rows && !rows.length) {
+      applyData(cache);
+      document.getElementById('cacheBadge').style.display = '';
+    }
+  }
+}
+
+function applyData(data) {
+  rows = data.rows || [];
+  showTable(rows.length > 0);
+  if (rows.length) {
+    populateFilterOptions();
+    applyFilters();
+    renderStats();
+  }
+  document.getElementById('btnAdd').disabled = false;
+}
+
+async function manualRefresh() {
+  if (!scriptUrl) { openModal('modalSettings'); return; }
+  await loadData(true);
+}
+
+function startRefresh() {
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (scriptUrl && Date.now() > pauseUntil) loadData(false);
+  }, REFRESH_MS);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DISPLAY STATES
+// ═══════════════════════════════════════════════════════════════
+function showTable(hasRows) {
+  document.getElementById('setupState').style.display  = 'none';
+  document.getElementById('emptyState').style.display  = hasRows ? 'none' : '';
+  document.getElementById('tableScroll').style.display = hasRows ? '' : 'none';
+  document.getElementById('filtersBar').style.display  = hasRows ? '' : 'none';
+  document.getElementById('statsBar').style.display    = hasRows ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTERS
+// ═══════════════════════════════════════════════════════════════
+function populateFilterOptions() {
+  const cepages   = [...new Set(rows.map(r => r.data[hi('Cépage')]).filter(Boolean))].sort();
+  const courtiers = [...new Set(rows.map(r => r.data[hi('Courtier')]).filter(Boolean))].sort();
+  document.getElementById('fCepage').innerHTML   = '<option value="">Tous</option>' + cepages.map(c => `<option>${esc(c)}</option>`).join('');
+  document.getElementById('fCourtier').innerHTML = '<option value="">Tous</option>' + courtiers.map(c => `<option>${esc(c)}</option>`).join('');
+}
+
+function applyFilters() {
+  const search    = document.getElementById('fSearch').value.toLowerCase().trim();
+  const fType     = document.getElementById('fType').value;
+  const fCepage   = document.getElementById('fCepage').value;
+  const fStatut   = document.getElementById('fStatut').value;
+  const fCourtier = document.getElementById('fCourtier').value;
+
+  filteredIdxs = rows.map((_,i) => i).filter(i => {
+    const d = rows[i].data;
+    if (search && !['Nom','Cépage','Commentaire','Clients proposés'].some(col => String(d[hi(col)]||'').toLowerCase().includes(search))) return false;
+    if (fType    && d[hi('Type')]    !== fType)    return false;
+    if (fCepage  && d[hi('Cépage')] !== fCepage)  return false;
+    if (fStatut  && d[hi('Statut')] !== fStatut)  return false;
+    if (fCourtier && d[hi('Courtier')] !== fCourtier) return false;
+    return true;
+  });
+
+  renderTable();
+  const total = rows.length, shown = filteredIdxs.length;
+  document.getElementById('fCount').textContent = shown === total
+    ? total + ' demande' + (total > 1 ? 's' : '')
+    : shown + ' / ' + total + ' demandes';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COLUMN PANEL
+// ═══════════════════════════════════════════════════════════════
+function toggleColPanel() {
+  const panel = document.getElementById('colPanel');
+  if (!panel.classList.contains('open')) buildColPanel();
+  panel.classList.toggle('open');
+}
+
+function buildColPanel() {
+  const html = colOrder.map(col => `
+    <label class="col-item">
+      <input type="checkbox" ${colHidden.has(col) ? '' : 'checked'} onchange="toggleCol('${esc(col)}', this.checked)">
+      ${esc(col)}
+    </label>`).join('');
+  document.getElementById('colCheckboxes').innerHTML = html;
+}
+
+function toggleCol(col, visible) {
+  if (visible) colHidden.delete(col);
+  else         colHidden.add(col);
+  saveColState();
+  if (rows.length) renderTable();
+}
+
+function resetColOrder() {
+  colOrder  = [...HEADERS];
+  colHidden = new Set();
+  saveColState();
+  buildColPanel();
+  if (rows.length) renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════════════════
+function visibleCols() {
+  return colOrder.filter(c => !colHidden.has(c));
+}
+
+function renderTable() {
+  renderHead();
+  renderBody();
+}
+
+let dragSrcCol = null;
+
+function renderHead() {
+  const cols = visibleCols();
+  const ths = cols.map(col => {
+    const w = COL_WIDTHS[col] || '100px';
+    return `<th class="draggable" data-col="${esc(col)}" style="min-width:${w}" draggable="true">${esc(col)}</th>`;
+  });
+  ths.push('<th style="min-width:80px;text-align:center">Actions</th>');
+  document.getElementById('tableHead').innerHTML = '<tr>' + ths.join('') + '</tr>';
+}
+
+function renderBody() {
+  const cols = visibleCols();
+  const statutIdx  = hi('Statut');
+  const clientsIdx = hi('Clients proposés');
+
+  let html = '';
+  for (const i of filteredIdxs) {
+    const d   = rows[i].data;
+    const statut = d[statutIdx] || '';
+    const isEtude = statut === "En cours d'étude";
+
+    const tds = cols.map(col => {
+      const idx = hi(col);
+      let val = d[idx];
+      let display = '';
+      let extra   = '';
+
+      if (col === 'Date') {
+        display = formatDate(val);
+      } else if (col === 'Type') {
+        display = typeBadge(String(val || ''));
+      } else if (col === 'Statut') {
+        display = statutBadge(String(val || ''));
+      } else if (col === 'Quantité') {
+        display = esc(val !== '' && val !== null ? Number(val).toLocaleString('fr-FR') : '');
+      } else if (col === 'Prix indicatif (€)') {
+        display = val !== '' && val !== null ? esc(Number(val).toFixed(2)) + ' €' : '';
+      } else if (col === 'Clients proposés') {
+        extra = isEtude && !val ? ' td-highlight' : '';
+        display = `<span title="${esc(val)}">${esc(val)}</span>`;
+        return `<td class="td-clients${extra}">${display}</td>`;
+      } else if (col === 'Commentaire') {
+        return `<td class="td-comment" title="${esc(val)}">${esc(val)}</td>`;
+      } else if (col === 'Nom') {
+        return `<td class="td-nom">${esc(val)}</td>`;
+      } else {
+        display = esc(val);
+      }
+
+      const align = COL_ALIGN[col] ? ` style="text-align:${COL_ALIGN[col]}"` : '';
+      return `<td${align}>${display}</td>`;
+    });
+
+    tds.push(`<td>
+      <div class="row-actions">
+        <button class="btn btn-ghost btn-icon" title="Modifier"   onclick="openEdit(${i})">✏️</button>
+        <button class="btn btn-red   btn-icon" title="Supprimer"  onclick="openDeleteConfirm(${i})">🗑️</button>
+      </div>
+    </td>`);
+
+    html += `<tr data-i="${i}">${tds.join('')}</tr>`;
+  }
+  document.getElementById('tableBody').innerHTML = html;
+}
+
+// ── Drag & drop columns ──────────────────────────────────────
+function setupDragDrop() {
+  const thead = document.getElementById('tableHead');
+
+  thead.addEventListener('dragstart', e => {
+    const th = e.target.closest('th[data-col]');
+    if (!th) return;
+    dragSrcCol = th.dataset.col;
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  thead.addEventListener('dragover', e => {
+    const th = e.target.closest('th[data-col]');
+    if (!th || th.dataset.col === dragSrcCol) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    thead.querySelectorAll('th.drag-over').forEach(el => el.classList.remove('drag-over'));
+    th.classList.add('drag-over');
+  });
+
+  thead.addEventListener('dragleave', e => {
+    const th = e.target.closest('th[data-col]');
+    if (th) th.classList.remove('drag-over');
+  });
+
+  thead.addEventListener('drop', e => {
+    e.preventDefault();
+    const th = e.target.closest('th[data-col]');
+    if (!th || !dragSrcCol) return;
+    const dropCol = th.dataset.col;
+    if (dragSrcCol === dropCol) { dragSrcCol = null; return; }
+    thead.querySelectorAll('th.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+    const srcIdx = colOrder.indexOf(dragSrcCol);
+    const dstIdx = colOrder.indexOf(dropCol);
+    colOrder.splice(srcIdx, 1);
+    colOrder.splice(dstIdx, 0, dragSrcCol);
+    dragSrcCol = null;
+    saveColState();
+    renderTable();
+  });
+
+  thead.addEventListener('dragend', () => {
+    thead.querySelectorAll('th.drag-over').forEach(el => el.classList.remove('drag-over'));
+    dragSrcCol = null;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════════════
+function renderStats() {
+  const typeIdx   = hi('Type');
+  const statutIdx = hi('Statut');
+  document.getElementById('sTotal').textContent    = rows.length;
+  document.getElementById('sAcheteurs').textContent = rows.filter(r => r.data[typeIdx]   === 'Acheteur').length;
+  document.getElementById('sVendeurs').textContent  = rows.filter(r => r.data[typeIdx]   === 'Vendeur').length;
+  document.getElementById('sAttente').textContent   = rows.filter(r => r.data[statutIdx] === 'En attente').length;
+  document.getElementById('sEtude').textContent     = rows.filter(r => r.data[statutIdx] === "En cours d'étude").length;
+  document.getElementById('sConclu').textContent    = rows.filter(r => r.data[statutIdx] === 'Conclu').length;
+  document.getElementById('sAbandon').textContent   = rows.filter(r => r.data[statutIdx] === 'Abandon').length;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FORM — ADD / EDIT
+// ═══════════════════════════════════════════════════════════════
+function onStatutChange() {
+  const statut = document.getElementById('f_statut').value;
+  const el = document.getElementById('f_clients');
+  el.classList.toggle('highlighted', statut === "En cours d'étude");
+}
+
+function openAdd() {
+  editingIdx = null;
+  document.getElementById('formTitle').textContent     = '➕ Nouvelle demande';
+  document.getElementById('formSubmitBtn').textContent = 'Ajouter';
+  clearForm();
+  document.getElementById('f_date').value   = todayStr();
+  document.getElementById('f_statut').value = 'En attente';
+  onStatutChange();
+  openModal('modalForm');
+}
+
+function openEdit(i) {
+  editingIdx = i;
+  document.getElementById('formTitle').textContent     = '✏️ Modifier la demande';
+  document.getElementById('formSubmitBtn').textContent = 'Enregistrer';
+  clearForm();
+  const d = rows[i].data;
+  Object.entries(FIELD_MAP).forEach(([header, fieldId]) => {
+    const idx = hi(header);
+    const el  = document.getElementById(fieldId);
+    if (!el || idx < 0) return;
+    let val = d[idx];
+    if (header === 'Date' && val) val = formatDateInput(val);
+    el.value = val !== null && val !== undefined ? val : '';
+  });
+  onStatutChange();
+  openModal('modalForm');
+}
+
+function clearForm() {
+  Object.values(FIELD_MAP).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function submitForm() {
+  const type = document.getElementById('f_type').value;
+  const nom  = document.getElementById('f_nom').value.trim();
+  if (!type) { alert('Veuillez choisir un type (Acheteur ou Vendeur).'); return; }
+  if (!nom)  { alert('Veuillez saisir un nom.'); return; }
+
+  const data = {};
+  Object.entries(FIELD_MAP).forEach(([header, fieldId]) => {
+    data[header] = document.getElementById(fieldId).value.trim();
+  });
+
+  try {
+    closeModal('modalForm');
+    pauseUntil = Date.now() + 4000;
+    setSyncLabel('Sauvegarde…', 'spin');
+    const result = editingIdx === null
+      ? await apiPost({ action: 'addRow', data })
+      : await apiPost({ action: 'updateRow', rowIdx: rows[editingIdx].idx, data });
+    applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur', 'error');
+    alert('Erreur : ' + err.message);
+    await loadData(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════════════════════
+function openDeleteConfirm(i) {
+  deletingIdx = i;
+  openModal('modalDelete');
+}
+
+async function confirmDelete() {
+  if (deletingIdx === null) return;
+  const rowIdx = rows[deletingIdx].idx;
+  closeModal('modalDelete');
+  try {
+    pauseUntil = Date.now() + 4000;
+    setSyncLabel('Suppression…', 'spin');
+    const result = await apiPost({ action: 'deleteRow', rowIdx });
+    applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur', 'error');
+    alert('Erreur : ' + err.message);
+    await loadData(false);
+  }
+  deletingIdx = null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════════
+async function testConnection() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  const el  = document.getElementById('testResult');
+  if (!url) { el.textContent = '⚠️ Saisissez une URL.'; el.className = 'test-result test-error'; return; }
+  el.textContent = '⏳ Test en cours…'; el.className = 'test-result';
+  try {
+    const d = await (await fetch(url + '?t=' + Date.now())).json();
+    if (d.headers !== undefined) {
+      el.textContent = '✅ Connexion réussie — ' + (d.rows?.length || 0) + ' demande(s) dans le Sheet.';
+      el.className = 'test-result test-ok';
+    } else { throw new Error('Format inattendu'); }
+  } catch(e) {
+    el.textContent = '❌ Échec : ' + e.message;
+    el.className = 'test-result test-error';
+  }
+}
+
+function saveSettings() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url) { alert('Saisissez l\'URL du script.'); return; }
+  scriptUrl = url;
+  localStorage.setItem(URL_KEY, url);
+  closeModal('modalSettings');
+  document.getElementById('setupState').style.display = 'none';
+  loadData(true);
+  startRefresh();
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(APPS_SCRIPT).then(() => {
+    const btn = document.querySelector('.copy-code-btn');
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = 'Copier', 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+function hi(col)  { return HEADERS.indexOf(col); }
+function esc(s)   { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nowStr() { return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+
+function formatDate(val) {
+  if (!val) return '';
+  const s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const [y, m, d] = s.substring(0, 10).split('-');
+    return `${d}/${m}/${y}`;
+  }
+  const d = new Date(val);
+  if (!isNaN(d)) return d.toLocaleDateString('fr-FR');
+  return s;
+}
+
+function formatDateInput(val) {
+  if (!val) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(String(val))) return String(val).substring(0, 10);
+  const d = new Date(val);
+  if (!isNaN(d)) return d.toISOString().split('T')[0];
+  return '';
+}
+
+function typeBadge(type) {
+  if (type === 'Acheteur') return `<span class="badge badge-acheteur">Acheteur</span>`;
+  if (type === 'Vendeur')  return `<span class="badge badge-vendeur">Vendeur</span>`;
+  return esc(type);
+}
+
+function statutBadge(statut) {
+  if (statut === 'En attente')       return `<span class="badge badge-attente">En attente</span>`;
+  if (statut === "En cours d'étude") return `<span class="badge badge-etude">En cours d'étude</span>`;
+  if (statut === 'Conclu')           return `<span class="badge badge-conclu">Conclu</span>`;
+  if (statut === 'Abandon')          return `<span class="badge badge-abandon">Abandon</span>`;
+  return esc(statut);
+}
+
+function setSyncLabel(txt, state) {
+  document.getElementById('syncLabel').textContent = txt;
+  document.getElementById('syncDot').className = 'sync-dot' + (state ? ' ' + state : '');
+}
+
+// ── Modals
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-bg')) closeModal(e.target.id);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+});
+</script>
+</body>
+</html>

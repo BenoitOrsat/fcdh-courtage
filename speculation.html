@@ -4,11 +4,22 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>FCDH Courtiers Associés</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // Affiche les erreurs JS à l'écran au lieu d'une page blanche silencieuse
+    window.addEventListener('error', function(e) {
+      var d = document.getElementById('root');
+      if (d && !d.innerHTML) {
+        d.innerHTML = '<div style="padding:40px;font-family:monospace;color:#dc2626;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;margin:40px">'
+          + '<b>Erreur JavaScript :</b><br/>' + e.message
+          + '<br/><small>Ligne ' + e.lineno + ' dans ' + (e.filename || 'script') + '</small></div>';
+      }
+    });
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <style>
@@ -32,7 +43,7 @@ const STATUTS   = ["en attente","en dégustation","conclue","abandon"];
 const FORMATS_BTL  = ["Bouteille","Demie","Magnum","Jero"];
 const COULEURS     = ["verte","blanche","dépolie","noire","chêne/antique","feuille morte"];
 const STADES       = ["S/L","S/P","DN"];
-const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","ROSÉ DE SAIGNÉE","BSA","BIO DEMETER","ROUGE","TRES QUALI","BRUT NATURE"];
+const QUALITES_BTL = ["BLANC DE BLANCS","BLANC DE NOIRS","ROSÉ","ROSÉ DE SAIGNÉE","BSA","ROUGE"];
 const CRUS         = ["Sans Revendication","1er Cru","Grand Cru","1er Cru / Grand Cru"];
 const MILLESIMES   = (()=>{const a=[];for(let y=2027;y>=2000;y--)a.push(String(y));return a;})();
 const CEPAGES      = ["CH","PN","PM","PN/CH","PM/PN","CH/PM","PN/PM/CH","CH PM PN","PN/PM","PM/PN"];
@@ -300,8 +311,8 @@ function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)retur
 function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
 
 
-const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,actions:70};
-const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,actions:70};
+const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,modele:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,commentaires:200,actions:70};
+const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,commentaires:200,actions:70};
 const DEFAULT_HIST_WIDTHS={date:90,numero:60,acheteur:150,vendeur:150,qte:70,prix:85,mention:200,code:80};
 
 const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:""};
@@ -330,6 +341,50 @@ const Txa=(p)=><textarea style={{...inp,resize:"none",height:60}} {...p}/>;
 const Field=({label,children})=><div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:10,fontWeight:700,color:G400,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</label>{children}</div>;
 const thStyle={padding:"10px 12px",textAlign:"left",fontSize:10,fontWeight:700,color:GOLD_L,textTransform:"uppercase",letterSpacing:"0.07em",whiteSpace:"nowrap",borderBottom:`2px solid ${GOLD}`,background:NAVY,userSelect:"none",position:"sticky",top:0,zIndex:1};
 const TH=({children})=><th style={thStyle}>{children}</th>;
+const MultiSelect=({label,options,selected,onChange})=>{
+  const [open,setOpen]=React.useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const toggle=v=>onChange(selected.includes(v)?selected.filter(x=>x!==v):[...selected,v]);
+  const txt=selected.length===0?label:selected.length===1?selected[0]:`${label} (${selected.length})`;
+  return <div ref={ref} style={{position:"relative",display:"inline-block"}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{border:`1.5px solid ${selected.length>0?NAVY:G200}`,borderRadius:8,padding:"7px 10px",fontSize:12,color:selected.length>0?GOLD:G600,background:selected.length>0?NAVY:WHITE,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",outline:"none"}}>
+      <span>{txt}</span><span style={{fontSize:9,opacity:0.6}}>▾</span>
+    </button>
+    {open&&<div style={{position:"absolute",top:"calc(100% + 4px)",left:0,background:WHITE,border:`1px solid ${G200}`,borderRadius:8,boxShadow:"0 4px 16px rgba(13,27,62,.15)",zIndex:30,minWidth:170,maxHeight:240,overflowY:"auto",padding:"4px 0"}}>
+      {options.map(opt=><label key={opt} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",cursor:"pointer",fontSize:12,color:TEXT}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""}>
+        <input type="checkbox" checked={selected.includes(opt)} onChange={()=>toggle(opt)} style={{cursor:"pointer",accentColor:NAVY}}/>{opt}
+      </label>)}
+      {selected.length>0&&<div style={{borderTop:`1px solid ${G100}`,padding:"4px 12px"}}>
+        <button onClick={()=>{onChange([]);setOpen(false);}} style={{fontSize:11,color:G400,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"inherit"}}>Effacer</button>
+      </div>}
+    </div>}
+  </div>;
+};
+
+const ColumnToggler=({colDefs,hidden,setHidden})=>{
+  const [open,setOpen]=React.useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
+  const hideable=colDefs.filter(c=>c.id!=='score'&&c.id!=='actions');
+  const toggle=id=>setHidden(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+  const nb=hidden.filter(id=>hideable.some(c=>c.id===id)).length;
+  return <div ref={ref} style={{position:"relative",display:"inline-block"}}>
+    <button onClick={()=>setOpen(o=>!o)} style={{border:`1.5px solid ${nb>0?NAVY:G200}`,borderRadius:8,padding:"7px 10px",fontSize:12,color:nb>0?GOLD:G600,background:nb>0?NAVY:WHITE,cursor:"pointer",display:"flex",alignItems:"center",gap:5,fontFamily:"inherit",whiteSpace:"nowrap",outline:"none"}}>
+      <span>⊞{nb>0?` ${nb} masq.`:""}</span><span style={{fontSize:9,opacity:0.6}}>▾</span>
+    </button>
+    {open&&<div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:WHITE,border:`1px solid ${G200}`,borderRadius:8,boxShadow:"0 4px 16px rgba(13,27,62,.15)",zIndex:30,minWidth:180,maxHeight:340,overflowY:"auto",padding:"4px 0"}}>
+      <div style={{padding:"6px 12px 4px",fontSize:10,fontWeight:700,color:G400,textTransform:"uppercase",letterSpacing:"0.08em"}}>Colonnes visibles</div>
+      {hideable.map(col=>{const vis=!hidden.includes(col.id);return <label key={col.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",cursor:"pointer",fontSize:12,color:TEXT}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""}>
+        <input type="checkbox" checked={vis} onChange={()=>toggle(col.id)} style={{cursor:"pointer",accentColor:NAVY}}/>{col.label||col.id}
+      </label>;})}
+      {nb>0&&<div style={{borderTop:`1px solid ${G100}`,padding:"5px 12px"}}>
+        <button onClick={()=>{setHidden([]);setOpen(false);}} style={{fontSize:11,color:G400,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",fontFamily:"inherit"}}>Tout afficher</button>
+      </div>}
+    </div>}
+  </div>;
+};
+
 const DragTH=({colId,label,dragRef,onDrop,colWidths,colSort,onSortToggle,onResizeStart})=>{
   const active=colSort&&colSort.col===colId;
   const w=colWidths?colWidths[colId]:undefined;
@@ -350,10 +405,14 @@ function App() {
   const [vinsClairs, setVinsClairs] = useState([]);
   const [form, setForm]   = useState(null);
   const [editId, setEditId] = useState(null);
+  const [dupEntry, setDupEntry] = useState(null);
   const [fCampagne, setFCamp] = useState(CAMPAGNE);
   const [fCourtier, setFC] = useState("");
   const [fBesoin, setFB]   = useState("");
   const [fStatuts, setFS]  = useState([]);
+  const [fFormats, setFFormats]   = useState([]);
+  const [fCouleurs, setFCouleurs] = useState([]);
+  const [fQualites, setFQualites] = useState([]);
   const [search, setSearch]= useState("");
   const [sortBy, setSortBy]= useState("date");
   const [delId, setDelId]  = useState(null);
@@ -392,6 +451,7 @@ function App() {
   const [gLoading, setGLoading]   = useState(false);
   const [gError, setGError]       = useState("");
   const [gSaved, setGSaved]       = useState(false);
+  const [isDirty, setIsDirty]     = useState(false);
   const [driveLoaded, setDriveLoaded]=useState(false);
   const [cotationsBT, setCotationsBT] = useState([]);
   const [cotationsVC, setCotationsVC] = useState([]);
@@ -402,11 +462,20 @@ function App() {
   const cotLoadedRef = useRef(false);
   const pendingSaveRef = useRef(false);
   const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
-  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','couleur','stade','qualite','cru','millesime','prix','actions'];}});
-  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','actions'];}});
+  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];}});
+  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];}});
+  const [btlHidden, setBtlHidden] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_hidden');return s?JSON.parse(s):[];}catch{return [];}});
+  const [vcHidden,  setVcHidden]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_hidden');return s?JSON.parse(s):[];}catch{return [];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_order',JSON.stringify(vcOrder));},[vcOrder]);
-  useEffect(()=>{setColSort({col:null,dir:1});},[tab]);
+  useEffect(()=>{localStorage.setItem('fcdh_btl_hidden',JSON.stringify(btlHidden));},[btlHidden]);
+  useEffect(()=>{localStorage.setItem('fcdh_vc_hidden',JSON.stringify(vcHidden));},[vcHidden]);
+  useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);setFB("");},[tab]);
+  useEffect(()=>{
+    const h=(e)=>{if(isDirty){e.preventDefault();e.returnValue='';}};
+    window.addEventListener('beforeunload',h);
+    return ()=>window.removeEventListener('beforeunload',h);
+  },[isDirty]);
   // Sauvegarde Drive automatique après mise à jour du state (déclenchée par pendingSaveRef)
   useEffect(()=>{
     if(pendingSaveRef.current&&gToken&&driveWbRef.current){
@@ -619,6 +688,7 @@ function App() {
         'VINS CLAIRS': vinsClairs.map(e=>e._row).filter(r=>r!==undefined),
       };
       setGSaved(true);
+      setIsDirty(false);
       setTimeout(()=>setGSaved(false), 3000);
     } catch(e) {
       setGError("Sauvegarde : " + e.message);
@@ -648,6 +718,9 @@ function App() {
       if(fCourtier&&r.courtier!==fCourtier)return false;
       if(fBesoin&&r.besoin!==fBesoin)return false;
       if(fStatuts.length>0&&!fStatuts.includes(r.statut))return false;
+      if(fFormats.length>0){const v=tab==="bouteilles"?r.format:r.formatVin;if(!fFormats.includes(v))return false;}
+      if(fCouleurs.length>0&&!fCouleurs.includes(r.couleur))return false;
+      if(fQualites.length>0&&!fQualites.includes(r.qualite))return false;
       if(search){const s=search.toLowerCase();return Object.values(r).some(v=>String(v).toLowerCase().includes(s));}
       return true;
     });
@@ -655,7 +728,7 @@ function App() {
     else if(sortBy==="score")arr=[...arr].sort((a,b)=>b._best-a._best);
     else arr=[...arr].sort((a,b)=>parseDateForSort(b.date).localeCompare(parseDateForSort(a.date)));
     return arr;
-  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,search,sortBy,colSort]);
+  },[enriched,fCampagne,fCourtier,fBesoin,fStatuts,fFormats,fCouleurs,fQualites,search,sortBy,colSort,tab]);
 
   const openForm=(entry=null)=>{
     setForm(entry?{...entry}:{...empty,date:new Date().toLocaleDateString("fr-FR")});
@@ -667,6 +740,7 @@ function App() {
     let saved;
     if(editId){saved={...form,id:editId};setData(prev=>prev.map(r=>r.id===editId?saved:r));}
     else{const nid=Math.max(0,...data.map(r=>r.id))+1;saved={...form,id:nid};setData(prev=>[...prev,saved]);}
+    setIsDirty(true);
     setModal({entry:saved,matches:matchesFor(saved),cotations:(tab==='bouteilles'?cotationsBT:cotationsVC).filter(c=>namesMatch(c.acheteur,saved.client)||namesMatch(c.vendeur,saved.client))});
     setMTab("matches");setView("liste");setPrevModal(null);
   };
@@ -702,7 +776,7 @@ function App() {
     setOrder(prev=>{const a=[...prev],f=a.indexOf(dragColRef.current),t=a.indexOf(dropId);if(f<0||t<0)return prev;a.splice(f,1);a.splice(t,0,dragColRef.current);return a;});
   };
   const COLS = useMemo(()=>{
-    const actCell = r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
+    const actCell = r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDupEntry(r)} style={{padding:"4px 8px",background:"#dbeafe",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>⧉</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
     return {
     bouteilles:[
       {id:"score",   label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
@@ -711,16 +785,18 @@ function App() {
       {id:"courtier",label:"Courtier", cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.courtier}</TD>},
       {id:"client",  label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
       {id:"besoin",  label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
-      {id:"statut",  label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x))}/></div></TD>},
-      {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x))}/></div></TD>},
+      {id:"statut",  label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>{setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x));setIsDirty(true);}}/></div></TD>},
+      {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>{setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x));setIsDirty(true);}}/></div></TD>},
       {id:"qte",     label:"Qté",      cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"format",  label:"Format",   cell:r=><TD style={{color:G600}}>{r.format}</TD>},
+      {id:"modele",  label:"Modèle",   cell:r=><TD style={{color:G600}}>{r.modele}</TD>},
       {id:"couleur", label:"Couleur",  cell:r=><TD style={{color:G600}}>{r.couleur}</TD>},
       {id:"stade",   label:"Stade",    cell:r=><TD style={{color:G600}}>{r.stade}</TD>},
-      {id:"qualite", label:"Qualité",  cell:r=><TD style={{fontSize:11,color:G600}}>{r.qualite}</TD>},
+      {id:"qualite", label:"Qualité",  cell:r=>{const qu=(r.qualite||"").toUpperCase();const s=qu.startsWith("BLANC DE BLANCS")?{color:"#EAB308",fontWeight:700}:qu.startsWith("BLANC DE NOIRS")||qu.startsWith("BDN")?{color:"#7C3AED",fontWeight:700}:qu.startsWith("ROSÉ")?{color:"#DB2777",fontWeight:700}:{color:G600};return <TD style={{fontSize:11,...s}}>{r.qualite}</TD>;}},
       {id:"cru",     label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"millesime",label:"Mill.",   cell:r=><TD style={{color:G600}}>{r.millesime}</TD>},
       {id:"prix",    label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
+      {id:"commentaires",label:"Commentaire",cell:r=><TD style={{fontSize:11,color:G400,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.commentaires}>{r.commentaires}</TD>},
       {id:"actions", label:"",         cell:r=>actCell(r)},
     ],
     vinsclairs:[
@@ -730,15 +806,16 @@ function App() {
       {id:"courtier", label:"Courtier", cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.courtier}</TD>},
       {id:"client",   label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
       {id:"besoin",   label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
-      {id:"statut",   label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x))}/></div></TD>},
-      {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x))}/></div></TD>},
+      {id:"statut",   label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>{setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x));setIsDirty(true);}}/></div></TD>},
+      {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>{setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x));setIsDirty(true);}}/></div></TD>},
       {id:"qte",      label:"Qté (hl)", cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"vendange", label:"Vendange", cell:r=><TD style={{color:G600}}>{r.vendange}</TD>},
       {id:"formatVin",label:"Format",   cell:r=><TD style={{fontSize:11,color:G600}}>{r.formatVin}</TD>},
-      {id:"qualite",  label:"Qualité",  cell:r=><TD style={{fontSize:11,color:G600}}>{r.qualite}</TD>},
+      {id:"qualite",  label:"Qualité",  cell:r=>{const qu=(r.qualite||"").toUpperCase();const s=qu==="ROUGE"?{color:"#DC2626",fontWeight:700}:{color:G600};return <TD style={{fontSize:11,...s}}>{r.qualite}</TD>;}},
       {id:"cru",      label:"Cru",      cell:r=><TD style={{fontSize:11,color:G600}}>{r.cru}</TD>},
       {id:"cepage",   label:"Cépage",   cell:r=><TD style={{fontWeight:600}}>{r.cepage}</TD>},
       {id:"prix",     label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
+      {id:"commentaires",label:"Commentaire",cell:r=><TD style={{fontSize:11,color:G400,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.commentaires}>{r.commentaires}</TD>},
       {id:"actions",  label:"",         cell:r=>actCell(r)},
     ],
   };},[openForm,openModal,setBouteilles,setVinsClairs,setDelId]);
@@ -805,6 +882,7 @@ function App() {
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           {gError && <span style={{fontSize:11,color:"#fca5a5",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={gError}>⚠️ {gError}</span>}
+          {isDirty && !gSaved && <span style={{fontSize:12,color:"#fbbf24",fontWeight:600,display:"flex",alignItems:"center",gap:4}}><span style={{width:7,height:7,borderRadius:"50%",background:"#fbbf24",display:"inline-block"}}/>Non sauvegardé</span>}
           {gSaved && <span style={{fontSize:12,color:"#6ee7b7",fontWeight:600}}>✓ Sauvegardé</span>}
 
           {!driveLoaded
@@ -836,7 +914,7 @@ function App() {
         <button onClick={()=>setView("cotations")} style={{padding:"6px 16px",borderRadius:7,fontSize:12,fontWeight:600,border:`1.5px solid ${view==="cotations"?GOLD:G200}`,background:view==="cotations"?NAVY:"transparent",color:view==="cotations"?GOLD:G400,cursor:"pointer",marginRight:4}}>📊 Cotations</button>
       </div>
 
-      <div style={{padding:"20px 24px"}}>
+      <div style={{padding:"20px 24px",overflowX:"hidden"}}>
 
         {/* ── Connect CTA (when no data) ── */}
         {!driveLoaded && bouteilles.length===0 && view==="liste" && (
@@ -855,6 +933,35 @@ function App() {
           </div>
         )}
 
+        {/* ── Confirm duplicate ── */}
+        {dupEntry && (
+          <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60}}>
+            <div style={{background:WHITE,borderRadius:14,padding:28,maxWidth:400,width:"100%",margin:"0 16px",boxShadow:"0 8px 40px rgba(13,27,62,.25)"}}>
+              <div style={{fontWeight:700,fontSize:16,color:NAVY,marginBottom:8}}>⧉ Dupliquer cette entrée ?</div>
+              <div style={{fontSize:13,color:TEXT,fontWeight:600,marginBottom:4}}>{dupEntry.client}</div>
+              <div style={{fontSize:12,color:G400,marginBottom:16}}>{dupEntry.courtier} · {dupEntry.campagne} · {dupEntry.besoin}</div>
+              <div style={{fontSize:12,color:G400,marginBottom:20,background:G50,borderRadius:8,padding:"10px 14px",lineHeight:1.7}}>
+                Une nouvelle entrée sera créée avec les mêmes informations.<br/>
+                <span style={{color:NAVY,fontWeight:600}}>Date</span> → aujourd'hui &nbsp;·&nbsp;
+                <span style={{color:NAVY,fontWeight:600}}>Statut</span> → en attente &nbsp;·&nbsp;
+                <span style={{color:NAVY,fontWeight:600}}>Campagne</span> → {CAMPAGNE}
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>{
+                  const {id:_id,_row,_sheet,_best,...rest}=dupEntry;
+                  setForm({...rest,date:new Date().toLocaleDateString("fr-FR"),statut:"en attente",campagne:CAMPAGNE});
+                  setEditId(null);
+                  setDupEntry(null);
+                  setView("form");
+                }} style={{flex:1,background:NAVY,color:GOLD,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>
+                  ⧉ Dupliquer
+                </button>
+                <button onClick={()=>setDupEntry(null)} style={{flex:1,background:G100,color:G600,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Annuler</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Confirm delete ── */}
         {delId && (
           <div style={{position:"fixed",inset:0,background:"rgba(13,27,62,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60}}>
@@ -862,7 +969,7 @@ function App() {
               <div style={{fontWeight:700,fontSize:16,color:NAVY,marginBottom:6}}>Supprimer cette entrée ?</div>
               <div style={{fontSize:13,color:G400,marginBottom:20}}>L'entrée sera définitivement supprimée de l'application et de Google Drive lors de la prochaine sauvegarde.</div>
               <div style={{display:"flex",gap:10}}>
-                <button onClick={()=>{setData(prev=>prev.filter(r=>r.id!==delId));setDelId(null);}} style={{flex:1,background:"#dc2626",color:WHITE,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>Supprimer</button>
+                <button onClick={()=>{setData(prev=>prev.filter(r=>r.id!==delId));setIsDirty(true);setDelId(null);}} style={{flex:1,background:"#dc2626",color:WHITE,border:"none",borderRadius:8,padding:10,fontWeight:700,cursor:"pointer",fontSize:13}}>Supprimer</button>
                 <button onClick={()=>setDelId(null)} style={{flex:1,background:G100,color:G600,border:"none",borderRadius:8,padding:10,fontWeight:600,cursor:"pointer",fontSize:13}}>Annuler</button>
               </div>
             </div>
@@ -1029,40 +1136,53 @@ function App() {
         {/* ── Liste ── */}
         {view==="liste" && (bouteilles.length>0||vinsClairs.length>0) && (
           <>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
-              <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
-              <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
-              <select value={fBesoin}   onChange={e=>setFB(e.target.value)} style={selStyle}><option value="">Vend & Recherche</option><option>Vend</option><option>Recherche</option></select>
-              <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,padding:"14px 16px",marginBottom:16,display:"flex",flexDirection:"column",gap:10,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+              {/* Ligne 1 : recherche + sélecteurs */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Recherche libre…" style={{...selStyle,flex:1,minWidth:160}}/>
+                <select value={fCampagne} onChange={e=>setFCamp(e.target.value)} style={selStyle}><option value="">Toutes campagnes</option>{campagnes.map(c=><option key={c}>{c}</option>)}</select>
+                <select value={fCourtier} onChange={e=>setFC(e.target.value)} style={selStyle}><option value="">Tous les courtiers</option>{COURTIERS.map(c=><option key={c}>{c}</option>)}</select>
+                <ColumnToggler colDefs={tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs} hidden={tab==="bouteilles"?btlHidden:vcHidden} setHidden={tab==="bouteilles"?setBtlHidden:setVcHidden}/>
+                <span style={{fontSize:11,color:G400,marginLeft:"auto",whiteSpace:"nowrap"}}>{filtered.length} entrée(s)</span>
+              </div>
+              {/* Ligne 2 : besoin + statuts + filtres qualité/format/couleur */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}}>
+                {["Tous","Vend","Recherche"].map(v=>{const val=v==="Tous"?"":v;const on=fBesoin===val;const bc=v==="Vend"?BESOIN_COLORS["Vend"]:v==="Recherche"?BESOIN_COLORS["Recherche"]:{bg:G100,col:G600,bdr:G200};return <span key={v} onClick={()=>setFB(val)} style={{background:on?(v==="Tous"?NAVY:bc.bg):G50,color:on?(v==="Tous"?GOLD:bc.col):G400,border:`1.5px solid ${on?(v==="Tous"?NAVY:bc.bdr):G200}`,borderRadius:99,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>{v}</span>;})}
+                <span style={{color:G200,margin:"0 2px"}}>|</span>
+                <MultiSelect label="Format" options={tab==="bouteilles"?FORMATS_BTL:FORMATS_VC} selected={fFormats} onChange={setFFormats}/>
+                {tab==="bouteilles"&&<MultiSelect label="Couleur" options={COULEURS} selected={fCouleurs} onChange={setFCouleurs}/>}
+                <MultiSelect label="Qualité" options={tab==="bouteilles"?QUALITES_BTL:QUALITES_VC} selected={fQualites} onChange={setFQualites}/>
+                <span style={{color:G200,margin:"0 2px"}}>|</span>
                 {STATUTS.map(s=>{const sc=STATUT_COLORS[s]||{bg:G100,col:G600,bdr:G200};const on=fStatuts.includes(s);return <span key={s} onClick={()=>setFS(p=>p.includes(s)?p.filter(x=>x!==s):[...p,s])} style={{background:on?sc.bg:G50,color:on?sc.col:G400,border:`1.5px solid ${on?sc.bdr:G200}`,borderRadius:99,padding:"5px 11px",fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",userSelect:"none"}}>{s}</span>;})}
                 {fStatuts.length>0&&<span onClick={()=>setFS([])} style={{fontSize:11,color:G400,cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}}>tout</span>}
               </div>
-              <select value={sortBy}    onChange={e=>setSortBy(e.target.value)} style={selStyle}><option value="date">Date ↓</option><option value="score">Score ↓</option></select>
-              <span style={{fontSize:11,color:G400,marginLeft:"auto"}}>{filtered.length} entrée(s)</span>
             </div>
-            <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflow:"auto",boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
-              {(()=>{
+            {(()=>{
                 const colDefs=tab==="bouteilles"?COLS.bouteilles:COLS.vinsclairs;
                 const colOrder=tab==="bouteilles"?btlOrder:vcOrder;
                 const setColOrder=tab==="bouteilles"?setBtlOrder:setVcOrder;
                 const colWidths=tab==="bouteilles"?btlColWidths:vcColWidths;
                 const setColWidths=tab==="bouteilles"?setBtlColWidths:setVcColWidths;
-                const ordered=colOrder.map(id=>colDefs.find(c=>c.id===id)).filter(Boolean);
+                const hidden=tab==="bouteilles"?btlHidden:vcHidden;
+                const ordered=colOrder.map(id=>colDefs.find(c=>c.id===id)).filter(Boolean).filter(c=>!hidden.includes(c.id));
                 const totalWidth=ordered.reduce((s,c)=>s+(colWidths[c.id]||80),0);
                 const onResizeStart=(e,id)=>{e.preventDefault();e.stopPropagation();const startX=e.clientX,startW=colWidths[id]||80;tableResizeRef.current={id};const onMove=ev=>{const w=Math.max(40,startW+(ev.clientX-startX));setColWidths(p=>({...p,[id]:w}));};const onUp=()=>{tableResizeRef.current=null;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);};
                 const onSort=id=>{setColSort(s=>s.col===id?{col:id,dir:-s.dir}:{col:id,dir:id==="date"?-1:1});};
-                return <table style={{width:"100%",minWidth:totalWidth,borderCollapse:"collapse",tableLayout:"fixed"}}>
-                  <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
-                  <tbody>{filtered.map(r=>(
-                    <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
-                      {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
-                    </tr>
-                  ))}</tbody>
-                </table>;
+                return <div style={{background:WHITE,borderRadius:12,border:`1px solid ${G100}`,overflowX:"auto",width:"100%",minWidth:0,boxShadow:"0 1px 4px rgba(13,27,62,.06)"}}>
+                  <div style={{overflowY:"auto",maxHeight:"calc(100vh - 270px)"}}>
+                    {filtered.length===0
+                      ?<div style={{textAlign:"center",padding:"48px 0",color:G400}}>Aucune entrée trouvée</div>
+                      :<table style={{tableLayout:"fixed",borderCollapse:"collapse",width:totalWidth}}>
+                        <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
+                        <tbody>{filtered.map(r=>(
+                          <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
+                            {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
+                          </tr>
+                        ))}</tbody>
+                      </table>}
+                  </div>
+                </div>;
               })()}
-              {filtered.length===0&&<div style={{textAlign:"center",padding:"48px 0",color:G400}}>Aucune entrée trouvée</div>}
-            </div>
             <div style={{marginTop:10,display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",fontSize:11}}>
               <span style={{fontWeight:700,color:G400}}>Score :</span>
               {[{l:"★ ≥10 Excellent",bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},{l:"★ 6-9 Bon",bg:"#fef9c3",col:"#92400e",bdr:"#fde68a"},{l:"★ 3-5 Partiel",bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"},{l:"— Aucun",bg:G100,col:G400,bdr:G200}].map(s=>(
@@ -1158,6 +1278,7 @@ function App() {
                     newData=[...data,{...form,id:nid}];
                   }
                   setData(newData);
+                  setIsDirty(true);
                   pendingSaveRef.current=true;
                   // Retourner à la fiche précédente avec matchs recalculés
                   const src=prevModal.entry;
@@ -1191,13 +1312,13 @@ function App() {
                   <Field label="Stade"><Sel value={form.stade} onChange={e=>f("stade",e.target.value)}><option value="">--</option>{STADES.map(v=><option key={v}>{v}</option>)}</Sel></Field>
                   <Field label="Qualité"><Sel value={form.qualite} onChange={e=>f("qualite",e.target.value)}><option value="">--</option>{QUALITES_BTL.map(v=><option key={v}>{v}</option>)}</Sel></Field>
                   <Field label="Cru"><Sel value={form.cru} onChange={e=>f("cru",e.target.value)}><option value="">--</option>{CRUS.map(v=><option key={v}>{v}</option>)}</Sel></Field>
-                  <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)} placeholder="60% PN / 40% CH"/></Field>
+                  <Field label="Assemblage"><Inp value={form.assemblage||""} onChange={e=>f("assemblage",e.target.value)}/></Field>
                   <Field label="Millésime">
-                    <input list="millesimes-list" value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} placeholder="2020" style={{...inp}}/>
+                    <input list="millesimes-list" value={form.millesime||""} onChange={e=>f("millesime",e.target.value)} style={{...inp}}/>
                     <datalist id="millesimes-list">{MILLESIMES.map(y=><option key={y} value={y}/>)}</datalist>
                   </Field>
                   <Field label="Tirage"><Inp value={form.tirage||""} onChange={e=>f("tirage",e.target.value)}/></Field>
-                  <Field label="Prix souhaité"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)} placeholder="10,50 €"/></Field>
+                  <Field label="Prix souhaité"><Inp value={form.prix||""} onChange={e=>f("prix",e.target.value)}/></Field>
                 </div>
                 :<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
                   <Field label="Vendange"><Inp value={form.vendange||""} onChange={e=>f("vendange",e.target.value)} placeholder="2025 ou Ass"/></Field>
