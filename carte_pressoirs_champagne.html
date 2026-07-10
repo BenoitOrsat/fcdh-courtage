@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Centres de pressurage en Champagne — FCDH</title>
+
+<!-- Leaflet 1.9.4 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<!-- Leaflet.markercluster 1.5.3 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --vine:#1F3A2E;
+    --vine-dark:#12251C;
+    --gold:#C9A66B;
+    --gold-light:#E8D9B5;
+    --chalk:#F5F1E8;
+    --ivory:#EDE7D9;
+    --burgundy:#6B2737;
+    --ink:#1A1A16;
+    --brown:#8C5A3C;
+  }
+
+  *{box-sizing:border-box;}
+
+  html, body{
+    margin:0;
+    padding:0;
+    height:100%;
+    font-family:'Inter', sans-serif;
+    color:var(--ink);
+    background:var(--chalk);
+  }
+
+  body{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    overflow:hidden;
+  }
+
+  /* ---------- En-tête ---------- */
+  header{
+    flex:0 0 auto;
+    background:var(--vine);
+    border-bottom:3px solid var(--gold);
+    color:var(--chalk);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 28px;
+    gap:16px;
+    z-index:1200;
+  }
+
+  .header-left .eyebrow{
+    color:var(--gold);
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-size:0.72rem;
+    font-weight:600;
+    margin-bottom:4px;
+  }
+
+  .header-left h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:1.5rem;
+    margin:0;
+    color:var(--chalk);
+  }
+
+  .header-badge{
+    flex:0 0 auto;
+    background:var(--gold);
+    color:var(--vine-dark);
+    font-weight:600;
+    padding:7px 16px;
+    border-radius:20px;
+    font-size:0.8rem;
+    white-space:nowrap;
+    letter-spacing:0.02em;
+  }
+
+  /* ---------- Zone carte ---------- */
+  #map-wrapper{
+    position:relative;
+    flex:1 1 auto;
+    min-height:0;
+  }
+
+  #map{
+    position:absolute;
+    inset:0;
+    background:var(--ivory);
+  }
+
+  /* ---------- Bandeau bas ---------- */
+  #zoom-banner{
+    position:absolute;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:1000;
+    background:rgba(18,37,28,0.92);
+    color:var(--chalk);
+    border-top:2px solid var(--gold);
+    padding:8px 18px;
+    border-radius:20px;
+    font-size:0.82rem;
+    box-shadow:0 4px 14px rgba(0,0,0,0.25);
+    transition:opacity 0.3s ease;
+    pointer-events:none;
+  }
+  #zoom-banner.hidden{
+    opacity:0;
+  }
+
+  /* ---------- Panneau de contrôle (style + filtre) ---------- */
+  .control-panel{
+    background:var(--chalk);
+    border:1px solid var(--gold-light);
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+    padding:12px;
+    width:210px;
+    font-size:0.8rem;
+  }
+
+  .panel-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:0.8rem;
+    color:var(--vine);
+    margin-bottom:8px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+
+  .style-box{
+    margin-bottom:14px;
+  }
+
+  .style-btn{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:var(--ivory);
+    border:1px solid transparent;
+    color:var(--ink);
+    padding:7px 10px;
+    border-radius:6px;
+    margin-bottom:6px;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+    font-size:0.78rem;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .style-btn:last-child{margin-bottom:0;}
+  .style-btn:hover{background:var(--gold-light);}
+  .style-btn.active{
+    background:var(--vine);
+    color:var(--chalk);
+    border-color:var(--gold);
+    font-weight:600;
+  }
+
+  .chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .chip{
+    background:var(--ivory);
+    border:1px solid var(--gold-light);
+    color:var(--ink);
+    padding:5px 10px;
+    border-radius:14px;
+    font-size:0.72rem;
+    font-weight:600;
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .chip:hover{background:var(--gold-light);}
+  .chip.active{
+    background:var(--burgundy);
+    color:var(--chalk);
+    border-color:var(--burgundy);
+  }
+  .chip-all.active{
+    background:var(--vine);
+    border-color:var(--vine);
+  }
+
+  /* ---------- Légende ---------- */
+  .legend-panel{
+    background:var(--chalk);
+    border:1px solid var(--gold-light);
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+    padding:12px 14px;
+    font-size:0.78rem;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .legend-item:last-child{margin-bottom:0;}
+  .legend-item .swatch{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    display:inline-block;
+    border:1px solid rgba(0,0,0,0.15);
+    flex:0 0 auto;
+  }
+
+  /* ---------- Marqueurs commune : style "point discret" ---------- */
+  .dot-icon-wrapper{background:transparent;border:none;}
+  .dot-marker{
+    border-radius:50%;
+    border:1.5px solid rgba(245,241,232,0.9);
+    box-shadow:0 1px 4px rgba(0,0,0,0.35);
+  }
+
+  .commune-tooltip{
+    font-size:0.68rem;
+    font-family:'Inter', sans-serif;
+    background:var(--vine-dark);
+    color:var(--chalk);
+    border:none;
+    padding:3px 8px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  }
+  .commune-tooltip::before{
+    border-top-color:var(--vine-dark);
+  }
+
+  /* ---------- Marqueurs commune : style "pastille compacte" ---------- */
+  .pill-icon-wrapper{
+    background:transparent;
+    border:none;
+    transform:translate(-50%, -50%);
+  }
+  .pill-marker{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    padding:3px 9px 3px 6px;
+    border-radius:14px;
+    white-space:nowrap;
+    box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    border:1px solid rgba(245,241,232,0.85);
+  }
+  .pill-dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:rgba(245,241,232,0.9);
+    flex:0 0 auto;
+  }
+  .pill-name{
+    font-size:0.58rem;
+    font-weight:600;
+    color:var(--chalk);
+  }
+  .pill-count{
+    font-size:0.58rem;
+    font-weight:700;
+    color:var(--chalk);
+    background:rgba(0,0,0,0.2);
+    border-radius:8px;
+    padding:0 5px;
+  }
+
+  /* ---------- Marqueurs commune : style "chiffre seul" ---------- */
+  .figure-icon-wrapper{
+    background:transparent;
+    border:none;
+    transform:translate(-50%, -50%);
+  }
+  .figure-marker{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    color:var(--chalk);
+    font-weight:700;
+    border:1.5px solid rgba(245,241,232,0.9);
+    box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  }
+
+  .commune-name-popup .leaflet-popup-content-wrapper{
+    background:var(--chalk);
+    border-top:3px solid var(--gold);
+    border-radius:6px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.3);
+  }
+  .commune-name-popup .leaflet-popup-content{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:0.9rem;
+    color:var(--vine);
+    margin:8px 12px;
+  }
+  .commune-name-popup .leaflet-popup-tip{
+    background:var(--gold);
+  }
+
+  /* ---------- Marqueur pressoir individuel ---------- */
+  .pressoir-icon-wrapper{background:transparent;border:none;}
+  .pressoir-marker{
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:var(--burgundy);
+    border:2px solid var(--gold);
+    box-shadow:0 1px 4px rgba(0,0,0,0.4);
+  }
+
+  /* ---------- Popups Leaflet (habillage général) ---------- */
+  .leaflet-popup-content-wrapper{
+    background:var(--chalk);
+    border-top:3px solid var(--gold);
+    border-radius:6px;
+  }
+  .leaflet-popup-tip{
+    background:var(--gold);
+  }
+  .pressoir-popup h3{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:1rem;
+    color:var(--vine);
+    margin:0 0 6px 0;
+  }
+  .pressoir-popup .commune-line{
+    margin:0 0 8px 0;
+    font-style:italic;
+    color:var(--brown);
+    font-size:0.82rem;
+  }
+  .pressoir-popup p{
+    margin:0 0 4px 0;
+    font-size:0.82rem;
+  }
+
+  /* ---------- Clusters : intégration à la palette ---------- */
+  .marker-cluster-small{
+    background-color:rgba(201,166,107,0.55);
+  }
+  .marker-cluster-small div{
+    background-color:rgba(31,58,46,0.85);
+    color:var(--chalk);
+  }
+  .marker-cluster-medium{
+    background-color:rgba(140,90,60,0.55);
+  }
+  .marker-cluster-medium div{
+    background-color:rgba(107,39,55,0.85);
+    color:var(--chalk);
+  }
+  .marker-cluster-large{
+    background-color:rgba(107,39,55,0.55);
+  }
+  .marker-cluster-large div{
+    background-color:rgba(18,37,28,0.9);
+    color:var(--chalk);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="eyebrow">FCDH · Réseau des partenaires</div>
+    <h1>Centres de pressurage en Champagne</h1>
+  </div>
+  <div class="header-badge">Marqueurs &amp; clustering</div>
+</header>
+
+<div id="map-wrapper">
+  <div id="map"></div>
+  <div id="zoom-banner">Zoomez sur une commune pour voir le détail des pressoirs</div>
+</div>
+
+<!-- Leaflet 1.9.4 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- Leaflet.markercluster 1.5.3 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  // =========================================================================
+  // DONNÉES FICTIVES — à remplacer par la liste réelle des pressoirs FCDH
+  // Structure : chaque commune a un nom, des coordonnées réelles et une liste
+  // de pressoirs (nom, capacité indicative en kg/marc, courtier référent).
+  // =========================================================================
+  var COURTIERS = ["BO", "ASM", "JPNC", "EB", "JBC", "EC", "EH", "MAA"];
+
+  var communes = [
+    {
+      nom: "Reims", lat: 49.2583, lng: 4.0317,
+      pressoirs: [
+        { nom: "Pressoir des Remparts", capacite: 8000, courtier: "BO" },
+        { nom: "Centre de Pressurage Saint-Nicaise", capacite: 12000, courtier: "ASM" },
+        { nom: "Pressoir Notre-Dame", capacite: 6000, courtier: "JPNC" }
+      ]
+    },
+    {
+      nom: "Épernay", lat: 49.0413, lng: 3.9600,
+      pressoirs: [
+        { nom: "Pressoir de la Marne", capacite: 10000, courtier: "EB" },
+        { nom: "Centre de Pressurage des Berceaux", capacite: 8000, courtier: "JBC" },
+        { nom: "Pressoir du Mont Bernon", capacite: 6000, courtier: "EC" }
+      ]
+    },
+    {
+      nom: "Ay-Champagne", lat: 49.0500, lng: 4.0064,
+      pressoirs: [
+        { nom: "Pressoir Saint-Brice", capacite: 8000, courtier: "EH" },
+        { nom: "Centre de Pressurage du Boulingrin", capacite: 4000, courtier: "MAA" }
+      ]
+    },
+    {
+      nom: "Verzenay", lat: 49.1517, lng: 4.1889,
+      pressoirs: [
+        { nom: "Pressoir du Moulin", capacite: 6000, courtier: "BO" },
+        { nom: "Centre de Pressurage des Faux de Verzy", capacite: 8000, courtier: "ASM" }
+      ]
+    },
+    {
+      nom: "Bouzy", lat: 49.1181, lng: 4.1594,
+      pressoirs: [
+        { nom: "Pressoir de la Montagne", capacite: 10000, courtier: "JPNC" },
+        { nom: "Centre de Pressurage Saint-Pierre", capacite: 6000, courtier: "EB" }
+      ]
+    },
+    {
+      nom: "Cramant", lat: 48.9584, lng: 3.9631,
+      pressoirs: [
+        { nom: "Pressoir de la Côte des Blancs", capacite: 8000, courtier: "JBC" },
+        { nom: "Centre de Pressurage du Mont Aigu", capacite: 4000, courtier: "EC" }
+      ]
+    },
+    {
+      nom: "Le Mesnil-sur-Oger", lat: 48.9435, lng: 4.0083,
+      pressoirs: [
+        { nom: "Pressoir des Clos", capacite: 6000, courtier: "EH" },
+        { nom: "Centre de Pressurage Sous le Mont", capacite: 8000, courtier: "MAA" }
+      ]
+    },
+    {
+      nom: "Vertus", lat: 48.9034, lng: 3.9186,
+      pressoirs: [
+        { nom: "Pressoir de Notre-Dame de l'Assomption", capacite: 4000, courtier: "BO" }
+      ]
+    },
+    {
+      nom: "Avize", lat: 48.9647, lng: 3.9531,
+      pressoirs: [
+        { nom: "Pressoir des Champs Ronsart", capacite: 6000, courtier: "ASM" },
+        { nom: "Centre de Pressurage du Cornu", capacite: 8000, courtier: "JPNC" }
+      ]
+    },
+    {
+      nom: "Sézanne", lat: 48.7247, lng: 3.7236,
+      pressoirs: [
+        { nom: "Pressoir des Côteaux du Petit Morin", capacite: 4000, courtier: "EB" }
+      ]
+    },
+    {
+      nom: "Château-Thierry", lat: 49.0475, lng: 3.4006,
+      pressoirs: [
+        { nom: "Pressoir de la Vallée de la Marne", capacite: 6000, courtier: "JBC" }
+      ]
+    },
+    {
+      nom: "Bar-sur-Aube", lat: 48.2333, lng: 4.7167,
+      pressoirs: [
+        { nom: "Pressoir de la Côte des Bar", capacite: 4000, courtier: "EC" }
+      ]
+    }
+  ];
+
+  // =========================================================================
+  // Paramètres de la carte
+  // =========================================================================
+  var ZOOM_THRESHOLD = 11.5;      // seuil de bascule commune <-> pressoirs
+  var BOUNDS_PADDING = 0.35;      // padding généreux autour des communes
+
+  // Calcul du bornage de navigation à partir du min/max des coordonnées
+  // des communes, avec un padding généreux. Aucune découpe visuelle du fond
+  // de carte : uniquement une contrainte de déplacement/zoom.
+  var lats = communes.map(function(c){ return c.lat; });
+  var lngs = communes.map(function(c){ return c.lng; });
+  var minLat = Math.min.apply(null, lats) - BOUNDS_PADDING;
+  var maxLat = Math.max.apply(null, lats) + BOUNDS_PADDING;
+  var minLng = Math.min.apply(null, lngs) - BOUNDS_PADDING;
+  var maxLng = Math.max.apply(null, lngs) + BOUNDS_PADDING;
+  var champagneBounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+
+  var map = L.map('map', {
+    center: [48.98, 3.98],
+    zoom: 9.3,
+    zoomSnap: 0.1,
+    zoomDelta: 0.5,
+    maxBoundsViscosity: 1.0
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  // minZoom cohérent = zoom auquel les bounds remplissent tout juste la vue :
+  // impossible de dézoomer davantage, donc impossible de sortir de la zone.
+  var minZoomForBounds = map.getBoundsZoom(champagneBounds);
+  map.setMinZoom(minZoomForBounds);
+  map.setMaxBounds(champagneBounds);
+
+  // =========================================================================
+  // Utilitaires de style (couleur / taille selon le nombre de pressoirs)
+  // =========================================================================
+  function colorForCount(n){
+    if(n <= 1) return '#1F3A2E';   // --vine
+    if(n === 2) return '#C9A66B';  // --gold
+    if(n === 3) return '#8C5A3C';  // brun
+    return '#6B2737';              // --burgundy (4+)
+  }
+
+  function sizeForCount(n){
+    if(n <= 1) return 14;
+    if(n === 2) return 18;
+    if(n === 3) return 22;
+    return 26;
+  }
+
+  // =========================================================================
+  // État courant : style d'étiquette actif + filtre courtier(s) sélectionné(s)
+  // =========================================================================
+  var currentStyle = 'pill'; // 'dot' | 'pill' | 'figure'
+  var selectedCourtiers = new Set(); // vide => "Tous"
+
+  var communeLayerGroup = L.layerGroup();
+  var clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 55,
+    spiderfyOnMaxZoom: true
+  });
+
+  // Filtre : ne conserve que les pressoirs correspondant aux courtiers
+  // sélectionnés, puis retire entièrement les communes qui n'ont plus
+  // aucun pressoir correspondant (masquage total, pas de grisé).
+  function getFilteredCommunes(){
+    return communes
+      .map(function(c){
+        var pressoirs = c.pressoirs.filter(function(p){
+          return selectedCourtiers.size === 0 || selectedCourtiers.has(p.courtier);
+        });
+        return { nom: c.nom, lat: c.lat, lng: c.lng, pressoirs: pressoirs };
+      })
+      .filter(function(c){ return c.pressoirs.length > 0; });
+  }
+
+  function zoomToCommune(commune){
+    map.setView([commune.lat, commune.lng], ZOOM_THRESHOLD + 1.5, { animate: true });
+  }
+
+  function buildCommuneMarker(commune, style){
+    var n = commune.pressoirs.length;
+    var color = colorForCount(n);
+    var marker;
+
+    if(style === 'dot'){
+      var size = sizeForCount(n);
+      var icon = L.divIcon({
+        className: 'dot-icon-wrapper',
+        html: '<div class="dot-marker" style="width:' + size + 'px;height:' + size + 'px;background:' + color + ';"></div>',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+      marker = L.marker([commune.lat, commune.lng], { icon: icon });
+      marker.bindTooltip(commune.nom + ' · ' + n, {
+        direction: 'top',
+        offset: [0, -size / 2 - 2],
+        className: 'commune-tooltip'
+      });
+    } else if(style === 'figure'){
+      var fsize = sizeForCount(n);
+      var ficon = L.divIcon({
+        className: 'figure-icon-wrapper',
+        html: '<div class="figure-marker" style="width:' + fsize + 'px;height:' + fsize + 'px;background:' + color + ';font-size:0.62rem;">' + n + '</div>',
+        iconSize: null
+      });
+      marker = L.marker([commune.lat, commune.lng], { icon: ficon });
+      marker.bindPopup(
+        '<div class="commune-popup">' + commune.nom + '</div>',
+        { closeButton: false, className: 'commune-name-popup' }
+      );
+    } else { // 'pill' — pastille compacte (style par défaut)
+      var picon = L.divIcon({
+        className: 'pill-icon-wrapper',
+        html: '<div class="pill-marker" style="background:' + color + ';">' +
+                '<span class="pill-dot"></span>' +
+                '<span class="pill-name">' + commune.nom + '</span>' +
+                '<span class="pill-count">' + n + '</span>' +
+              '</div>',
+        iconSize: null
+      });
+      marker = L.marker([commune.lat, commune.lng], { icon: picon });
+    }
+
+    marker.on('click', function(){ zoomToCommune(commune); });
+    return marker;
+  }
+
+  function buildPressoirMarker(commune, pressoir){
+    var icon = L.divIcon({
+      className: 'pressoir-icon-wrapper',
+      html: '<div class="pressoir-marker"></div>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
+    var marker = L.marker([commune.lat, commune.lng], { icon: icon });
+    var popupHtml =
+      '<div class="pressoir-popup">' +
+        '<h3>' + pressoir.nom + '</h3>' +
+        '<p class="commune-line">' + commune.nom + '</p>' +
+        '<p><strong>Capacité indicative :</strong> ' + pressoir.capacite.toLocaleString('fr-FR') + ' kg/marc</p>' +
+        '<p><strong>Courtier référent :</strong> ' + pressoir.courtier + '</p>' +
+      '</div>';
+    marker.bindPopup(popupHtml);
+    return marker;
+  }
+
+  function rebuildCommuneLayer(){
+    communeLayerGroup.clearLayers();
+    getFilteredCommunes().forEach(function(c){
+      communeLayerGroup.addLayer(buildCommuneMarker(c, currentStyle));
+    });
+  }
+
+  function rebuildClusterGroup(){
+    clusterGroup.clearLayers();
+    var markers = [];
+    getFilteredCommunes().forEach(function(c){
+      c.pressoirs.forEach(function(p){
+        markers.push(buildPressoirMarker(c, p));
+      });
+    });
+    clusterGroup.addLayers(markers);
+  }
+
+  // Bascule entre la vue "communes" et la vue "pressoirs" selon le seuil de zoom.
+  var banner = document.getElementById('zoom-banner');
+  function updateLayersForZoom(){
+    var z = map.getZoom();
+    if(z < ZOOM_THRESHOLD){
+      if(map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
+      if(!map.hasLayer(communeLayerGroup)) map.addLayer(communeLayerGroup);
+      banner.classList.remove('hidden');
+    } else {
+      if(map.hasLayer(communeLayerGroup)) map.removeLayer(communeLayerGroup);
+      if(!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+      banner.classList.add('hidden');
+    }
+  }
+  map.on('zoomend', updateLayersForZoom);
+
+  // =========================================================================
+  // Contrôle : sélecteur de style + filtre courtier (haut gauche)
+  // =========================================================================
+  var StyleFilterControl = L.Control.extend({
+    options: { position: 'topleft' },
+    onAdd: function(){
+      var container = L.DomUtil.create('div', 'control-panel');
+
+      var chipsHtml = COURTIERS.map(function(k){
+        return '<button class="chip" data-courtier="' + k + '">' + k + '</button>';
+      }).join('');
+
+      container.innerHTML =
+        '<div class="style-box">' +
+          '<div class="panel-title">Style des communes</div>' +
+          '<button class="style-btn" data-style="dot">Point discret</button>' +
+          '<button class="style-btn active" data-style="pill">Pastille compacte</button>' +
+          '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
+        '</div>' +
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par courtier</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
+            chipsHtml +
+          '</div>' +
+        '</div>';
+
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+
+      // Boutons de style : un seul actif à la fois
+      var styleBtns = container.querySelectorAll('.style-btn');
+      styleBtns.forEach(function(btn){
+        btn.addEventListener('click', function(){
+          styleBtns.forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          currentStyle = btn.getAttribute('data-style');
+          rebuildCommuneLayer();
+        });
+      });
+
+      // Chips courtier : sélection multiple, "Tous" réinitialise
+      var allChip = container.querySelector('.chip-all');
+      var courtierChips = container.querySelectorAll('.chip:not(.chip-all)');
+
+      allChip.addEventListener('click', function(){
+        selectedCourtiers.clear();
+        allChip.classList.add('active');
+        courtierChips.forEach(function(c){ c.classList.remove('active'); });
+        rebuildCommuneLayer();
+        rebuildClusterGroup();
+      });
+
+      courtierChips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          var k = chip.getAttribute('data-courtier');
+          if(selectedCourtiers.has(k)){
+            selectedCourtiers.delete(k);
+            chip.classList.remove('active');
+          } else {
+            selectedCourtiers.add(k);
+            chip.classList.add('active');
+          }
+          allChip.classList.toggle('active', selectedCourtiers.size === 0);
+          rebuildCommuneLayer();
+          rebuildClusterGroup();
+        });
+      });
+
+      return container;
+    }
+  });
+  new StyleFilterControl().addTo(map);
+
+  // =========================================================================
+  // Contrôle : légende (haut droite)
+  // =========================================================================
+  var LegendControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      var div = L.DomUtil.create('div', 'legend-panel');
+      div.innerHTML =
+        '<div class="panel-title">Légende</div>' +
+        '<div class="legend-item"><span class="swatch" style="background:#1F3A2E;"></span>1 pressoir</div>' +
+        '<div class="legend-item"><span class="swatch" style="background:#C9A66B;"></span>2 pressoirs</div>' +
+        '<div class="legend-item"><span class="swatch" style="background:#8C5A3C;"></span>3 pressoirs</div>' +
+        '<div class="legend-item"><span class="swatch" style="background:#6B2737;"></span>4+ pressoirs</div>';
+      L.DomEvent.disableClickPropagation(div);
+      return div;
+    }
+  });
+  new LegendControl().addTo(map);
+
+  // =========================================================================
+  // Initialisation
+  // =========================================================================
+  rebuildCommuneLayer();
+  rebuildClusterGroup();
+  updateLayersForZoom();
+
+})();
+</script>
+
+</body>
+</html>
