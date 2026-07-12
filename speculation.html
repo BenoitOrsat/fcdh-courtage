@@ -314,8 +314,8 @@ function scoreBoxColor(s){if(s>=10)return{bg:"#10b981",col:"#fff"};if(s>=6)retur
 function scorePillStyle(s){if(s>=10)return{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"};if(s>=6)return{bg:"#fef9c3",col:"#854d0e",bdr:"#fde68a"};if(s>=3)return{bg:"#ffedd5",col:"#9a3412",bdr:"#fed7aa"};return{bg:G100,col:G400,bdr:G200};}
 
 
-const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,modele:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,commentaires:200,actions:170};
-const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,commentaires:200,actions:170};
+const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,format:80,modele:80,couleur:90,stade:60,qualite:120,cru:120,millesime:60,prix:90,commentaires:200,viewPdf:44,uploadPdf:44,editRow:44,dupRow:44,delRow:44};
+const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,commentaires:200,viewPdf:44,uploadPdf:44,editRow:44,dupRow:44,delRow:44};
 const DEFAULT_HIST_WIDTHS={date:90,numero:60,acheteur:150,vendeur:150,qte:70,prix:85,mention:200,code:80};
 
 const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:"",pdfId:""};
@@ -369,7 +369,7 @@ const ColumnToggler=({colDefs,hidden,setHidden})=>{
   const [open,setOpen]=React.useState(false);
   const ref=React.useRef(null);
   React.useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener('mousedown',h);return()=>document.removeEventListener('mousedown',h);},[]);
-  const hideable=colDefs.filter(c=>c.id!=='score'&&c.id!=='actions');
+  const hideable=colDefs.filter(c=>c.id!=='score');
   const toggle=id=>setHidden(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
   const nb=hidden.filter(id=>hideable.some(c=>c.id===id)).length;
   return <div ref={ref} style={{position:"relative",display:"inline-block"}}>
@@ -431,8 +431,8 @@ function App() {
   const tableResizeRef = useRef(null);
   const histResizeRef = useRef(null);
   const [colSort, setColSort] = useState({col:null,dir:1});
-  const [btlColWidths, setBtlColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_widths');const w=s?{...DEFAULT_BTL_WIDTHS,...JSON.parse(s)}:DEFAULT_BTL_WIDTHS;return {...w,actions:Math.max(w.actions||0,170)};}catch{return DEFAULT_BTL_WIDTHS;}});
-  const [vcColWidths,  setVcColWidths]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_widths');const w=s?{...DEFAULT_VC_WIDTHS,...JSON.parse(s)}:DEFAULT_VC_WIDTHS;return {...w,actions:Math.max(w.actions||0,170)};}catch{return DEFAULT_VC_WIDTHS;}});
+  const [btlColWidths, setBtlColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_widths');const w=s?{...DEFAULT_BTL_WIDTHS,...JSON.parse(s)}:DEFAULT_BTL_WIDTHS;return w;}catch{return DEFAULT_BTL_WIDTHS;}});
+  const [vcColWidths,  setVcColWidths]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_widths');const w=s?{...DEFAULT_VC_WIDTHS,...JSON.parse(s)}:DEFAULT_VC_WIDTHS;return w;}catch{return DEFAULT_VC_WIDTHS;}});
   const [histColWidths, setHistColWidths] = useState(()=>{try{const s=localStorage.getItem('fcdh_hist_widths');return s?{...DEFAULT_HIST_WIDTHS,...JSON.parse(s)}:DEFAULT_HIST_WIDTHS;}catch{return DEFAULT_HIST_WIDTHS;}});
   useEffect(()=>{localStorage.setItem('fcdh_cot_widths',JSON.stringify(cotColWidths));},[cotColWidths]);
   useEffect(()=>{localStorage.setItem('fcdh_btl_widths',JSON.stringify(btlColWidths));},[btlColWidths]);
@@ -467,11 +467,18 @@ function App() {
   const pendingSaveRef = useRef(false);
   const foldersRef   = useRef({ftRoot:null,enCours:null,termines:null});
   const gTokenRef    = useRef(null);
-  const actCellRef   = useRef(null);
-  const movePdfRef   = useRef(null);
-  const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
-  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];}});
-  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];}});
+  const movePdfRef      = useRef(null);
+  const pdfUploadingRef = useRef({});
+  const uploadPdfRef    = useRef(null);
+  const addMissingCols=(arr,defaults)=>{
+    const missing=defaults.filter(c=>!arr.includes(c));
+    if(!missing.length)return arr;
+    const idx=arr.indexOf('actions');
+    if(idx>=0)return [...arr.slice(0,idx),...missing,...arr.slice(idx+1)];
+    return [...arr,...missing];
+  };
+  const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','viewPdf','uploadPdf','editRow','dupRow','delRow'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','viewPdf','uploadPdf','editRow','dupRow','delRow'];}});
+  const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','viewPdf','uploadPdf','editRow','dupRow','delRow'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','viewPdf','uploadPdf','editRow','dupRow','delRow'];}});
   const [btlHidden, setBtlHidden] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_hidden');return s?JSON.parse(s):[];}catch{return [];}});
   const [vcHidden,  setVcHidden]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_hidden');return s?JSON.parse(s):[];}catch{return [];}});
   useEffect(()=>{localStorage.setItem('fcdh_btl_order',JSON.stringify(btlOrder));},[btlOrder]);
@@ -841,23 +848,19 @@ function App() {
     if(!dragColRef.current||dragColRef.current===dropId)return;
     setOrder(prev=>{const a=[...prev],f=a.indexOf(dragColRef.current),t=a.indexOf(dropId);if(f<0||t<0)return prev;a.splice(f,1);a.splice(t,0,dragColRef.current);return a;});
   };
-  actCellRef.current = r=>{
-    const uploading=pdfUploading[r.id];
-    return <TD><div style={{display:"flex",gap:4,alignItems:"center"}} onClick={e=>e.stopPropagation()}>
-      <button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button>
-      <button onClick={()=>setDupEntry(r)} style={{padding:"4px 8px",background:"#dbeafe",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>⧉</button>
-      <a href={r.pdfId?`https://drive.google.com/file/d/${r.pdfId}/view`:"#"} target={r.pdfId?"_blank":undefined} rel="noopener noreferrer" style={{textDecoration:"none",visibility:r.pdfId?"visible":"hidden"}} onClick={r.pdfId?undefined:e=>e.preventDefault()}><button style={{padding:"4px 8px",background:"#dcfce7",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}} title="Voir la fiche technique">📄</button></a>
-      <label style={{cursor:"pointer",display:"inline-block"}}>
-        <input type="file" accept=".pdf,application/pdf" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)uploadPdf(f,r);e.target.value='';}}/>
-        <span style={{padding:"4px 8px",background:uploading?"#f3f4f6":r.pdfId?"#fef3c7":"#fef9c3",border:"1px solid",borderColor:uploading?"#e5e7eb":r.pdfId?"#fcd34d":"#fef08a",borderRadius:5,cursor:uploading?"default":"pointer",fontSize:12,display:"inline-block",userSelect:"none"}} title={r.pdfId?"Remplacer la fiche technique":"Ajouter une fiche technique"}>
-          {uploading?"⏳":"📎"}
-        </span>
-      </label>
-      <button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button>
-    </div></TD>;
-  };
+  pdfUploadingRef.current = pdfUploading;
+  uploadPdfRef.current = uploadPdf;
   const COLS = useMemo(()=>{
-    const actCell = r=>actCellRef.current(r);
+    const viewPdfCell = r=><TD style={{textAlign:"center",padding:"6px 4px"}} onClick={e=>e.stopPropagation()}>
+      <a href={r.pdfId?`https://drive.google.com/file/d/${r.pdfId}/view`:"#"} target={r.pdfId?"_blank":undefined} rel="noopener noreferrer" style={{textDecoration:"none",visibility:r.pdfId?"visible":"hidden"}} onClick={r.pdfId?undefined:e=>e.preventDefault()}>
+        <button style={{padding:"4px 8px",background:"#dcfce7",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}} title="Voir la fiche technique">📄</button>
+      </a>
+    </TD>;
+    const uploadPdfCell = r=>{const uploading=pdfUploadingRef.current[r.id];return <TD style={{textAlign:"center",padding:"6px 4px"}} onClick={e=>e.stopPropagation()}><label style={{cursor:"pointer",display:"inline-block"}}><input type="file" accept=".pdf,application/pdf" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)uploadPdfRef.current(f,r);e.target.value='';}}/><span style={{padding:"4px 8px",background:uploading?"#f3f4f6":r.pdfId?"#fef3c7":"#fef9c3",border:"1px solid",borderColor:uploading?"#e5e7eb":r.pdfId?"#fcd34d":"#fef08a",borderRadius:5,cursor:uploading?"default":"pointer",fontSize:12,display:"inline-block",userSelect:"none"}} title={r.pdfId?"Remplacer la fiche technique":"Ajouter une fiche technique"}>{uploading?"⏳":"📎"}</span></label></TD>;};
+    const editCell  = r=><TD style={{textAlign:"center",padding:"6px 4px"}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}} title="Modifier">✏️</button></TD>;
+    const dupCell   = r=><TD style={{textAlign:"center",padding:"6px 4px"}} onClick={e=>e.stopPropagation()}><button onClick={()=>setDupEntry(r)} style={{padding:"4px 8px",background:"#dbeafe",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}} title="Dupliquer">⧉</button></TD>;
+    const delCell   = r=><TD style={{textAlign:"center",padding:"6px 4px"}} onClick={e=>e.stopPropagation()}><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}} title="Supprimer">🗑</button></TD>;
+    const actionCols=[{id:"viewPdf",label:"📄",cell:viewPdfCell},{id:"uploadPdf",label:"📎",cell:uploadPdfCell},{id:"editRow",label:"✏️",cell:editCell},{id:"dupRow",label:"⧉",cell:dupCell},{id:"delRow",label:"🗑",cell:delCell}];
     return {
     bouteilles:[
       {id:"score",   label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
@@ -878,7 +881,7 @@ function App() {
       {id:"millesime",label:"Mill.",   cell:r=><TD style={{color:G600}}>{r.millesime}</TD>},
       {id:"prix",    label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
       {id:"commentaires",label:"Commentaire",cell:r=><TD style={{fontSize:11,color:G400,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.commentaires}>{r.commentaires}</TD>},
-      {id:"actions", label:"",         cell:r=>actCell(r)},
+      ...actionCols,
     ],
     vinsclairs:[
       {id:"score",    label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
@@ -897,7 +900,7 @@ function App() {
       {id:"cepage",   label:"Cépage",   cell:r=><TD style={{fontWeight:600}}>{r.cepage}</TD>},
       {id:"prix",     label:"Prix",     cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.prix}</TD>},
       {id:"commentaires",label:"Commentaire",cell:r=><TD style={{fontSize:11,color:G400,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.commentaires}>{r.commentaires}</TD>},
-      {id:"actions",  label:"",         cell:r=>actCell(r)},
+      ...actionCols,
     ],
   };},[openForm,openModal,setBouteilles,setVinsClairs,setDelId]);
 
@@ -1254,7 +1257,7 @@ function App() {
                     {filtered.length===0
                       ?<div style={{textAlign:"center",padding:"48px 0",color:G400}}>Aucune entrée trouvée</div>
                       :<table className="fcdh-table" style={{tableLayout:"fixed",borderCollapse:"collapse",width:"100%",minWidth:totalWidth}}>
-                        <thead><tr>{ordered.map(col=><DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={col.id!=="actions"?onSort:undefined} onResizeStart={col.id!=="actions"?onResizeStart:undefined}/>)}</tr></thead>
+                        <thead><tr>{ordered.map(col=>{const isActionCol=["viewPdf","uploadPdf","editRow","dupRow","delRow"].includes(col.id);return <DragTH key={col.id} colId={col.id} label={col.label} dragRef={dragColRef} onDrop={id=>reorderCols(setColOrder,id)} colWidths={colWidths} colSort={colSort} onSortToggle={!isActionCol?onSort:undefined} onResizeStart={!isActionCol?onResizeStart:undefined}/>;})}</tr></thead>
                         <tbody>{filtered.map(r=>(
                           <tr key={r.id} style={{cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background=G50} onMouseLeave={e=>e.currentTarget.style.background=""} onDoubleClick={()=>openModal(r)}>
                             {ordered.map(col=><React.Fragment key={col.id}>{col.cell(r)}</React.Fragment>)}
