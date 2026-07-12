@@ -61,6 +61,22 @@
     z-index:1200;
   }
 
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    color:var(--gold);
+    text-decoration:none;
+    font-size:0.72rem;
+    font-weight:600;
+    opacity:0.8;
+    margin-bottom:6px;
+    transition:opacity 0.15s ease;
+  }
+  .back-btn:hover{
+    opacity:1;
+  }
+
   .header-left .eyebrow{
     color:var(--gold);
     text-transform:uppercase;
@@ -384,6 +400,7 @@
 
 <header>
   <div class="header-left">
+    <a class="back-btn" href="index.html">← Tableau de bord</a>
     <div class="eyebrow">FCDH · Réseau des partenaires</div>
     <h1>Centres de pressurage en Champagne</h1>
   </div>
