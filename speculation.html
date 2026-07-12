@@ -59,8 +59,8 @@ const DEFAULT_CLIENT_ID = '186740067921-ee61d610og88l11vohc5if35805if5v1.apps.go
 const DRIVE_SCOPE   = 'https://www.googleapis.com/auth/drive';
 
 // Column indices (0-based) for each sheet
-const BTL = {campagne:0,statut:1,date:2,courtier:3,client:4,vn:5,besoin:6,acheteur:7,qte:8,format:9,modele:10,couleur:11,stade:12,qualite:13,cru:14,assemblage:15,millesime:16,tirage:17,prix:18,commentaires:20};
-const VCL = {campagne:0,statut:1,date:2,courtier:3,client:4,vn:5,besoin:6,acheteur:7,qte:8,vendange:9,formatVin:10,qualite:11,cru:12,cepage:13,assemblage:14,crus:15,prix:16,commentaires:18};
+const BTL = {campagne:0,statut:1,date:2,courtier:3,client:4,vn:5,besoin:6,acheteur:7,qte:8,format:9,modele:10,couleur:11,stade:12,qualite:13,cru:14,assemblage:15,millesime:16,tirage:17,prix:18,commentaires:20,pdfId:21};
+const VCL = {campagne:0,statut:1,date:2,courtier:3,client:4,vn:5,besoin:6,acheteur:7,qte:8,vendange:9,formatVin:10,qualite:11,cru:12,cepage:13,assemblage:14,crus:15,prix:16,commentaires:18,pdfId:19};
 
 // ── Drive helpers ─────────────────────────────────────────────────
 function fmtDate(v) {
@@ -107,6 +107,7 @@ function parseSheet(wb, sheetName, type) {
       vn: (g(cols.vn)||'V').toUpperCase(), besoin: g(cols.besoin)||'Vend',
       acheteur: g(cols.acheteur), qte: g(cols.qte),
       prix: fmtPrix(row[cols.prix]), commentaires: g(cols.commentaires),
+      pdfId: g(cols.pdfId),
       _sheet: sheetName, _row: i,
     };
     if (type === 'bouteilles') {
@@ -188,6 +189,7 @@ function entryToRowArray(entry, existingRow, type) {
   row[cols.qte]         = entry.qte;
   row[cols.prix]        = parsePrixNum(entry.prix);
   row[cols.commentaires]= entry.commentaires;
+  row[cols.pdfId]       = entry.pdfId || '';
   if (type === 'bouteilles') {
     row[cols.format]    = entry.format;
     row[cols.modele]    = entry.modele;
@@ -315,8 +317,8 @@ const DEFAULT_BTL_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,be
 const DEFAULT_VC_WIDTHS={score:60,campagne:90,date:90,courtier:75,client:160,besoin:90,statut:130,proposition:140,qte:65,vendange:80,formatVin:80,qualite:120,cru:120,cepage:80,prix:90,commentaires:200,actions:70};
 const DEFAULT_HIST_WIDTHS={date:90,numero:60,acheteur:150,vendeur:150,qte:70,prix:85,mention:200,code:80};
 
-const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:""};
-const emptyVC ={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",vendange:"",formatVin:"Cuvée",qualite:"",cru:"",cepage:"",assemblage:"",crus:"",prix:"",commentaires:""};
+const emptyBtl={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",format:"Bouteille",modele:"STD",couleur:"verte",stade:"",qualite:"",cru:"",assemblage:"",millesime:"",tirage:"",prix:"",commentaires:"",pdfId:""};
+const emptyVC ={campagne:CAMPAGNE,statut:"en attente",date:"",courtier:"",client:"",vn:"V",besoin:"Vend",acheteur:"",qte:"",vendange:"",formatVin:"Cuvée",qualite:"",cru:"",cepage:"",assemblage:"",crus:"",prix:"",commentaires:"",pdfId:""};
 
 // ── UI primitives ─────────────────────────────────────────────────
 const STATUT_COLORS={"en attente":{bg:"#fef3c7",col:"#92400e",bdr:"#fde68a"},"en dégustation":{bg:"#ede9fe",col:"#4c1d95",bdr:"#c4b5fd"},"conclue":{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},"conclu":{bg:"#d1fae5",col:"#065f46",bdr:"#6ee7b7"},"abandon":{bg:"#f3f4f6",col:"#6b7280",bdr:"#d1d5db"},"annulé":{bg:"#fee2e2",col:"#991b1b",bdr:"#fca5a5"}};
@@ -452,6 +454,7 @@ function App() {
   const [gError, setGError]       = useState("");
   const [gSaved, setGSaved]       = useState(false);
   const [isDirty, setIsDirty]     = useState(false);
+  const [pdfUploading, setPdfUploading] = useState({});
   const [driveLoaded, setDriveLoaded]=useState(false);
   const [cotationsBT, setCotationsBT] = useState([]);
   const [cotationsVC, setCotationsVC] = useState([]);
@@ -461,6 +464,10 @@ function App() {
   const dragColRef  = useRef(null);
   const cotLoadedRef = useRef(false);
   const pendingSaveRef = useRef(false);
+  const foldersRef   = useRef({ftRoot:null,enCours:null,termines:null});
+  const gTokenRef    = useRef(null);
+  const actCellRef   = useRef(null);
+  const movePdfRef   = useRef(null);
   const addMissingCols=(arr,defaults)=>{const missing=defaults.filter(c=>!arr.includes(c));if(!missing.length)return arr;const idx=arr.indexOf('actions');return idx>=0?[...arr.slice(0,idx),...missing,...arr.slice(idx)]:[...arr,...missing];};
   const [btlOrder, setBtlOrder] = useState(()=>{try{const s=localStorage.getItem('fcdh_btl_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','format','modele','couleur','stade','qualite','cru','millesime','prix','commentaires','actions'];}});
   const [vcOrder,  setVcOrder]  = useState(()=>{try{const s=localStorage.getItem('fcdh_vc_order');const def=['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];return s?addMissingCols(JSON.parse(s),def):def;}catch{return['score','campagne','date','courtier','client','besoin','statut','proposition','qte','vendange','formatVin','qualite','cru','cepage','prix','commentaires','actions'];}});
@@ -471,6 +478,7 @@ function App() {
   useEffect(()=>{localStorage.setItem('fcdh_btl_hidden',JSON.stringify(btlHidden));},[btlHidden]);
   useEffect(()=>{localStorage.setItem('fcdh_vc_hidden',JSON.stringify(vcHidden));},[vcHidden]);
   useEffect(()=>{setColSort({col:null,dir:1});setFFormats([]);setFCouleurs([]);setFQualites([]);setFB("");},[tab]);
+  useEffect(()=>{gTokenRef.current=gToken;},[gToken]);
   useEffect(()=>{
     const h=(e)=>{if(isDirty){e.preventDefault();e.returnValue='';}};
     window.addEventListener('beforeunload',h);
@@ -701,6 +709,62 @@ function App() {
   const setData = tab==="bouteilles" ? setBouteilles : setVinsClairs;
   const empty   = tab==="bouteilles" ? emptyBtl : emptyVC;
 
+  // ── PDF / Fiches Techniques ─────────────────────────────────────
+  const PDF_FOLDER = s => ['en attente','en dégustation'].includes(s)?'enCours':'termines';
+  const findOrCreateFolder = async (token,name,parentId)=>{
+    const q=encodeURIComponent(`name='${name}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`);
+    const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`,{headers:{Authorization:`Bearer ${token}`}});
+    const {files}=await r.json();
+    if(files&&files.length>0)return files[0].id;
+    const cr=await fetch('https://www.googleapis.com/drive/v3/files',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({name,mimeType:'application/vnd.google-apps.folder',parents:[parentId]})});
+    const {id}=await cr.json();
+    return id;
+  };
+  const ensureFolders = async (token)=>{
+    if(foldersRef.current.enCours&&foldersRef.current.termines)return foldersRef.current;
+    const pr=await fetch(`https://www.googleapis.com/drive/v3/files/${DRIVE_FILE_ID}?fields=parents`,{headers:{Authorization:`Bearer ${token}`}});
+    const {parents}=await pr.json();
+    const parentId=parents[0];
+    const ftId=await findOrCreateFolder(token,'Fiches Techniques',parentId);
+    const ecId=await findOrCreateFolder(token,'En cours',ftId);
+    const trId=await findOrCreateFolder(token,'Terminés',ftId);
+    foldersRef.current={ftRoot:ftId,enCours:ecId,termines:trId};
+    return foldersRef.current;
+  };
+  const movePdf = async (pdfId,oldStatut,newStatut,token)=>{
+    if(!pdfId||!token)return;
+    const oldKey=PDF_FOLDER(oldStatut),newKey=PDF_FOLDER(newStatut);
+    if(oldKey===newKey)return;
+    try{
+      const folders=await ensureFolders(token);
+      await fetch(`https://www.googleapis.com/drive/v3/files/${pdfId}?addParents=${folders[newKey]}&removeParents=${folders[oldKey]}&fields=id`,{method:'PATCH',headers:{Authorization:`Bearer ${token}`}});
+    }catch(e){console.error('movePdf:',e);}
+  };
+  movePdfRef.current=movePdf;
+  const uploadPdf = async (file,row)=>{
+    const token=gTokenRef.current;
+    if(!token){setGError('Connectez-vous à Drive pour importer une fiche technique.');return;}
+    setPdfUploading(p=>({...p,[row.id]:true}));
+    try{
+      const folders=await ensureFolders(token);
+      const folderId=folders[PDF_FOLDER(row.statut)];
+      if(row.pdfId){
+        await fetch(`https://www.googleapis.com/drive/v3/files/${row.pdfId}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});
+      }
+      const metadata={name:file.name,parents:[folderId]};
+      const form=new FormData();
+      form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
+      form.append('file',file);
+      const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
+      const {id}=await r.json();
+      const setter=row._sheet==='BOUTEILLES'?setBouteilles:setVinsClairs;
+      setter(prev=>prev.map(x=>x.id===row.id?{...x,pdfId:id}:x));
+      setIsDirty(true);
+      pendingSaveRef.current=true;
+    }catch(e){setGError('Erreur upload PDF : '+e.message);}
+    setPdfUploading(p=>({...p,[row.id]:false}));
+  };
+
   const matchesFor = (entry, dataOverride) => {
     const d = dataOverride || data;
     const opp = entry.besoin==="Vend"?"Recherche":"Vend";
@@ -775,8 +839,23 @@ function App() {
     if(!dragColRef.current||dragColRef.current===dropId)return;
     setOrder(prev=>{const a=[...prev],f=a.indexOf(dragColRef.current),t=a.indexOf(dropId);if(f<0||t<0)return prev;a.splice(f,1);a.splice(t,0,dragColRef.current);return a;});
   };
+  actCellRef.current = r=>{
+    const uploading=pdfUploading[r.id];
+    return <TD><div style={{display:"flex",gap:4,alignItems:"center"}} onClick={e=>e.stopPropagation()}>
+      <button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button>
+      <button onClick={()=>setDupEntry(r)} style={{padding:"4px 8px",background:"#dbeafe",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>⧉</button>
+      {r.pdfId&&<a href={`https://drive.google.com/file/d/${r.pdfId}/view`} target="_blank" rel="noopener noreferrer" style={{textDecoration:"none"}}><button style={{padding:"4px 8px",background:"#dcfce7",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}} title="Voir la fiche technique">📄</button></a>}
+      <label style={{cursor:"pointer",display:"inline-block"}}>
+        <input type="file" accept=".pdf,application/pdf" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)uploadPdf(f,r);e.target.value='';}}/>
+        <span style={{padding:"4px 8px",background:uploading?"#f3f4f6":r.pdfId?"#fef3c7":"#fef9c3",border:"1px solid",borderColor:uploading?"#e5e7eb":r.pdfId?"#fcd34d":"#fef08a",borderRadius:5,cursor:uploading?"default":"pointer",fontSize:12,display:"inline-block",userSelect:"none"}} title={r.pdfId?"Remplacer la fiche technique":"Ajouter une fiche technique"}>
+          {uploading?"⏳":"📎"}
+        </span>
+      </label>
+      <button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button>
+    </div></TD>;
+  };
   const COLS = useMemo(()=>{
-    const actCell = r=><TD><div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button onClick={()=>openForm(r)} style={{padding:"4px 8px",background:G100,border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>✏️</button><button onClick={()=>setDupEntry(r)} style={{padding:"4px 8px",background:"#dbeafe",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>⧉</button><button onClick={()=>setDelId(r.id)} style={{padding:"4px 8px",background:"#fee2e2",border:"none",borderRadius:5,cursor:"pointer",fontSize:12}}>🗑</button></div></TD>;
+    const actCell = r=>actCellRef.current(r);
     return {
     bouteilles:[
       {id:"score",   label:"Score",    cell:r=><TD><div onClick={e=>e.stopPropagation()}><ScorePill score={r._best} onClick={()=>openModal(r)}/></div></TD>},
@@ -785,7 +864,7 @@ function App() {
       {id:"courtier",label:"Courtier", cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.courtier}</TD>},
       {id:"client",  label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
       {id:"besoin",  label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
-      {id:"statut",  label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>{setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x));setIsDirty(true);}}/></div></TD>},
+      {id:"statut",  label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>{if(r.pdfId)movePdfRef.current(r.pdfId,r.statut,v,gTokenRef.current);setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x));setIsDirty(true);}}/></div></TD>},
       {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>{setBouteilles(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x));setIsDirty(true);}}/></div></TD>},
       {id:"qte",     label:"Qté",      cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"format",  label:"Format",   cell:r=><TD style={{color:G600}}>{r.format}</TD>},
@@ -806,7 +885,7 @@ function App() {
       {id:"courtier", label:"Courtier", cell:r=><TD style={{fontWeight:700,color:GOLD}}>{r.courtier}</TD>},
       {id:"client",   label:"Client",   cell:r=><TD style={{fontWeight:600,color:NAVY}}>{r.client}</TD>},
       {id:"besoin",   label:"Besoin",   cell:r=><TD><Pill v={r.besoin}/></TD>},
-      {id:"statut",   label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>{setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x));setIsDirty(true);}}/></div></TD>},
+      {id:"statut",   label:"Statut",   cell:r=><TD><div onClick={e=>e.stopPropagation()}><StatutSel value={r.statut} onChange={v=>{if(r.pdfId)movePdfRef.current(r.pdfId,r.statut,v,gTokenRef.current);setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,statut:v}:x));setIsDirty(true);}}/></div></TD>},
       {id:"proposition",label:"Proposition",cell:r=><TD><div onClick={e=>e.stopPropagation()}><InlineText value={r.acheteur} onChange={v=>{setVinsClairs(prev=>prev.map(x=>x.id===r.id?{...x,acheteur:v}:x));setIsDirty(true);}}/></div></TD>},
       {id:"qte",      label:"Qté (hl)", cell:r=><TD style={{textAlign:"right"}}>{r.qte}</TD>},
       {id:"vendange", label:"Vendange", cell:r=><TD style={{color:G600}}>{r.vendange}</TD>},
