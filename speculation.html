@@ -1075,7 +1075,7 @@ function App() {
                 </div>
               </div>
               <div style={{display:"flex"}}>
-                <div style={{width:220,flexShrink:0,borderRight:`1px solid ${G100}`,padding:"16px 14px",background:G50,display:"flex",flexDirection:"column",gap:12,overflowY:"auto",maxHeight:"70vh"}}>
+                <div style={{width:"28%",flexShrink:0,borderRight:`1px solid ${G100}`,padding:"16px 14px",background:G50,display:"flex",flexDirection:"column",gap:12,overflowY:"auto",maxHeight:"70vh"}}>
                   {modal.entry.pdfId&&<div><div style={{fontSize:10,textTransform:"uppercase",letterSpacing:"0.07em",color:G400,marginBottom:4,fontWeight:600}}>Fiche technique</div><a href={`https://drive.google.com/file/d/${modal.entry.pdfId}/view`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:"#dcfce7",color:"#166534",borderRadius:5,padding:"3px 9px",fontSize:11,fontWeight:500,textDecoration:"none"}}>📄 Voir la fiche</a></div>}
                   {[
                     {l:"Campagne",v:modal.entry.campagne},
