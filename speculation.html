@@ -755,10 +755,11 @@ function App() {
       const form=new FormData();
       form.append('metadata',new Blob([JSON.stringify(metadata)],{type:'application/json'}));
       form.append('file',file);
-      const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
-      const {id}=await r.json();
-      const setter=row._sheet==='BOUTEILLES'?setBouteilles:setVinsClairs;
-      setter(prev=>prev.map(x=>x.id===row.id?{...x,pdfId:id}:x));
+      const resp=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${token}`},body:form});
+      const json=await resp.json();
+      if(!resp.ok||!json.id)throw new Error(json.error?.message||`Drive ${resp.status}`);
+      const setter=tab==='bouteilles'?setBouteilles:setVinsClairs;
+      setter(prev=>prev.map(x=>x.id===row.id?{...x,pdfId:json.id}:x));
       setIsDirty(true);
       pendingSaveRef.current=true;
     }catch(e){setGError('Erreur upload PDF : '+e.message);}
