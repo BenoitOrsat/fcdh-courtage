@@ -400,7 +400,11 @@
   // =========================================================================
   // DONNÉES FICTIVES — à remplacer par la liste réelle des pressoirs FCDH
   // Structure : chaque commune a un nom, des coordonnées réelles et une liste
-  // de pressoirs (nom, capacité indicative en kg/marc, courtier référent).
+  // de pressoirs (nom, capacité indicative en kg/marc, courtier1 référent).
+  // Certains pressoirs sont en transition et ont aussi un courtier2
+  // (secondaire, appelé à devenir référent à terme) : la couleur affichée
+  // reste toujours celle de courtier1, mais le pressoir apparaît aussi
+  // quand on filtre sur courtier2.
   // =========================================================================
   var COURTIERS = ["BO", "ASM", "JPNC", "EB", "JBC", "EC", "EH", "MAA"];
 
@@ -437,83 +441,83 @@
     {
       nom: "Reims", lat: 49.2583, lng: 4.0317,
       pressoirs: [
-        { nom: "Pressoir des Remparts", capacite: 8000, courtier: "BO" },
-        { nom: "Centre de Pressurage Saint-Nicaise", capacite: 12000, courtier: "ASM" },
-        { nom: "Pressoir Notre-Dame", capacite: 6000, courtier: "JPNC" }
+        { nom: "Pressoir des Remparts", capacite: 8000, courtier1: "BO" },
+        { nom: "Centre de Pressurage Saint-Nicaise", capacite: 12000, courtier1: "ASM", courtier2: "EH" },
+        { nom: "Pressoir Notre-Dame", capacite: 6000, courtier1: "JPNC" }
       ]
     },
     {
       nom: "Épernay", lat: 49.0413, lng: 3.9600,
       pressoirs: [
-        { nom: "Pressoir de la Marne", capacite: 10000, courtier: "EB" },
-        { nom: "Centre de Pressurage des Berceaux", capacite: 8000, courtier: "JBC" },
-        { nom: "Pressoir du Mont Bernon", capacite: 6000, courtier: "EC" }
+        { nom: "Pressoir de la Marne", capacite: 10000, courtier1: "EB", courtier2: "MAA" },
+        { nom: "Centre de Pressurage des Berceaux", capacite: 8000, courtier1: "JBC" },
+        { nom: "Pressoir du Mont Bernon", capacite: 6000, courtier1: "EC" }
       ]
     },
     {
       nom: "Ay-Champagne", lat: 49.0500, lng: 4.0064,
       pressoirs: [
-        { nom: "Pressoir Saint-Brice", capacite: 8000, courtier: "EH" },
-        { nom: "Centre de Pressurage du Boulingrin", capacite: 4000, courtier: "MAA" }
+        { nom: "Pressoir Saint-Brice", capacite: 8000, courtier1: "EH" },
+        { nom: "Centre de Pressurage du Boulingrin", capacite: 4000, courtier1: "MAA" }
       ]
     },
     {
       nom: "Verzenay", lat: 49.1517, lng: 4.1889,
       pressoirs: [
-        { nom: "Pressoir du Moulin", capacite: 6000, courtier: "BO" },
-        { nom: "Centre de Pressurage des Faux de Verzy", capacite: 8000, courtier: "ASM" }
+        { nom: "Pressoir du Moulin", capacite: 6000, courtier1: "BO" },
+        { nom: "Centre de Pressurage des Faux de Verzy", capacite: 8000, courtier1: "ASM" }
       ]
     },
     {
       nom: "Bouzy", lat: 49.1181, lng: 4.1594,
       pressoirs: [
-        { nom: "Pressoir de la Montagne", capacite: 10000, courtier: "JPNC" },
-        { nom: "Centre de Pressurage Saint-Pierre", capacite: 6000, courtier: "EB" }
+        { nom: "Pressoir de la Montagne", capacite: 10000, courtier1: "JPNC", courtier2: "BO" },
+        { nom: "Centre de Pressurage Saint-Pierre", capacite: 6000, courtier1: "EB" }
       ]
     },
     {
       nom: "Cramant", lat: 48.9584, lng: 3.9631,
       pressoirs: [
-        { nom: "Pressoir de la Côte des Blancs", capacite: 8000, courtier: "JBC" },
-        { nom: "Centre de Pressurage du Mont Aigu", capacite: 4000, courtier: "EC" }
+        { nom: "Pressoir de la Côte des Blancs", capacite: 8000, courtier1: "JBC" },
+        { nom: "Centre de Pressurage du Mont Aigu", capacite: 4000, courtier1: "EC" }
       ]
     },
     {
       nom: "Le Mesnil-sur-Oger", lat: 48.9435, lng: 4.0083,
       pressoirs: [
-        { nom: "Pressoir des Clos", capacite: 6000, courtier: "EH" },
-        { nom: "Centre de Pressurage Sous le Mont", capacite: 8000, courtier: "MAA" }
+        { nom: "Pressoir des Clos", capacite: 6000, courtier1: "EH" },
+        { nom: "Centre de Pressurage Sous le Mont", capacite: 8000, courtier1: "MAA" }
       ]
     },
     {
       nom: "Vertus", lat: 48.9034, lng: 3.9186,
       pressoirs: [
-        { nom: "Pressoir de Notre-Dame de l'Assomption", capacite: 4000, courtier: "BO" }
+        { nom: "Pressoir de Notre-Dame de l'Assomption", capacite: 4000, courtier1: "BO" }
       ]
     },
     {
       nom: "Avize", lat: 48.9647, lng: 3.9531,
       pressoirs: [
-        { nom: "Pressoir des Champs Ronsart", capacite: 6000, courtier: "ASM" },
-        { nom: "Centre de Pressurage du Cornu", capacite: 8000, courtier: "JPNC" }
+        { nom: "Pressoir des Champs Ronsart", capacite: 6000, courtier1: "ASM" },
+        { nom: "Centre de Pressurage du Cornu", capacite: 8000, courtier1: "JPNC", courtier2: "EC" }
       ]
     },
     {
       nom: "Sézanne", lat: 48.7247, lng: 3.7236,
       pressoirs: [
-        { nom: "Pressoir des Côteaux du Petit Morin", capacite: 4000, courtier: "EB" }
+        { nom: "Pressoir des Côteaux du Petit Morin", capacite: 4000, courtier1: "EB" }
       ]
     },
     {
       nom: "Château-Thierry", lat: 49.0475, lng: 3.4006,
       pressoirs: [
-        { nom: "Pressoir de la Vallée de la Marne", capacite: 6000, courtier: "JBC" }
+        { nom: "Pressoir de la Vallée de la Marne", capacite: 6000, courtier1: "JBC" }
       ]
     },
     {
       nom: "Bar-sur-Aube", lat: 48.2333, lng: 4.7167,
       pressoirs: [
-        { nom: "Pressoir de la Côte des Bar", capacite: 4000, courtier: "EC" }
+        { nom: "Pressoir de la Côte des Bar", capacite: 4000, courtier1: "EC" }
       ]
     }
   ];
@@ -557,13 +561,14 @@
   // =========================================================================
   // Utilitaires de style (couleur par courtier / taille selon le nombre de pressoirs)
   // =========================================================================
-  // Couleur d'une commune : si tous les pressoirs affichés (après filtre)
-  // appartiennent au même courtier, on prend sa couleur ; dès qu'il y en a
-  // plusieurs, on ne peut pas trancher → couleur neutre.
+  // Couleur d'une commune : basée sur le courtier1 (référent principal) de
+  // chaque pressoir affiché — un courtier2 éventuel n'entre jamais en jeu
+  // dans la couleur. Si tous les pressoirs partagent le même courtier1, on
+  // prend sa couleur ; dès qu'il y en a plusieurs, couleur neutre.
   function colorForCommunePressoirs(pressoirs){
-    var courtiersPresents = new Set(pressoirs.map(function(p){ return p.courtier; }));
+    var courtiersPresents = new Set(pressoirs.map(function(p){ return p.courtier1; }));
     if(courtiersPresents.size === 1){
-      return COURTIER_COLORS[pressoirs[0].courtier];
+      return COURTIER_COLORS[pressoirs[0].courtier1];
     }
     return NEUTRAL_COLOR;
   }
@@ -588,13 +593,16 @@
   });
 
   // Filtre : ne conserve que les pressoirs correspondant aux courtiers
-  // sélectionnés, puis retire entièrement les communes qui n'ont plus
-  // aucun pressoir correspondant (masquage total, pas de grisé).
+  // sélectionnés (courtier1 référent OU courtier2 secondaire), puis retire
+  // entièrement les communes qui n'ont plus aucun pressoir correspondant
+  // (masquage total, pas de grisé).
   function getFilteredCommunes(){
     return communes
       .map(function(c){
         var pressoirs = c.pressoirs.filter(function(p){
-          return selectedCourtiers.size === 0 || selectedCourtiers.has(p.courtier);
+          return selectedCourtiers.size === 0 ||
+            selectedCourtiers.has(p.courtier1) ||
+            (p.courtier2 && selectedCourtiers.has(p.courtier2));
         });
         return { nom: c.nom, lat: c.lat, lng: c.lng, pressoirs: pressoirs };
       })
@@ -654,7 +662,10 @@
   }
 
   function buildPressoirMarker(commune, pressoir){
-    var color = COURTIER_COLORS[pressoir.courtier];
+    // La couleur reflète toujours le courtier1 (référent principal), même
+    // si ce marqueur n'est affiché que parce qu'il correspond au filtre
+    // sur courtier2 (secondaire).
+    var color = COURTIER_COLORS[pressoir.courtier1];
     var icon = L.divIcon({
       className: 'pressoir-icon-wrapper',
       html: '<div class="pressoir-marker" style="background:' + color + ';"></div>',
@@ -662,12 +673,16 @@
       iconAnchor: [7, 7]
     });
     var marker = L.marker([commune.lat, commune.lng], { icon: icon });
+    var courtierLines = '<p><strong>Courtier référent :</strong> ' + pressoir.courtier1 + '</p>';
+    if(pressoir.courtier2){
+      courtierLines += '<p><strong>Courtier secondaire (futur référent) :</strong> ' + pressoir.courtier2 + '</p>';
+    }
     var popupHtml =
       '<div class="pressoir-popup">' +
         '<h3>' + pressoir.nom + '</h3>' +
         '<p class="commune-line">' + commune.nom + '</p>' +
         '<p><strong>Capacité indicative :</strong> ' + pressoir.capacite.toLocaleString('fr-FR') + ' kg/marc</p>' +
-        '<p><strong>Courtier référent :</strong> ' + pressoir.courtier + '</p>' +
+        courtierLines +
       '</div>';
     marker.bindPopup(popupHtml);
     return marker;
