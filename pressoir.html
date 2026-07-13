@@ -405,6 +405,10 @@
   // (secondaire, appelé à devenir référent à terme) : la couleur affichée
   // reste toujours celle de courtier1, mais le pressoir apparaît aussi
   // quand on filtre sur courtier2.
+  // lat/lng sur un pressoir sont optionnels : à défaut, le marqueur
+  // individuel reprend la position générique de la commune. Quand une
+  // adresse postale précise est géocodée (ex. via Nominatim/OSM), on
+  // renseigne ces champs pour positionner le pressoir exactement.
   // =========================================================================
   var COURTIERS = ["BO", "ASM", "JPNC", "EB", "JBC", "EC", "EH", "MAA"];
 
@@ -441,7 +445,9 @@
     {
       nom: "Reims", lat: 49.2583, lng: 4.0317,
       pressoirs: [
-        { nom: "Pressoir des Remparts", capacite: 8000, courtier1: "BO" },
+        // Essai de géocodage précis (8 allée du Vignoble, Reims) — lat/lng
+        // du pressoir remplacent la position générique de la commune.
+        { nom: "Pressoir des Remparts", capacite: 8000, courtier1: "BO", lat: 49.221028, lng: 4.014230 },
         { nom: "Centre de Pressurage Saint-Nicaise", capacite: 12000, courtier1: "ASM", courtier2: "EH" },
         { nom: "Pressoir Notre-Dame", capacite: 6000, courtier1: "JPNC" }
       ]
@@ -676,7 +682,12 @@
       iconSize: [14, 14],
       iconAnchor: [7, 7]
     });
-    var marker = L.marker([commune.lat, commune.lng], { icon: icon });
+    // Un pressoir géocodé précisément (lat/lng propres, ex. depuis son
+    // adresse postale) est positionné à cet endroit exact ; à défaut, il
+    // reprend la position générique de sa commune.
+    var lat = pressoir.lat != null ? pressoir.lat : commune.lat;
+    var lng = pressoir.lng != null ? pressoir.lng : commune.lng;
+    var marker = L.marker([lat, lng], { icon: icon });
     var courtierLines = '<p><strong>Courtier référent :</strong> ' + pressoir.courtier1 + '</p>';
     if(pressoir.courtier2){
       courtierLines += '<p><strong>Courtier secondaire (futur référent) :</strong> ' + pressoir.courtier2 + '</p>';
