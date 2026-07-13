@@ -539,11 +539,15 @@
   var maxLng = Math.max.apply(null, lngs) + BOUNDS_PADDING;
   var champagneBounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
 
+  // zoomSnap doit rester entier : avec un pas fractionné (ex. 0.1), le
+  // rendu des marqueurs isolés (non regroupés) de Leaflet.markercluster
+  // 1.5.3 échoue silencieusement (aucune icône créée) dès qu'un cluster ne
+  // contient qu'un seul point à l'écran. Zoom initial ~9.3 → arrondi à 9.
   var map = L.map('map', {
     center: [48.98, 3.98],
-    zoom: 9.3,
-    zoomSnap: 0.1,
-    zoomDelta: 0.5,
+    zoom: 9,
+    zoomSnap: 1,
+    zoomDelta: 1,
     maxBoundsViscosity: 1.0
   });
 
