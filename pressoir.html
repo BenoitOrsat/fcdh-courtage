@@ -195,51 +195,27 @@
     gap:6px;
   }
 
+  /* Chaque chip porte la couleur de son courtier en fond permanent (inline
+     style), y compris quand il n'est pas sélectionné : l'opacité et le
+     liseré distinguent l'état actif de l'état inactif. */
   .chip{
-    background:var(--ivory);
-    border:1px solid var(--gold-light);
-    color:var(--ink);
+    border:1px solid transparent;
     padding:5px 10px;
     border-radius:14px;
     font-size:0.72rem;
     font-weight:600;
     cursor:pointer;
-    transition:background 0.15s ease, color 0.15s ease;
+    opacity:0.55;
+    transition:opacity 0.15s ease, box-shadow 0.15s ease;
   }
-  .chip:hover{background:var(--gold-light);}
+  .chip:hover{opacity:0.85;}
   .chip.active{
-    background:var(--burgundy);
-    color:var(--chalk);
-    border-color:var(--burgundy);
+    opacity:1;
+    box-shadow:0 0 0 2px var(--vine-dark);
   }
-  .chip-all.active{
+  .chip-all{
     background:var(--vine);
-    border-color:var(--vine);
-  }
-
-  /* ---------- Légende ---------- */
-  .legend-panel{
-    background:var(--chalk);
-    border:1px solid var(--gold-light);
-    border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
-    padding:12px 14px;
-    font-size:0.78rem;
-  }
-  .legend-item{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    margin-bottom:6px;
-  }
-  .legend-item:last-child{margin-bottom:0;}
-  .legend-item .swatch{
-    width:14px;
-    height:14px;
-    border-radius:50%;
-    display:inline-block;
-    border:1px solid rgba(0,0,0,0.15);
-    flex:0 0 auto;
+    color:var(--chalk);
   }
 
   /* ---------- Marqueurs commune : style "point discret" ---------- */
@@ -335,12 +311,12 @@
   }
 
   /* ---------- Marqueur pressoir individuel ---------- */
+  /* Le fond (couleur du courtier référent) est posé en style inline par le JS. */
   .pressoir-icon-wrapper{background:transparent;border:none;}
   .pressoir-marker{
     width:14px;
     height:14px;
     border-radius:50%;
-    background:var(--burgundy);
     border:2px solid var(--gold);
     box-shadow:0 1px 4px rgba(0,0,0,0.4);
   }
@@ -427,6 +403,35 @@
   // de pressoirs (nom, capacité indicative en kg/marc, courtier référent).
   // =========================================================================
   var COURTIERS = ["BO", "ASM", "JPNC", "EB", "JBC", "EC", "EH", "MAA"];
+
+  // Une couleur propre à chaque courtier (affichée sur les chips de filtre
+  // et sur les marqueurs de pressoir/commune qui lui sont attribuables sans
+  // ambiguïté). COURTIER_TEXT_COLORS ajuste le texte pour rester lisible
+  // sur chaque fond (le gold, plus clair, a besoin d'un texte foncé).
+  var COURTIER_COLORS = {
+    BO:   "#1F3A2E",
+    ASM:  "#C9A66B",
+    JPNC: "#6B2737",
+    EB:   "#2E5C79",
+    JBC:  "#8C5A3C",
+    EC:   "#7A4F87",
+    EH:   "#2F6B63",
+    MAA:  "#A85226"
+  };
+  var COURTIER_TEXT_COLORS = {
+    BO:   "#F5F1E8",
+    ASM:  "#12251C",
+    JPNC: "#F5F1E8",
+    EB:   "#F5F1E8",
+    JBC:  "#F5F1E8",
+    EC:   "#F5F1E8",
+    EH:   "#F5F1E8",
+    MAA:  "#F5F1E8"
+  };
+  // Couleur neutre : utilisée dès qu'une commune regroupe des pressoirs de
+  // plusieurs courtiers différents — on ne colore avec la couleur d'un
+  // courtier que lorsque l'attribution est certaine (un seul courtier présent).
+  var NEUTRAL_COLOR = "#8A8577";
 
   var communes = [
     {
@@ -550,13 +555,17 @@
   map.setMaxBounds(champagneBounds);
 
   // =========================================================================
-  // Utilitaires de style (couleur / taille selon le nombre de pressoirs)
+  // Utilitaires de style (couleur par courtier / taille selon le nombre de pressoirs)
   // =========================================================================
-  function colorForCount(n){
-    if(n <= 1) return '#1F3A2E';   // --vine
-    if(n === 2) return '#C9A66B';  // --gold
-    if(n === 3) return '#8C5A3C';  // brun
-    return '#6B2737';              // --burgundy (4+)
+  // Couleur d'une commune : si tous les pressoirs affichés (après filtre)
+  // appartiennent au même courtier, on prend sa couleur ; dès qu'il y en a
+  // plusieurs, on ne peut pas trancher → couleur neutre.
+  function colorForCommunePressoirs(pressoirs){
+    var courtiersPresents = new Set(pressoirs.map(function(p){ return p.courtier; }));
+    if(courtiersPresents.size === 1){
+      return COURTIER_COLORS[pressoirs[0].courtier];
+    }
+    return NEUTRAL_COLOR;
   }
 
   function sizeForCount(n){
@@ -598,7 +607,7 @@
 
   function buildCommuneMarker(commune, style){
     var n = commune.pressoirs.length;
-    var color = colorForCount(n);
+    var color = colorForCommunePressoirs(commune.pressoirs);
     var marker;
 
     if(style === 'dot'){
@@ -645,9 +654,10 @@
   }
 
   function buildPressoirMarker(commune, pressoir){
+    var color = COURTIER_COLORS[pressoir.courtier];
     var icon = L.divIcon({
       className: 'pressoir-icon-wrapper',
-      html: '<div class="pressoir-marker"></div>',
+      html: '<div class="pressoir-marker" style="background:' + color + ';"></div>',
       iconSize: [14, 14],
       iconAnchor: [7, 7]
     });
@@ -706,7 +716,9 @@
       var container = L.DomUtil.create('div', 'control-panel');
 
       var chipsHtml = COURTIERS.map(function(k){
-        return '<button class="chip" data-courtier="' + k + '">' + k + '</button>';
+        var bg = COURTIER_COLORS[k];
+        var fg = COURTIER_TEXT_COLORS[k];
+        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
       }).join('');
 
       container.innerHTML =
@@ -770,25 +782,6 @@
     }
   });
   new StyleFilterControl().addTo(map);
-
-  // =========================================================================
-  // Contrôle : légende (haut droite)
-  // =========================================================================
-  var LegendControl = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd: function(){
-      var div = L.DomUtil.create('div', 'legend-panel');
-      div.innerHTML =
-        '<div class="panel-title">Légende</div>' +
-        '<div class="legend-item"><span class="swatch" style="background:#1F3A2E;"></span>1 pressoir</div>' +
-        '<div class="legend-item"><span class="swatch" style="background:#C9A66B;"></span>2 pressoirs</div>' +
-        '<div class="legend-item"><span class="swatch" style="background:#8C5A3C;"></span>3 pressoirs</div>' +
-        '<div class="legend-item"><span class="swatch" style="background:#6B2737;"></span>4+ pressoirs</div>';
-      L.DomEvent.disableClickPropagation(div);
-      return div;
-    }
-  });
-  new LegendControl().addTo(map);
 
   // =========================================================================
   // Initialisation
