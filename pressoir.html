@@ -149,6 +149,8 @@
     padding:12px;
     width:210px;
     font-size:0.8rem;
+    max-height:calc(100vh - 110px);
+    overflow-y:auto;
   }
 
   .panel-title{
@@ -220,6 +222,21 @@
   .chip-all{
     background:var(--vine);
     color:var(--chalk);
+  }
+
+  /* Chips de secteur : pas de couleur propre par secteur (contrairement aux
+     courtiers), fond neutre commun, même logique active/inactive. */
+  .filter-box{
+    margin-bottom:14px;
+  }
+  .chip-secteur{
+    background:var(--ivory);
+    color:var(--ink);
+    border-color:var(--gold-light);
+  }
+  .chip-count{
+    font-weight:400;
+    opacity:0.85;
   }
 
   /* ---------- Recherche (pressoir ou commune) ---------- */
@@ -461,19 +478,24 @@
   "use strict";
 
   // =========================================================================
-  // DONNÉES FICTIVES — à remplacer par la liste réelle des pressoirs FCDH
-  // Structure : chaque commune a un nom, des coordonnées réelles et une liste
-  // de pressoirs (nom, capacité indicative en kg/marc, courtier1 référent).
-  // Certains pressoirs sont en transition et ont aussi un courtier2
-  // (secondaire, appelé à devenir référent à terme) : la couleur affichée
-  // reste toujours celle de courtier1, mais le pressoir apparaît aussi
-  // quand on filtre sur courtier2.
+  // DONNÉES RÉELLES — importées depuis "V.2026 Répartion des pressoirs par
+  // courtiers.xlsx" (197 communes, 658 pressoirs). Chaque commune a un nom,
+  // des coordonnées géocodées (commune ou village-hameau le cas échéant) et
+  // une liste de pressoirs (nom, courtier1 référent).
+  // Certains pressoirs ont aussi un courtier2 : soit un référent secondaire
+  // déjà présent dans le fichier source, soit — cas "Nouveau CAP" — l'ancien
+  // courtier1 qui reste filtrable après le passage du pressoir à son nouveau
+  // référent. Dans les deux cas, la couleur affichée reste toujours celle de
+  // courtier1, et le pressoir apparaît aussi quand on filtre sur courtier2.
   // lat/lng sur un pressoir sont optionnels : à défaut, le marqueur
   // individuel reprend la position générique de la commune. Quand une
   // adresse postale précise est géocodée (ex. via Nominatim/OSM), on
   // renseigne ces champs pour positionner le pressoir exactement.
   // =========================================================================
   var COURTIERS = ["BO", "ASM", "JPNC", "EB", "JBC", "EC", "EH", "MAA"];
+  // Secteurs géographiques du fichier source (colonne "Sect") — un pressoir
+  // peut ne pas en avoir (secteur absent dans le fichier d'origine).
+  var SECTEURS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "M", "S"];
 
   // Une couleur propre à chaque courtier (affichée sur les chips de filtre
   // et sur les marqueurs de pressoir/commune qui lui sont attribuables sans
@@ -506,87 +528,1646 @@
 
   var communes = [
     {
-      nom: "Reims", lat: 49.2583, lng: 4.0317,
+      nom: "Ailleville", lat: 48.2562, lng: 4.6911,
       pressoirs: [
-        // Essai de géocodage précis (8 allée du Vignoble, Reims) — lat/lng
-        // du pressoir remplacent la position générique de la commune.
-        { nom: "Pressoir des Remparts", capacite: 8000, courtier1: "BO", lat: 49.221028, lng: 4.014230 },
-        { nom: "Centre de Pressurage Saint-Nicaise", capacite: 12000, courtier1: "ASM", courtier2: "EH" },
-        { nom: "Pressoir Notre-Dame", capacite: 6000, courtier1: "JPNC" }
+        { nom: "DES COTEAUX (Ailleville)", courtier1: "JPNC", secteur: "B" }
       ]
     },
     {
-      nom: "Épernay", lat: 49.0413, lng: 3.9600,
+      nom: "Allemant", lat: 48.7633, lng: 3.8221,
       pressoirs: [
-        { nom: "Pressoir de la Marne", capacite: 10000, courtier1: "EB", courtier2: "MAA" },
-        { nom: "Centre de Pressurage des Berceaux", capacite: 8000, courtier1: "JBC" },
-        { nom: "Pressoir du Mont Bernon", capacite: 6000, courtier1: "EC" }
+        { nom: "DE SIGNY", courtier1: "JPNC", secteur: "F" }
       ]
     },
     {
-      nom: "Ay-Champagne", lat: 49.0500, lng: 4.0064,
+      nom: "Ambonnay", lat: 49.0926, lng: 4.1778,
       pressoirs: [
-        { nom: "Pressoir Saint-Brice", capacite: 8000, courtier1: "EH" },
-        { nom: "Centre de Pressurage du Boulingrin", capacite: 4000, courtier1: "MAA" }
+        { nom: "CHAMPAGNE PAUL DÉTHUNE", courtier1: "EH", secteur: "G" },
+        { nom: "DES 4 VENTS", courtier1: "MAA", courtier2: "ASM", secteur: "G" },
+        { nom: "RODEZ", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "VIGNOBLES SERGE DEMIERE", courtier1: "ASM", secteur: "G" },
+        { nom: "VINICOLE d'AMBONNAY", courtier1: "MAA", secteur: "G" }
       ]
     },
     {
-      nom: "Verzenay", lat: 49.1517, lng: 4.1889,
+      nom: "Arrentières", lat: 48.2684, lng: 4.7396,
       pressoirs: [
-        { nom: "Pressoir du Moulin", capacite: 6000, courtier1: "BO" },
-        { nom: "Centre de Pressurage des Faux de Verzy", capacite: 8000, courtier1: "ASM" }
+        { nom: "BEERENS", courtier1: "EB", secteur: "B" },
+        { nom: "MENNETRIER", courtier1: "EC", courtier2: "EB", secteur: "B" }
       ]
     },
     {
-      nom: "Bouzy", lat: 49.1181, lng: 4.1594,
+      nom: "Avenay-Val-d'Or", lat: 49.0743, lng: 4.0453,
       pressoirs: [
-        { nom: "Pressoir de la Montagne", capacite: 10000, courtier1: "JPNC", courtier2: "BO" },
-        { nom: "Centre de Pressurage Saint-Pierre", capacite: 6000, courtier1: "EB" }
+        { nom: "LE VAL D'OR D'AVENAY", courtier1: "EC", courtier2: "BO", secteur: "G" },
+        { nom: "MAISON LHEUREUX", courtier1: "MAA", courtier2: "ASM", secteur: "G" },
+        { nom: "MHCS / Veuve CLICQUOT (Avenay)", courtier1: "MAA", secteur: "G" },
+        { nom: "PICART MARCEL", courtier1: "BO", courtier2: "EC", secteur: "G" },
+        { nom: "REMION Guillaume PRESTATIONS", courtier1: "BO", secteur: "G" },
+        { nom: "SAINTOT GHISLAIN ET FILS", courtier1: "EC", courtier2: "BO", secteur: "G" },
+        { nom: "SAINTOT WILLIAM", courtier1: "ASM", secteur: "G" },
+        { nom: "HUBERT BILLIARD", courtier1: "EC", courtier2: "BO", secteur: "G" },
+        { nom: "JEAN AUGUSTIN ET FILS", courtier1: "BO", secteur: "G" }
       ]
     },
     {
-      nom: "Cramant", lat: 48.9584, lng: 3.9631,
+      nom: "Avirey-Lingey", lat: 48.0341, lng: 4.2912,
       pressoirs: [
-        { nom: "Pressoir de la Côte des Blancs", capacite: 8000, courtier1: "JBC" },
-        { nom: "Centre de Pressurage du Mont Aigu", capacite: 4000, courtier1: "EC" }
+        { nom: "CHARDIN PERE ET FILS", courtier1: "JPNC", secteur: "S" },
+        { nom: "DU VAL DE SARCE", courtier1: "EB", secteur: "S" },
+        { nom: "GOUSSARD DELAGNEAU", courtier1: "JPNC", secteur: "S" },
+        { nom: "MARCEAU", courtier1: "JPNC", secteur: "S" },
+        { nom: "MARC HENNEQUIERE - Avirey", courtier1: "EB", secteur: "S" },
+        { nom: "MATHIEU SERGE", courtier1: "JPNC", secteur: "S" },
+        { nom: "ROY MARIOTTE", courtier1: "JPNC", secteur: "S" },
+        { nom: "VIGNOBLES MONTAUDON", courtier1: "JPNC", secteur: "S" },
+        { nom: "CHRISTIAN MARIN ET FILS", courtier1: "JPNC", secteur: "S" }
       ]
     },
     {
-      nom: "Le Mesnil-sur-Oger", lat: 48.9435, lng: 4.0083,
+      nom: "Avize", lat: 48.9724, lng: 4.0056,
       pressoirs: [
-        { nom: "Pressoir des Clos", capacite: 6000, courtier1: "EH" },
-        { nom: "Centre de Pressurage Sous le Mont", capacite: 8000, courtier1: "MAA" }
+        { nom: "ASSAILLY LECLAIRE ET FILS", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "BRUN WILLIAM ET FILS", courtier1: "EC", secteur: "D" },
+        { nom: "DES MONTS CHENEVAUX", courtier1: "MAA", secteur: "D" },
+        { nom: "LECOMTE TESSIER Emmanuelle", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "LES ANCIENS DE LA VITICULTURE", courtier1: "BO", secteur: "D" },
+        { nom: "LES VITICULTEURS D'AVIZE", courtier1: "MAA", courtier2: "JBC", secteur: "D" }
       ]
     },
     {
-      nom: "Vertus", lat: 48.9034, lng: 3.9186,
+      nom: "Azy-sur-Marne", lat: 49.0061, lng: 3.3575,
       pressoirs: [
-        { nom: "Pressoir de Notre-Dame de l'Assomption", capacite: 4000, courtier1: "BO" }
+        { nom: "DES ROLLEMERS", courtier1: "BO", secteur: "A" }
       ]
     },
     {
-      nom: "Avize", lat: 48.9647, lng: 3.9531,
+      nom: "Aÿ-Champagne", lat: 49.0561, lng: 4.0414,
       pressoirs: [
-        { nom: "Pressoir des Champs Ronsart", capacite: 6000, courtier1: "ASM" },
-        { nom: "Centre de Pressurage du Cornu", capacite: 8000, courtier1: "JPNC", courtier2: "EC" }
+        { nom: "A.C.V.P.C.M.", courtier1: "MAA", secteur: "H" },
+        { nom: "BRUN ROGER", courtier1: "JPNC", secteur: "H" },
+        { nom: "DESHAUTELS Mathieu", courtier1: "ASM", secteur: "H" },
+        { nom: "DEUTZ", courtier1: "EC", secteur: "H" },
+        { nom: "HENRI GIRAUD", courtier1: "EH", secteur: "H" },
+        { nom: "NICAISE Jean-Luc", courtier1: "EH", secteur: "H" }
       ]
     },
     {
-      nom: "Sézanne", lat: 48.7247, lng: 3.7236,
+      nom: "Bagneux-la-Fosse", lat: 47.9984, lng: 4.2954,
       pressoirs: [
-        { nom: "Pressoir des Côteaux du Petit Morin", capacite: 4000, courtier1: "EB" }
+        { nom: "A.C.H. & CIE SNC", courtier1: "JPNC", secteur: "S" },
+        { nom: "DE CRIEUX", courtier1: "JPNC", secteur: "S" },
+        { nom: "ETV PRIGNOT", courtier1: "EB", secteur: "S" },
+        { nom: "VIREY GILLES", courtier1: "JPNC", secteur: "S" },
+        { nom: "CHAMPAGNE P M B", courtier1: "EB", secteur: "S" }
       ]
     },
     {
-      nom: "Château-Thierry", lat: 49.0475, lng: 3.4006,
+      nom: "Balnot-sur-Laignes", lat: 48.0367, lng: 4.3487,
       pressoirs: [
-        { nom: "Pressoir de la Vallée de la Marne", capacite: 6000, courtier1: "JBC" }
+        { nom: "DES MONTAUX", courtier1: "JPNC", secteur: "S" },
+        { nom: "GERARD Charles", courtier1: "EB", secteur: "S" },
+        { nom: "GREMILLET", courtier1: "JPNC", secteur: "S" }
       ]
     },
     {
-      nom: "Bar-sur-Aube", lat: 48.2333, lng: 4.7167,
+      nom: "Bar-sur-Aube", lat: 48.233, lng: 4.7166,
       pressoirs: [
-        { nom: "Pressoir de la Côte des Bar", capacite: 4000, courtier1: "EC" }
+        { nom: "BARALBIN", courtier1: "EB", secteur: "B" },
+        { nom: "COTTANCEAU PRIGNITZ", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Bar-sur-Seine", lat: 48.1144, lng: 4.3787,
+      pressoirs: [
+        { nom: "FRANZINO Franck", courtier1: "EB", courtier2: "EC", secteur: "S" },
+        { nom: "ALBIN MARTINOT", courtier1: "EB", secteur: "S" },
+        { nom: "UNION AUBOISE VIGNERONS EN CHAMPAGNE", courtier1: "JPNC", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Barbonne-Fayel", lat: 48.6541, lng: 3.6885,
+      pressoirs: [
+        { nom: "GUILLOT - MARCOULT", courtier1: "BO", courtier2: "MAA", secteur: "F" },
+        { nom: "LES BLANCHETTES", courtier1: "BO", secteur: "F" },
+        { nom: "LES DOMAINES DU MOULIN", courtier1: "BO", courtier2: "MAA", secteur: "F" },
+        { nom: "MARCOULT MARC", courtier1: "JPNC", secteur: "F" },
+        { nom: "PROMENADES DU COUCHANT", courtier1: "BO", secteur: "F" },
+        { nom: "VERLET - LELARGE", courtier1: "MAA", courtier2: "BO", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Baroville", lat: 48.1821, lng: 4.7455,
+      pressoirs: [
+        { nom: "DE GOUWROL", courtier1: "JPNC", secteur: "B" },
+        { nom: "FOURRIER DELMOTTE", courtier1: "EB", secteur: "B" },
+        { nom: "URBAIN FRERES", courtier1: "JPNC", secteur: "B" },
+        { nom: "VINCENT ET BERNARD", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Barzy-sur-Marne", lat: 49.09, lng: 3.5586,
+      pressoirs: [
+        { nom: "DURDON BOUVAL", courtier1: "EH", secteur: "A" },
+        { nom: "FAY BERJOT", courtier1: "ASM", courtier2: "EC", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Baslieux-sous-Châtillon", lat: 49.1245, lng: 3.794,
+      pressoirs: [
+        { nom: "CHEVILLET JOEL", courtier1: "EC", courtier2: "BO", secteur: "E" },
+        { nom: "DARANTIER Michel", courtier1: "EH", secteur: "E" },
+        { nom: "U.C.V.M./ COOP. BASLIEUX-SOUS-CHATILLON", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Bassu", lat: 48.8334, lng: 4.6918,
+      pressoirs: [
+        { nom: "SEBILLE ET CO", courtier1: "MAA", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Bassuet", lat: 48.8023, lng: 4.6699,
+      pressoirs: [
+        { nom: "LA RENAISSANCE DE BASSUET", courtier1: "EC", courtier2: "JBC", secteur: "I" },
+        { nom: "L'HOSTE PASCAL", courtier1: "EC", courtier2: "JBC", secteur: "I" },
+        { nom: "L'HOSTE PASCAL SARL", courtier1: "EC", courtier2: "JBC", secteur: "I" },
+        { nom: "LONCLAS BERNARD ET FILLES", courtier1: "EC", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Baye", lat: 48.8595, lng: 3.7566,
+      pressoirs: [
+        { nom: "ODIL MORET", courtier1: "JPNC", secteur: "F" },
+        { nom: "TRUFFAUT JACQUES", courtier1: "JPNC", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Beaumont-sur-Vesle", lat: 49.175, lng: 4.1826,
+      pressoirs: [
+        { nom: "PAUL SADI", courtier1: "EH", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Beaunay", lat: 48.8771, lng: 3.8857,
+      pressoirs: [
+        { nom: "THUILLIER ET FILLES", courtier1: "BO", courtier2: "EC", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Beauvoir-sur-Sarce", lat: 47.9669224, lng: 4.296727,
+      pressoirs: [
+        { nom: "LAURENT FINOT ET FILLES", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Belval-sous-Châtillon", lat: 49.124, lng: 3.8533,
+      pressoirs: [
+        { nom: "FOLLET RAMILLON", courtier1: "BO", courtier2: "EC", secteur: "E" },
+        { nom: "ROBERT FAIVRE ET FILS", courtier1: "BO", secteur: "E" },
+        { nom: "VINICOLE DE BELVAL SOUS CH.", courtier1: "JPNC", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Bergères", lat: 48.1852, lng: 4.6734,
+      pressoirs: [
+        { nom: "DE LA MARRERE", courtier1: "EB", secteur: "B" },
+        { nom: "PRIEUR LABONDE", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Bergères-lès-Vertus", lat: 48.8747, lng: 4.0108,
+      pressoirs: [
+        { nom: "JADE ET GAUTIER", courtier1: "EC", courtier2: "JBC", secteur: "D" },
+        { nom: "VINICOLE DU MONT AIME de BERGERES", courtier1: "MAA", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Berru", lat: 49.2711, lng: 4.1631,
+      pressoirs: [
+        { nom: "PICARD JACQUES", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "VINICOLE de BERRU", courtier1: "ASM", courtier2: "EC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Bethon", lat: 48.6105, lng: 3.6084,
+      pressoirs: [
+        { nom: "JARRY ET FILS", courtier1: "BO", courtier2: "MAA", secteur: "F" },
+        { nom: "LE BRUN DE NEUVILLE SCV", courtier1: "BO", secteur: "F" },
+        { nom: "VITICREA", courtier1: "BO", courtier2: "MAA", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Bisseuil", lat: 49.0456722, lng: 4.0888058,
+      pressoirs: [
+        { nom: "BAUCHET", courtier1: "ASM", courtier2: "EC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Blancs-Coteaux", lat: 48.9227, lng: 3.9714,
+      pressoirs: [
+        { nom: "AGRICOLE DE LA CROLIERE", courtier1: "MAA", courtier2: "JPNC", secteur: "D" },
+        { nom: "BONNET & CO", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "DEMIERE", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "DUVAL LEROY", courtier1: "EC", secteur: "D" },
+        { nom: "HENRY DE VAUGENCY", courtier1: "EH", secteur: "D" },
+        { nom: "J. PIERRON - LEGLISE", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "LAURENT PERRIER (Oger ex Chateau Malakoff)", courtier1: "BO", courtier2: "MAA", secteur: "D" },
+        { nom: "LA VIGNERONNE DE VERTUS", courtier1: "MAA", secteur: "D" },
+        { nom: "LES BOTTERETS", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "LES GRAPPES D'OR  D'OGER", courtier1: "MAA", secteur: "D" },
+        { nom: "LES PEIGNOTTES", courtier1: "ASM", secteur: "D" },
+        { nom: "MHCS / Veuve CLICQUOT  (Vertus)", courtier1: "MAA", secteur: "D" },
+        { nom: "PERROT MATOS", courtier1: "BO", secteur: "D" },
+        { nom: "RENÉ JAMES LALLIER", courtier1: "EC", secteur: "D" },
+        { nom: "Veuve FOURNY & Fils", courtier1: "MAA", secteur: "D" },
+        { nom: "VINICOLE de VERTUS", courtier1: "MAA", secteur: "D" },
+        { nom: "VINICOLE E P R", courtier1: "MAA", courtier2: "BO", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Blesmes", lat: 49.0258, lng: 3.4628,
+      pressoirs: [
+        { nom: "MARTEL - pressoir de BLESMES", courtier1: "MAA", courtier2: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Bligny", lat: 48.1696, lng: 4.5963,
+      pressoirs: [
+        { nom: "ARMAGAN TB", courtier1: "EB", secteur: "B" },
+        { nom: "MARTEL - CHATEAU DE BLIGNY", courtier1: "BO", courtier2: "MAA", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Boursault", lat: 49.0513, lng: 3.8401,
+      pressoirs: [
+        { nom: "de VILLEPIN, SAS", courtier1: "EH", secteur: "H" },
+        { nom: "EMMANUEL QUENCEZ", courtier1: "ASM", secteur: "H" },
+        { nom: "LUCIEN DAGONET & FILS", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Bouzy", lat: 49.0861, lng: 4.1297,
+      pressoirs: [
+        { nom: "BRICE", courtier1: "EH", secteur: "G" },
+        { nom: "DOMAINE GEORGES REMY", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "DU MONT ROUGE", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "HERBERT BEAUFORT", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "MAURICE VESSELLE", courtier1: "EH", secteur: "G" },
+        { nom: "MHCS / Veuve CLICQUOT (Bouzy)", courtier1: "JPNC", secteur: "G" },
+        { nom: "MUMM (Bouzy)", courtier1: "ASM", courtier2: "MAA", secteur: "G" },
+        { nom: "TORNAY", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "VESSELLE ELOI", courtier1: "BO", courtier2: "MAA", secteur: "G" },
+        { nom: "VINICOLE  AU BOUQUET", courtier1: "MAA", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Bragelogne-Beauvoir", lat: 47.9703, lng: 4.2673,
+      pressoirs: [
+        { nom: "HUART PATRICE", courtier1: "JPNC", secteur: "S" },
+        { nom: "COQUERET DENIS", courtier1: "JPNC", secteur: "S" },
+        { nom: "PRESSOIR DU VAL D’ARGENT", courtier1: "JPNC", secteur: "S" },
+        { nom: "ROLLIN VENDANGES", courtier1: "JPNC", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Brasles", lat: 49.0579, lng: 3.4195,
+      pressoirs: [
+        { nom: "DECHELLE Clara", courtier1: "BO", secteur: "A" },
+        { nom: "JOEL MICHEL", courtier1: "BO", secteur: "A" },
+        { nom: "LOINTIER DEVAUGERME", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Broyes", lat: 48.7611, lng: 3.7603,
+      pressoirs: [
+        { nom: "LA COUR DU ROY", courtier1: "ASM", courtier2: "MAA", secteur: "F" },
+        { nom: "MARTEL - pressoir de BROYES", courtier1: "MAA", courtier2: "JBC", secteur: "F" },
+        { nom: "RUDI ROUSSEAUX", courtier1: "JPNC", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Brugny-Vaudancourt", lat: 48.9849, lng: 3.8603,
+      pressoirs: [
+        { nom: "LAHAYE - BERTHELOT", courtier1: "BO", courtier2: "MAA", secteur: "H" },
+        { nom: "DESLOOVERE-PIENNE", courtier1: "ASM", secteur: "H" },
+        { nom: "HENRY BOURDELAT", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Brugny-Vaudancourt", lat: 48.9849, lng: 3.8603,
+      pressoirs: [
+        { nom: "ALAIN HUGO", courtier1: "BO", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Buxeuil", lat: 48.0521, lng: 4.4092,
+      pressoirs: [
+        { nom: "GRUET", courtier1: "JPNC", secteur: "S" },
+        { nom: "KOZA JANOT", courtier1: "JPNC", secteur: "S" },
+        { nom: "MDL", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Buxières-sur-Arce", lat: 48.1359, lng: 4.4521,
+      pressoirs: [
+        { nom: "BERTRAND GAUTHEROT", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Celles-sur-Ource", lat: 48.0703, lng: 4.4207,
+      pressoirs: [
+        { nom: "DANIEL CHEURLIN ET FILS", courtier1: "EB", secteur: "S" },
+        { nom: "GATE", courtier1: "EB", secteur: "S" },
+        { nom: "JACQUELINE BARONI JOFFROY", courtier1: "JPNC", secteur: "S" },
+        { nom: "JEAN LAURENT", courtier1: "EB", secteur: "S" },
+        { nom: "LE CELLIER DE MORES", courtier1: "JPNC", secteur: "S" },
+        { nom: "PATOUR MICHEL", courtier1: "JPNC", secteur: "S" },
+        { nom: "PAUL DANGIN & FILS", courtier1: "JPNC", secteur: "S" },
+        { nom: "CHEURLIN ARNOULT", courtier1: "EB", secteur: "S" },
+        { nom: "EMMANUEL TASSIN", courtier1: "EB", secteur: "S" },
+        { nom: "KARINE ET JULIEN PRELAT", courtier1: "EB", secteur: "S" },
+        { nom: "MAITRE Eric", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Chamery", lat: 49.1681, lng: 3.9577,
+      pressoirs: [
+        { nom: "DEGUERNE PERSEVAL PETIT FILS", courtier1: "ASM", secteur: "C" },
+        { nom: "HOUSSART Romain", courtier1: "ASM", courtier2: "MAA", secteur: "C" },
+        { nom: "JEAN ET THOMAS PERSEVAL", courtier1: "MAA", courtier2: "ASM", secteur: "C" },
+        { nom: "LABBE ET FILS", courtier1: "JPNC", secteur: "C" },
+        { nom: "MALETREZ FREDERIC", courtier1: "EH", secteur: "C" },
+        { nom: "MICHEL PARMANTIER", courtier1: "ASM", courtier2: "EC", secteur: "C" },
+        { nom: "PARMANTIER RIGAUT", courtier1: "EH", secteur: "C" },
+        { nom: "VIGNOBLE PERSEVAL ET FILS", courtier1: "JPNC", secteur: "C" },
+        { nom: "VINICOLE DE CHAMERY", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Champigneul-Champagne", lat: 48.9619, lng: 4.1744,
+      pressoirs: [
+        { nom: "BEAUFORT - VALENTIN", courtier1: "EH", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Champignol-lez-Mondeville", lat: 48.1224, lng: 4.679,
+      pressoirs: [
+        { nom: "DOMAINE DE MONDEVILLE", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Champillon", lat: 49.0859, lng: 3.9753,
+      pressoirs: [
+        { nom: "BAHUCHET MICHEL PERE ET FILS", courtier1: "EH", secteur: "H" },
+        { nom: "LES VIGNOBLES CHAMPENOIS", courtier1: "ASM", secteur: "H" },
+        { nom: "ROUALET PERE ET FILS", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "VINICOLE DE CHAMPILLON", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Champlat-et-Boujacourt", lat: 49.1545, lng: 3.8268,
+      pressoirs: [
+        { nom: "VINCENT MANSARD", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Channes", lat: 47.94, lng: 4.2634,
+      pressoirs: [
+        { nom: "BERTRAND BRIGANDAT", courtier1: "JPNC", secteur: "S" },
+        { nom: "BULIDON PERE & FILLES", courtier1: "JPNC", secteur: "S" },
+        { nom: "CHRISTELLE BOURDICAUD", courtier1: "JPNC", secteur: "S" },
+        { nom: "PRESSOIRS GUILLEMINOT", courtier1: "JPNC", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Charly-sur-Marne", lat: 48.9821, lng: 3.2936,
+      pressoirs: [
+        { nom: "BARON ALBERT", courtier1: "JPNC", secteur: "A" },
+        { nom: "BARON FUENTE", courtier1: "EH", secteur: "A" },
+        { nom: "COGAMAVI", courtier1: "BO", secteur: "A" },
+        { nom: "DES BLANCHES VIGNES", courtier1: "BO", secteur: "A" },
+        { nom: "DIDIER CORRE", courtier1: "BO", secteur: "A" },
+        { nom: "LES GROS MERISIERS", courtier1: "BO", secteur: "A" },
+        { nom: "VINICOLE LA RUDENOISE", courtier1: "EH", secteur: "A" },
+        { nom: "LES FEUILLES DE VIGNE", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Chaumuzy", lat: 49.1543, lng: 3.8704,
+      pressoirs: [
+        { nom: "HERBELET - BAILLET", courtier1: "EH", secteur: "C" },
+        { nom: "VINICOLE DE CHAUMUZY", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Chavot-Courcourt", lat: 48.9966, lng: 3.9181,
+      pressoirs: [
+        { nom: "LAHERTE FRERES", courtier1: "BO", courtier2: "MAA", secteur: "H" },
+        { nom: "LEBEAU BATISTE", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "PERNET JEAN", courtier1: "ASM", courtier2: "EC", secteur: "H" },
+        { nom: "VINICOLE DE CHAVOT", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "JOSE MICHEL ET FILS", courtier1: "EC", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Chervey", lat: 48.1339, lng: 4.4905,
+      pressoirs: [
+        { nom: "VESSELLE   ELOI", courtier1: "BO", courtier2: "MAA", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Chigny-les-Roses", lat: 49.1514, lng: 4.0608,
+      pressoirs: [
+        { nom: "COSSY LAURENT", courtier1: "MAA", courtier2: "BO", secteur: "C" },
+        { nom: "DUCHESNE - RENAUDIN", courtier1: "EH", secteur: "C" },
+        { nom: "GARDET & Cie", courtier1: "EC", secteur: "C" },
+        { nom: "GUY DUMANGIN", courtier1: "EH", secteur: "C" },
+        { nom: "HILAIRE LEROUX ET FILS", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "MICHEL TIXIER", courtier1: "ASM", secteur: "C" },
+        { nom: "MOUREY - DUMANGIN", courtier1: "ASM", secteur: "C" },
+        { nom: "PHILIPPART MAURICE", courtier1: "EH", secteur: "C" },
+        { nom: "VINICOLE DE CHIGNY LES ROSES", courtier1: "ASM", secteur: "C" },
+        { nom: "MAYOT LAGOGUEY ALAIN", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "P. LASSALLE HANIN", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Chouilly", lat: 49.0146, lng: 4.0013,
+      pressoirs: [
+        { nom: "CHAMPAGNE GOSSART", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "CLAUDE GENET", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "LEGRAS JACK", courtier1: "EC", courtier2: "JBC", secteur: "D" },
+        { nom: "SIMART CLAIRE ET DELPHINE", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "TERROIRS ET VIGNERONS DE CHAMPAGNE (TEVC)", courtier1: "EC", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Châtillon-sur-Marne", lat: 49.1044, lng: 3.7734,
+      pressoirs: [
+        { nom: "U.C.V.M./ LA GRAPPE DE CHATILLON", courtier1: "EC", secteur: "E" },
+        { nom: "LES VAUROIS", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Chézy-sur-Marne", lat: 48.9857, lng: 3.3882,
+      pressoirs: [
+        { nom: "BCT DE REKENEIRE", courtier1: "EH", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Colombey les Deux Églises", lat: 48.2418, lng: 4.924,
+      pressoirs: [
+        { nom: "LES VIGNES DERRIERE", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Colombé-le-Sec", lat: 48.2599, lng: 4.8022,
+      pressoirs: [
+        { nom: "SCA DE COLOMBÉ LE SEC ET ENVIRONS", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Congy", lat: 48.8707, lng: 3.8191,
+      pressoirs: [
+        { nom: "AURELIEN CLEMENT", courtier1: "BO", secteur: "F" },
+        { nom: "CHEVREAU", courtier1: "EC", courtier2: "BO", secteur: "F" },
+        { nom: "COLLARD GREFFIER", courtier1: "EB", secteur: "F" },
+        { nom: "DESBROSSE PERE ET FILS", courtier1: "BO", courtier2: "EC", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Connigis", lat: 49.0357, lng: 3.532,
+      pressoirs: [
+        { nom: "CELLIER ET FILS", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Cormicy", lat: 49.3794, lng: 3.892,
+      pressoirs: [
+        { nom: "BOULARD BARIZET", courtier1: "EH", secteur: "C" },
+        { nom: "BOULARD - BAUQUAIRE", courtier1: "ASM", secteur: "C" },
+        { nom: "VINICOLE DE CORMICY", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Cormoyeux", lat: 49.1093, lng: 3.9147,
+      pressoirs: [
+        { nom: "CHAMPAGNE FANIEL", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Coulommes-la-Montagne", lat: 49.2271, lng: 3.9136,
+      pressoirs: [
+        { nom: "VINICOLE DE COULOMMES VRIGNY", courtier1: "ASM", courtier2: "EC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Courmas", lat: 49.19, lng: 3.9103,
+      pressoirs: [
+        { nom: "AUGUSTE SERURRIER", courtier1: "ASM", secteur: "C" },
+        { nom: "MINARD ET FILLES", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Courtemont-Varennes", lat: 49.0719, lng: 3.5414,
+      pressoirs: [
+        { nom: "MHCS / MOET & CHANDON (Courtemont Varennes)", courtier1: "MAA", courtier2: "JBC", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Courteron", lat: 48.016, lng: 4.4652,
+      pressoirs: [
+        { nom: "DUBREUIL FRERES", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Cramant", lat: 48.9879, lng: 4.0004,
+      pressoirs: [
+        { nom: "BERTRAND WARIS et FILLES", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "LANCELOT PHILIPPE", courtier1: "EC", courtier2: "JBC", secteur: "D" },
+        { nom: "LANCELOT - ROYER P.", courtier1: "BO", courtier2: "MAA", secteur: "D" },
+        { nom: "MALLOL - GANTOIS", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "PERRIER JOUET (Cramant)", courtier1: "MAA", courtier2: "JBC", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Crouttes-sur-Marne", lat: 48.9775, lng: 3.247,
+      pressoirs: [
+        { nom: "BOURGEOIS - DIAZ", courtier1: "JPNC", secteur: "A" },
+        { nom: "BURGUET", courtier1: "BO", secteur: "A" },
+        { nom: "DEROT - DELUGNY", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Cuchery", lat: 49.1275, lng: 3.827,
+      pressoirs: [
+        { nom: "BONNINGRE GEOFFREY", courtier1: "EC", courtier2: "JBC", secteur: "E" },
+        { nom: "CHRISTIAN REMY", courtier1: "EH", secteur: "E" },
+        { nom: "G. BEURTON ET FILS", courtier1: "BO", secteur: "E" },
+        { nom: "POISSINET & FILS", courtier1: "EC", courtier2: "JBC", secteur: "E" },
+        { nom: "QUENOT CLAUDE", courtier1: "ASM", secteur: "E" },
+        { nom: "STEPHANIE JACQUET", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Cuis", lat: 48.9989, lng: 3.967,
+      pressoirs: [
+        { nom: "CAMILLE GRELLET COMMENIL", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "G-O", courtier1: "EC", courtier2: "JBC", secteur: "D" },
+        { nom: "MICHEL", courtier1: "MAA", courtier2: "JBC", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Cuisles", lat: 49.1293, lng: 3.7782,
+      pressoirs: [
+        { nom: "BONSANT Fabrice", courtier1: "EH", secteur: "E" },
+        { nom: "MOUSSE FILS", courtier1: "JPNC", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Cumières", lat: 49.0715, lng: 3.9214,
+      pressoirs: [
+        { nom: "BOUTILLIER David", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "DANIEL ETIENNE", courtier1: "EH", secteur: "H" },
+        { nom: "DUCHENE FRANCOIS", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Cœur-de-la-Vallée", lat: 49.0945, lng: 3.8089,
+      pressoirs: [
+        { nom: "ARNAUD BILLARD", courtier1: "EH", secteur: "H" },
+        { nom: "COLLARD - LEVEAU", courtier1: "EH", secteur: "H" },
+        { nom: "COLLARD Patrick", courtier1: "EH", secteur: "H" },
+        { nom: "COUTELAS MANFAIT", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "DAVID COUTELAS", courtier1: "EH", secteur: "H" },
+        { nom: "JACKY CHARPENTIER", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "LORIOT PERE & FILS", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Damery", lat: 49.0841, lng: 3.8852,
+      pressoirs: [
+        { nom: "BRUNO BLAISE", courtier1: "BO", courtier2: "MAA", secteur: "H" },
+        { nom: "CASTERS LIEBART", courtier1: "MAA", courtier2: "BO", secteur: "H" },
+        { nom: "HATON ET FILLES", courtier1: "EH", secteur: "H" },
+        { nom: "HATON JEAN NOEL", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "LENOBLE", courtier1: "EH", secteur: "H" },
+        { nom: "LES ARDILLERES", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "MAURICE GONEL et FILS", courtier1: "EH", secteur: "H" },
+        { nom: "PERTUISOT HATON", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "TELMONT", courtier1: "ASM", courtier2: "EC", secteur: "H" },
+        { nom: "VINICOLE DE DAMERY", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Dizy", lat: 49.0699, lng: 3.9716,
+      pressoirs: [
+        { nom: "JACQUESSON", courtier1: "BO", courtier2: "EC", secteur: "H" },
+        { nom: "LANSON - LA FOLIE", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Domptin", lat: 49.0151, lng: 3.2705,
+      pressoirs: [
+        { nom: "DES AULNOYES", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Dormans", lat: 49.0636, lng: 3.6447,
+      pressoirs: [
+        { nom: "JIL ACCARIES", courtier1: "EH", secteur: "E" },
+        { nom: "BETOUZET ANTHONY", courtier1: "EH", secteur: "E" },
+        { nom: "BETOUZET BRUGNEAU", courtier1: "JPNC", secteur: "E" },
+        { nom: "LE CREUX DE L'ESSIE", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Essoyes", lat: 48.0473, lng: 4.5426,
+      pressoirs: [
+        { nom: "DES SAINTS PERES", courtier1: "JPNC", secteur: "B" },
+        { nom: "VAL DE SAULT", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Essômes-sur-Marne", lat: 49.033, lng: 3.3427,
+      pressoirs: [
+        { nom: "GAULLIER", courtier1: "EC", courtier2: "BO", secteur: "A" },
+        { nom: "BELIN", courtier1: "EH", secteur: "A" },
+        { nom: "DENIS METIVIER", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Festigny", lat: 49.0274, lng: 3.7673,
+      pressoirs: [
+        { nom: "BERTHELOT PIOT", courtier1: "EC", courtier2: "BO", secteur: "E" },
+        { nom: "M. LORIOT", courtier1: "EC", courtier2: "BO", secteur: "E" },
+        { nom: "TRUDON", courtier1: "EH", courtier2: "EC", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Fleury-la-Rivière", lat: 49.0994, lng: 3.8839,
+      pressoirs: [
+        { nom: "A. et J. DEMIERE", courtier1: "EH", secteur: "H" },
+        { nom: "MALHERBE-MARC Emeline", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "PRESTATIONS HUSSON ET FILS", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "RIGOT Ryan", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "U.C.V.M./ COOP. FLEURY", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "VINICOLE DE FLEURY LA RIVIERE", courtier1: "EC", courtier2: "BO", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Fontaine", lat: 48.2085, lng: 4.7194,
+      pressoirs: [
+        { nom: "COLLARD  - GREFFIER", courtier1: "EB", secteur: "B" },
+        { nom: "OLIVIER DEVITRY", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Fontaine-Denis-Nuisy", lat: 48.635, lng: 3.6792,
+      pressoirs: [
+        { nom: "COLLET", courtier1: "BO", secteur: "F" },
+        { nom: "ROSAY PRESTATIONS", courtier1: "EH", secteur: "F" },
+        { nom: "VIRGILE LAHAYE", courtier1: "EH", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Fontette", lat: 48.0751, lng: 4.6133,
+      pressoirs: [
+        { nom: "LHUILLIER", courtier1: "JPNC", secteur: "B" },
+        { nom: "MARIE DAVINA", courtier1: "JPNC", secteur: "B" },
+        { nom: "PRESSOIRS GUIGNOT PERE ET FILS", courtier1: "EB", secteur: "B" },
+        { nom: "RIBAULT", courtier1: "EB", secteur: "B" },
+        { nom: "UNION AUBOISE VIGNERONS EN CHAMPAGNE (FONTETTE)", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Fossoy", lat: 49.0426, lng: 3.4821,
+      pressoirs: [
+        { nom: "LE CLOS DE LA FERME", courtier1: "ASM", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Fèrebrianges", lat: 48.8708, lng: 3.8409,
+      pressoirs: [
+        { nom: "ANDRE BERGERE", courtier1: "EC", courtier2: "BO", secteur: "F" },
+        { nom: "ANTHONY JOUDART", courtier1: "BO", courtier2: "EC", secteur: "F" },
+        { nom: "UNION DES VITICULT. DE FEREBRIANGES", courtier1: "BO", courtier2: "EC", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Grauves", lat: 48.9702, lng: 3.9604,
+      pressoirs: [
+        { nom: "GASPARD JEAN-PIERRE & FILS", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "PRESTATION P.GUYON", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "REMUE - GASPARD", courtier1: "MAA", courtier2: "JBC", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Gyé-sur-Seine", lat: 48.0038, lng: 4.4401,
+      pressoirs: [
+        { nom: "CHAMPAGNE FLUTEAU", courtier1: "EB", secteur: "S" },
+        { nom: "COTTET DUBREUIL", courtier1: "EB", secteur: "S" },
+        { nom: "COUSIN DOMINIQUE", courtier1: "EB", secteur: "S" },
+        { nom: "FEVRIER JEAN MARIE", courtier1: "JPNC", secteur: "S" },
+        { nom: "MHCS  VAL DU CLOS", courtier1: "JPNC", secteur: "S" },
+        { nom: "PETIT Philippe", courtier1: "JPNC", secteur: "S" },
+        { nom: "BARBICHON PRELAT", courtier1: "EB", secteur: "S" },
+        { nom: "MERSI PRN", courtier1: "JPNC", secteur: "S" },
+        { nom: "POINSOT Mathilde", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Hautvillers", lat: 49.0839, lng: 3.942,
+      pressoirs: [
+        { nom: "CLEMENT BLIARD ET FILS", courtier1: "ASM", secteur: "H" },
+        { nom: "GHISLAIN TRIBAUT & FILS", courtier1: "ASM", secteur: "H" },
+        { nom: "GOBILLARD", courtier1: "EC", courtier2: "EH", secteur: "H" },
+        { nom: "J.DESRUETS FRERES", courtier1: "EH", secteur: "H" },
+        { nom: "LES VIGNERONS D'HAUTVILLERS", courtier1: "EC", courtier2: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Hourges", lat: 49.2801, lng: 3.7693,
+      pressoirs: [
+        { nom: "BENARD BRUNO", courtier1: "EH", secteur: "C" },
+        { nom: "LEFEBVRE  JEAN", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Janvry", lat: 49.2461, lng: 3.875,
+      pressoirs: [
+        { nom: "VINICOLE G.J.R. DE JANVRY", courtier1: "BO", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Jonquery", lat: 49.1461, lng: 3.7904,
+      pressoirs: [
+        { nom: "HUIBAN AUGUSTE", courtier1: "MAA", courtier2: "JBC", secteur: "E" },
+        { nom: "POUDRAS THIBAUT", courtier1: "MAA", courtier2: "JBC", secteur: "E" }
+      ]
+    },
+    {
+      nom: "La Celle-sous-Chantemerle", lat: 48.6054, lng: 3.6834,
+      pressoirs: [
+        { nom: "LE VILLAGE", courtier1: "ASM", secteur: "F" },
+        { nom: "ORCIN FREDERIC", courtier1: "BO", secteur: "F" }
+      ]
+    },
+    {
+      nom: "La Neuville-aux-Larris", lat: 49.1434, lng: 3.8309,
+      pressoirs: [
+        { nom: "GIRARD Françoise", courtier1: "EH", secteur: "C" },
+        { nom: "VINICOLE de l'ENTRAIDE", courtier1: "EH", secteur: "C" },
+        { nom: "RAPHAËL DEVILLERS", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Landreville", lat: 48.0755, lng: 4.4659,
+      pressoirs: [
+        { nom: "CLEMENT ROBERT", courtier1: "EB", secteur: "B" },
+        { nom: "LAURENT PERRIER (Landreville ex Chateau Malakoff)", courtier1: "BO", courtier2: "MAA", secteur: "B" },
+        { nom: "ROYER & CIE", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Le Breuil", lat: 48.9787, lng: 3.6556,
+      pressoirs: [
+        { nom: "DEPIT ROGER & FILS", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Le Mesnil-sur-Oger", lat: 48.9404, lng: 4.0183,
+      pressoirs: [
+        { nom: "CHARLEMAGNE GUY", courtier1: "EC", courtier2: "JBC", secteur: "D" },
+        { nom: "GIMONNET-GONET", courtier1: "ASM", secteur: "D" },
+        { nom: "GRIVOT - GONET", courtier1: "MAA", courtier2: "BO", secteur: "D" },
+        { nom: "LES ZALIEUX", courtier1: "ASM", courtier2: "EC", secteur: "D" },
+        { nom: "PATRICK REGNAULT", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "PERTOIS MORISET DOMINIQUE", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "ROBERT CHARLEMAGNE", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "VINICOLE L'ECONOMIQUE", courtier1: "MAA", courtier2: "JBC", secteur: "D" },
+        { nom: "VINICOLE U P C B", courtier1: "MAA", secteur: "D" },
+        { nom: "VINICOLE U P R", courtier1: "MAA", secteur: "D" }
+      ]
+    },
+    {
+      nom: "Les Mesneux", lat: 49.2232, lng: 3.9605,
+      pressoirs: [
+        { nom: "FRANCIS BOUGY", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Les Riceys", lat: 47.9907, lng: 4.3793,
+      pressoirs: [
+        { nom: "BATISSE", courtier1: "EB", secteur: "S" },
+        { nom: "DEFRANCE JACQUES", courtier1: "JPNC", secteur: "S" },
+        { nom: "DE LA CROIX BLANCHE", courtier1: "JPNC", secteur: "S" },
+        { nom: "DOMAINE RENE JARDIN", courtier1: "JPNC", secteur: "S" },
+        { nom: "GREMILLET (Les Riceys)", courtier1: "JPNC", secteur: "S" },
+        { nom: "MAISON TAISNE RIOCOUR", courtier1: "JPNC", secteur: "S" },
+        { nom: "MOREL PIOT", courtier1: "JPNC", secteur: "S" },
+        { nom: "P.A.B.", courtier1: "EB", secteur: "S" },
+        { nom: "PASCAL MANCHIN", courtier1: "JPNC", secteur: "S" },
+        { nom: "PUISSANT CHAMPAGNE", courtier1: "JPNC", secteur: "S" },
+        { nom: "WALCZAK PERE & FILS", courtier1: "JPNC", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Leuvrigny", lat: 49.0525, lng: 3.7763,
+      pressoirs: [
+        { nom: "GAUDINAT BOIVIN et Fils", courtier1: "EC", courtier2: "BO", secteur: "E" },
+        { nom: "VINICOLE de LEUVRIGNY", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Lisse-en-Champagne", lat: 48.8188, lng: 4.6469,
+      pressoirs: [
+        { nom: "PINTE", courtier1: "EC", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Loches-sur-Ource", lat: 48.0705, lng: 4.5025,
+      pressoirs: [
+        { nom: "AMYOT", courtier1: "EB", secteur: "B" },
+        { nom: "DU MONCET", courtier1: "JPNC", secteur: "B" },
+        { nom: "RICHARDOT PERE ET FILS", courtier1: "JPNC", secteur: "B" },
+        { nom: "DOUSSOT PERE ET FILS", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Ludes", lat: 49.1595, lng: 4.0841,
+      pressoirs: [
+        { nom: "BLONDEL THIERRY", courtier1: "ASM", secteur: "G" },
+        { nom: "BRIXON Elizabeth", courtier1: "EH", secteur: "G" },
+        { nom: "DU CHAMP DU CLERC", courtier1: "ASM", secteur: "G" },
+        { nom: "FORGET - BRIMONT", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "FRANCK JANISSON", courtier1: "EH", secteur: "C" },
+        { nom: "GAIDOZ - FORGET", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "HURE", courtier1: "EH", secteur: "G" },
+        { nom: "QUATRESOLS - GAUTHIER", courtier1: "ASM", courtier2: "MAA", secteur: "G" },
+        { nom: "REGIS EMERY", courtier1: "ASM", secteur: "G" },
+        { nom: "SOHET GEORGES & FILS", courtier1: "ASM", secteur: "G" },
+        { nom: "VINICOLE DE LUDES", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "QUENARDEL CLAUDE", courtier1: "MAA", courtier2: "BO", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Mailly-Champagne", lat: 49.1528, lng: 4.1123,
+      pressoirs: [
+        { nom: "BAUDOT PÈRE & FILS", courtier1: "ASM", secteur: "G" },
+        { nom: "BILLECART SALMON (MAILLY)", courtier1: "BO", courtier2: "MAA", secteur: "G" },
+        { nom: "GARITAN", courtier1: "JPNC", secteur: "G" },
+        { nom: "MHCS / MOET & CHANDON (Romont Mailly)", courtier1: "JPNC", secteur: "G" },
+        { nom: "MUMM (Mailly)", courtier1: "ASM", secteur: "G" },
+        { nom: "STE DES PRODUCTEURS DE MAILLY", courtier1: "MAA", secteur: "G" },
+        { nom: "VINICOLE LES CLOS", courtier1: "MAA", secteur: "G" },
+        { nom: "FLOQUET DOUSSET", courtier1: "ASM", secteur: "G" },
+        { nom: "ROGUET", courtier1: "MAA", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Mardeuil", lat: 49.0552, lng: 3.9222,
+      pressoirs: [
+        { nom: "A  et JB CASANOVA - ROBINET", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "COSSIEZ - GAILLOT", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "EMILE LECLERE", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "JORIS DOULET", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "LES LINETTES", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "PASCAL ETIENNE", courtier1: "EH", secteur: "H" },
+        { nom: "TANNEUX Père et Fils", courtier1: "ASM", secteur: "H" },
+        { nom: "U.C.V.M./ COOP. MARDEUIL", courtier1: "BO", courtier2: "EC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Mareuil-le-Port", lat: 49.074, lng: 3.7504,
+      pressoirs: [
+        { nom: "HENIN DELOUVIN", courtier1: "BO", courtier2: "EC", secteur: "E" },
+        { nom: "VIGNOBLES DU CHATEAU", courtier1: "EC", courtier2: "ASM", secteur: "E" },
+        { nom: "CERSEUILLAT DE LA GRAVELLE", courtier1: "EC", courtier2: "JBC", secteur: "E" },
+        { nom: "CORDOIN DIDIERLAURENT", courtier1: "BO", secteur: "E" },
+        { nom: "MEUNIER Céline", courtier1: "EC", courtier2: "BO", secteur: "E" },
+        { nom: "SOMBERT LECART PERE ET FILS", courtier1: "BO", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Mareuil-sur-Aÿ", lat: 49.0460053, lng: 4.0387323,
+      pressoirs: [
+        { nom: "BENARD LOUIS", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "BENARD PHILIPPE", courtier1: "MAA", courtier2: "BO", secteur: "G" },
+        { nom: "BILLECART SALMON (MAREUIL)", courtier1: "BO", courtier2: "MAA", secteur: "G" },
+        { nom: "BOLLINGER / MAREUIL", courtier1: "ASM", courtier2: "MAA", secteur: "G" },
+        { nom: "DOMAINE DE MARZILLY", courtier1: "ASM", secteur: "G" },
+        { nom: "PHILIPPONNAT S.A.", courtier1: "EC", secteur: "G" },
+        { nom: "CELLIER CORBIER", courtier1: "BO", courtier2: "MAA", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Marfaux", lat: 49.1681, lng: 3.9038,
+      pressoirs: [
+        { nom: "LIONEL BENOIT & FILS", courtier1: "EH", secteur: "C" },
+        { nom: "VINICOLE de MARFAUX", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Merfy", lat: 49.293, lng: 3.9552,
+      pressoirs: [
+        { nom: "LUC MERAT", courtier1: "JPNC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Merrey-sur-Arce", lat: 48.0964, lng: 4.4059,
+      pressoirs: [
+        { nom: "ROBERT CLIGNY ET FILS", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Meurville", lat: 48.2066, lng: 4.61,
+      pressoirs: [
+        { nom: "COTHIAS JEROME", courtier1: "JPNC", secteur: "B" },
+        { nom: "ETIENNE FRERES", courtier1: "EB", secteur: "B" },
+        { nom: "GAULLET et FILS", courtier1: "JPNC", secteur: "B" },
+        { nom: "VINICOLE LES COTEAUX DU LANDION", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Montgenost", lat: 48.598, lng: 3.5926,
+      pressoirs: [
+        { nom: "BENOIT COCTEAUX", courtier1: "MAA", courtier2: "BO", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Montgueux", lat: 48.2967, lng: 3.9551,
+      pressoirs: [
+        { nom: "ALEXIS ST AUDE", courtier1: "EB", secteur: "M" },
+        { nom: "BEAUGRAND DENISET", courtier1: "JPNC", secteur: "M" },
+        { nom: "DIDIER DOUE", courtier1: "JPNC", secteur: "M" },
+        { nom: "LES VIGNOBLES GUERINOT", courtier1: "JPNC", secteur: "M" },
+        { nom: "THIERRY LASSAIGNE", courtier1: "JPNC", secteur: "M" }
+      ]
+    },
+    {
+      nom: "Monthelon", lat: 48.999, lng: 3.9347,
+      pressoirs: [
+        { nom: "GUELARD DENIS", courtier1: "MAA", courtier2: "JBC", secteur: "H" },
+        { nom: "GUILLETTE BREST", courtier1: "MAA", courtier2: "JBC", secteur: "H" },
+        { nom: "GUY MULLER", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "LE BRUN ALEXANDRE", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "LE GOUIVE PERE & FILS", courtier1: "MAA", courtier2: "JBC", secteur: "H" },
+        { nom: "VINICOLE DE MONTHELON - MORANGIS", courtier1: "EC", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Montier-en-l'Isle", lat: 48.2678, lng: 4.6849,
+      pressoirs: [
+        { nom: "DES COTES AUX CHENES", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Montigny-sous-Châtillon", lat: 49.1036274, lng: 3.7745662,
+      pressoirs: [
+        { nom: "LACROIX - MILESI", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Moslins", lat: 48.9588, lng: 3.9022,
+      pressoirs: [
+        { nom: "SEBASTIEN ROBERT", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Moussy", lat: 49.0151, lng: 3.9271,
+      pressoirs: [
+        { nom: "CHARLOT Victor", courtier1: "MAA", courtier2: "JBC", secteur: "H" },
+        { nom: "CRETE PERTOIS ET FILS", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "DABOT - MARTIN", courtier1: "MAA", courtier2: "JBC", secteur: "H" },
+        { nom: "DOMAINE CRETE", courtier1: "EC", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Mutigny", lat: 49.0772, lng: 4.018,
+      pressoirs: [
+        { nom: "HUMBERT SERGE", courtier1: "EC", courtier2: "BO", secteur: "H" },
+        { nom: "HUSSON XAVIER", courtier1: "ASM", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Nanteuil-la-Forêt", lat: 49.1307, lng: 3.9229,
+      pressoirs: [
+        { nom: "SKEDAV", courtier1: "EC", courtier2: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Nesle-le-Repons", lat: 49.0444, lng: 3.7155,
+      pressoirs: [
+        { nom: "MAXIMY REGIS", courtier1: "EC", courtier2: "BO", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Neuville-sur-Seine", lat: 48.0313, lng: 4.4146,
+      pressoirs: [
+        { nom: "BAUDRY", courtier1: "EB", secteur: "S" },
+        { nom: "CRETOL & FILS", courtier1: "EB", secteur: "S" },
+        { nom: "DU VAL MENTRA", courtier1: "JPNC", secteur: "S" },
+        { nom: "EMMANUEL ROUSSIAU", courtier1: "EB", secteur: "S" },
+        { nom: "HERARD", courtier1: "JPNC", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Nogent-l'Abbesse", lat: 49.2439, lng: 4.1613,
+      pressoirs: [
+        { nom: "FIEVET JOEL", courtier1: "ASM", secteur: "G" },
+        { nom: "VINICOLE DE NOGENT L'ABBESSE", courtier1: "ASM", courtier2: "EC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Noé-les-Mallets", lat: 48.0974, lng: 4.5592,
+      pressoirs: [
+        { nom: "BELORGEOT BONNET", courtier1: "JPNC", secteur: "B" },
+        { nom: "CHATET", courtier1: "JPNC", secteur: "B" },
+        { nom: "DE LA CURE", courtier1: "EB", secteur: "B" },
+        { nom: "DROUILLY JEAN FRANCOIS", courtier1: "EC", courtier2: "EB", secteur: "B" },
+        { nom: "DROUILLY VINCENT", courtier1: "EB", secteur: "B" },
+        { nom: "DU GRAND VAL", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Oiry", lat: 49.0075, lng: 4.0415,
+      pressoirs: [
+        { nom: "MHCS / MOET & CHANDON  (Oiry)", courtier1: "JPNC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Olizy", lat: 49.1468, lng: 3.7585,
+      pressoirs: [
+        { nom: "VINICOLE D'OLIZY VIOLAINE", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Passy-Grigny", lat: 49.1271, lng: 3.6805,
+      pressoirs: [
+        { nom: "GILLES ALLAIT & FILS", courtier1: "JPNC", secteur: "E" },
+        { nom: "LEGENDRE JEAN CHRISTOPHE", courtier1: "EH", secteur: "E" },
+        { nom: "PRESSOIRS ROGGE", courtier1: "EC", courtier2: "JPNC", secteur: "E" },
+        { nom: "THEVENET - DELOUVIN", courtier1: "EC", courtier2: "BO", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Passy-sur-Marne", lat: 49.068, lng: 3.5747,
+      pressoirs: [
+        { nom: "LE FLORENTIN", courtier1: "EH", secteur: "A" },
+        { nom: "ROBILLARD Sylvain", courtier1: "EH", secteur: "A" },
+        { nom: "SERVEAUX FILS", courtier1: "EH", secteur: "A" },
+        { nom: "BLIARD LOYAUX", courtier1: "ASM", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Pierry", lat: 49.0195, lng: 3.9527,
+      pressoirs: [
+        { nom: "BOUCHE PÈRE ET FILS", courtier1: "JPNC", secteur: "H" },
+        { nom: "TAITTINGER (Pierry)", courtier1: "MAA", secteur: "H" },
+        { nom: "VINICOLE DES COTEAUX D'EPERNAY", courtier1: "BO", secteur: "H" },
+        { nom: "WM PRESTA PIERRY", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Plaines-Saint-Lange", lat: 47.9981, lng: 4.4766,
+      pressoirs: [
+        { nom: "PAYTA JEAN CLAUDE", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Polisot", lat: 48.0733, lng: 4.3553,
+      pressoirs: [
+        { nom: "MARIN-LASNIER", courtier1: "JPNC", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Polisy", lat: 48.0594, lng: 4.3626,
+      pressoirs: [
+        { nom: "GOUSSARD FRERE ET SOEUR", courtier1: "EB", secteur: "S" },
+        { nom: "JOEL MARTIN ET FILS", courtier1: "EB", secteur: "S" },
+        { nom: "MOYAT JAURY", courtier1: "EB", secteur: "S" }
+      ]
+    },
+    {
+      nom: "Pouillon", lat: 49.3134, lng: 3.9447,
+      pressoirs: [
+        { nom: "BOURDAIRE", courtier1: "MAA", courtier2: "BO", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Prouilly", lat: 49.2958, lng: 3.8446,
+      pressoirs: [
+        { nom: "GOULARD", courtier1: "JPNC", secteur: "C" },
+        { nom: "LA CHAMPENOISE DE PROUILLY", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Prunay", lat: 49.2114, lng: 4.1734,
+      pressoirs: [
+        { nom: "CUPERLY", courtier1: "EH", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Puisieulx", lat: 49.204, lng: 4.1154,
+      pressoirs: [
+        { nom: "LE PRESSOIR SAINT JEAN", courtier1: "ASM", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Pévy", lat: 49.3186, lng: 3.8531,
+      pressoirs: [
+        { nom: "BARBIER OLIVIER", courtier1: "ASM", courtier2: "EC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Reims", lat: 49.2535, lng: 4.0551,
+      pressoirs: [
+        { nom: "BRUNO PAILLARD", courtier1: "JPNC", secteur: "C" },
+        { nom: "CHAMPENOISE PH-CH. PIPER HEIDSIECK", courtier1: "EC", secteur: "C" },
+        { nom: "MHCS / KRUG", courtier1: "EH", secteur: "C" },
+        { nom: "PALMER", courtier1: "EC", secteur: "C" },
+        { nom: "HENRIOT SAS", courtier1: "EC", secteur: "C" },
+        { nom: "LOUIS ROEDERER", courtier1: "JPNC", secteur: "C" },
+        { nom: "MUMM & CIE", courtier1: "EH", secteur: "C" },
+        { nom: "TAITTINGER CCVC", courtier1: "MAA", secteur: "C" },
+        { nom: "LANSON", courtier1: "MAA", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Reuil", lat: 49.08198, lng: 3.7994,
+      pressoirs: [
+        { nom: "U.C.V.M./ L'AVENIR DE REUIL", courtier1: "EH", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Rilly-la-Montagne", lat: 49.1621, lng: 4.048,
+      pressoirs: [
+        { nom: "BOUXIN PASCAL", courtier1: "ASM", secteur: "C" },
+        { nom: "CATTIER", courtier1: "EH", secteur: "C" },
+        { nom: "COUVREUR - PHILIPPART", courtier1: "ASM", secteur: "C" },
+        { nom: "COUVREUR PRAK", courtier1: "BO", secteur: "C" },
+        { nom: "COUVREUR Yves", courtier1: "ASM", secteur: "C" },
+        { nom: "DAMIEN CHAUVET", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "DELAUNOIS CHANEZ", courtier1: "MAA", courtier2: "BO", secteur: "C" },
+        { nom: "DELAUNOIS D. et Fils", courtier1: "MAA", courtier2: "EH", secteur: "C" },
+        { nom: "DUMONT Daniel", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "FAGOT FRANÇOIS", courtier1: "EH", secteur: "C" },
+        { nom: "FAGOT MICHEL", courtier1: "ASM", secteur: "C" },
+        { nom: "GAUTHIER SEBASTIEN", courtier1: "EH", secteur: "C" },
+        { nom: "HUBERT PAULET", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "MARC CHAUVET", courtier1: "EH", secteur: "C" },
+        { nom: "PHILBERT", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "PRESSURAGE LES RAISINS DORES", courtier1: "MAA", courtier2: "BO", secteur: "C" },
+        { nom: "TAITTINGER (Rilly la Montagne)", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "Veuve MAURICE LEPITRE", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "VINICOLE de RILLY", courtier1: "ASM", secteur: "C" },
+        { nom: "CATTIER ADAM", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Romery", lat: 49.0955, lng: 3.9135,
+      pressoirs: [
+        { nom: "AURELIEN LURQUIN", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "MARC Jennifer", courtier1: "EH", secteur: "H" },
+        { nom: "TRIBAUT SCHLOESSER", courtier1: "EC", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Rouvres-les-Vignes", lat: 48.2379, lng: 4.8248,
+      pressoirs: [
+        { nom: "FALMET MICHEL", courtier1: "JPNC", secteur: "B" },
+        { nom: "PHILIPPE LEGOUT", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Sacy", lat: 49.1978, lng: 3.9525,
+      pressoirs: [
+        { nom: "DEGENNE GUILLAUME", courtier1: "ASM", secteur: "C" },
+        { nom: "GOULIN CHRISTOPHE", courtier1: "ASM", secteur: "C" },
+        { nom: "HERVIEUX - DUMEZ", courtier1: "MAA", courtier2: "ASM", secteur: "C" },
+        { nom: "PRESSURAGE SERVICES", courtier1: "JPNC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Saint-Amand-sur-Fion", lat: 48.8236, lng: 4.6118,
+      pressoirs: [
+        { nom: "DOMMANGE", courtier1: "EC", courtier2: "JBC", secteur: "I" },
+        { nom: "PRESSOIR DU MAZIN", courtier1: "EC", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Saint-Euphraise-et-Clairizet", lat: 49.213, lng: 3.8866,
+      pressoirs: [
+        { nom: "CHRISTOPHE LALLEMENT - PELLETIER", courtier1: "EH", secteur: "C" },
+        { nom: "VINCENT FOURNIER", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Saint-Léonard", lat: 49.2247, lng: 4.1089,
+      pressoirs: [
+        { nom: "MHCS / Veuve CLICQUOT COMETE", courtier1: "EC" }
+      ]
+    },
+    {
+      nom: "Saint-Martin-d'Ablois", lat: 49.0128, lng: 3.846,
+      pressoirs: [
+        { nom: "PRESSOIRS LALOUELLE", courtier1: "MAA", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Saint-Thierry", lat: 49.2947, lng: 3.9736,
+      pressoirs: [
+        { nom: "MHCS / Veuve CLICQUOT (Saint Thierry)", courtier1: "EC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Sainte-Gemme", lat: 49.1444, lng: 3.659,
+      pressoirs: [
+        { nom: "VINICOLE L'UNION DE SAINTE GEMME", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Saudoy", lat: 48.6806, lng: 3.6969,
+      pressoirs: [
+        { nom: "BENOIT PELIGRI", courtier1: "ASM", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Saulcy", lat: 48.2763, lng: 4.8362,
+      pressoirs: [
+        { nom: "LAURENT MOUGIN ET FILS", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Savigny-sur-Ardres", lat: 49.2526, lng: 3.7954,
+      pressoirs: [
+        { nom: "MANCIER Bruno", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Saâcy-sur-Marne", lat: 48.9524, lng: 3.2128,
+      pressoirs: [
+        { nom: "HERVE BOMBART", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Sermiers", lat: 49.1498, lng: 3.9771,
+      pressoirs: [
+        { nom: "VINICOLE de SERMIERS", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Serzy-et-Prin", lat: 49.2465, lng: 3.766,
+      pressoirs: [
+        { nom: "LA VIGNERONNE DE SERZY", courtier1: "EC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Sillery", lat: 49.1921, lng: 4.1429,
+      pressoirs: [
+        { nom: "DUVAL ARNAUD", courtier1: "ASM", courtier2: "MAA", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Songy", lat: 48.7919, lng: 4.4705,
+      pressoirs: [
+        { nom: "PHELIZON", courtier1: "EC", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Spoy", lat: 48.2294, lng: 4.6179,
+      pressoirs: [
+        { nom: "BINON COQUARD", courtier1: "JPNC", secteur: "B" },
+        { nom: "COQUARD PRESSURAGE", courtier1: "EB", secteur: "B" },
+        { nom: "DUBOIS ET FILS", courtier1: "JPNC", secteur: "B" },
+        { nom: "SERRUROT FLORENT", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Suizy-le-Franc", lat: 48.9506, lng: 3.7275,
+      pressoirs: [
+        { nom: "LA POMMERIE", courtier1: "MAA", courtier2: "BO", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Sézanne", lat: 48.724, lng: 3.7244,
+      pressoirs: [
+        { nom: "PINARD FRERES", courtier1: "BO", courtier2: "MAA", secteur: "F" },
+        { nom: "PRESSOIR DEPOIVRE", courtier1: "EC", courtier2: "EH", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Taissy", lat: 49.2046, lng: 4.084,
+      pressoirs: [
+        { nom: "ALAIN THIENOT", courtier1: "EC", secteur: "C" },
+        { nom: "DE MARCILLY", courtier1: "MAA", courtier2: "EH", secteur: "C" },
+        { nom: "GONDE - ROUSSEAUX", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Talus-Saint-Prix", lat: 48.8341, lng: 3.7467,
+      pressoirs: [
+        { nom: "DES 3 COTEAUX DE BAYE TALUS", courtier1: "EC", courtier2: "BO", secteur: "F" },
+        { nom: "FERAT CROCHET", courtier1: "JPNC", secteur: "F" },
+        { nom: "LEGRET JEAN-PIERRE", courtier1: "EC", courtier2: "BO", secteur: "F" },
+        { nom: "POILVERT - JACQUES", courtier1: "JPNC", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Tours-sur-Marne", lat: 49.0517, lng: 4.1258,
+      pressoirs: [
+        { nom: "HENRY VASNIER pressoir de TSM", courtier1: "MAA", secteur: "G" },
+        { nom: "LAURENT PERRIER", courtier1: "BO", courtier2: "MAA", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Trigny", lat: 49.2975, lng: 3.8899,
+      pressoirs: [
+        { nom: "LP GOULARD", courtier1: "ASM", secteur: "C" },
+        { nom: "VINICOLE DE TRIGNY", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Trois-Puits", lat: 49.2054, lng: 4.0424,
+      pressoirs: [
+        { nom: "BAILLETTE JEAN ET SES FILLES", courtier1: "EH", secteur: "C" },
+        { nom: "COUSIN-BRESSY", courtier1: "MAA", courtier2: "JBC", secteur: "C" },
+        { nom: "LARNAUDIE - HIRAULT", courtier1: "ASM", secteur: "C" },
+        { nom: "MITOUART PAULET Marie", courtier1: "EH", secteur: "C" },
+        { nom: "PIERRE BAILLETTE ET SES ENFANTS", courtier1: "ASM", courtier2: "MAA", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Troissy", lat: 49.073, lng: 3.703,
+      pressoirs: [
+        { nom: "INFINIMENT LECONTE", courtier1: "BO", secteur: "E" },
+        { nom: "BONNET LECONTE", courtier1: "EC", courtier2: "BO", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Trélou-sur-Marne", lat: 49.0903, lng: 3.6055,
+      pressoirs: [
+        { nom: "AU BON CEP", courtier1: "EH", secteur: "A" },
+        { nom: "COUVENT FILS", courtier1: "BO", courtier2: "EC", secteur: "A" },
+        { nom: "COUVENT LEMERY", courtier1: "BO", courtier2: "EC", secteur: "A" },
+        { nom: "DE LA BOISSY", courtier1: "BO", courtier2: "EC", secteur: "A" },
+        { nom: "LAHEMADE Jean Luc et Marc", courtier1: "EH", secteur: "A" },
+        { nom: "LECLERC DROUILLET", courtier1: "EH", secteur: "A" },
+        { nom: "MALLET PHILIPPE et ERIC", courtier1: "EH", secteur: "A" },
+        { nom: "MONDET FLORENT", courtier1: "EC", courtier2: "BO", secteur: "A" },
+        { nom: "SOCIETE HYEST", courtier1: "EH", secteur: "A" },
+        { nom: "VINCENT COUVENT", courtier1: "BO", courtier2: "EC", secteur: "A" },
+        { nom: "COLAS STEPHANE", courtier1: "EH", secteur: "A" },
+        { nom: "SERVENAY", courtier1: "EH", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Trépail", lat: 49.1088, lng: 4.1815,
+      pressoirs: [
+        { nom: "BEAUFORT Brice", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "MACHET Christophe et Nicolas", courtier1: "ASM", secteur: "G" },
+        { nom: "PASCAL CARRE ET FILS", courtier1: "EH", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Urville", lat: 48.1706, lng: 4.6712,
+      pressoirs: [
+        { nom: "CHAMPAGNE DRAPPIER", courtier1: "JPNC", secteur: "B" },
+        { nom: "DEVITRY Philippe - ETA DU BARROIS", courtier1: "EB", secteur: "B" },
+        { nom: "PERRIN DANIEL", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Val de Livre", lat: 49.105, lng: 4.1154,
+      pressoirs: [
+        { nom: "BARBIER - LOUVET", courtier1: "JPNC", secteur: "G" },
+        { nom: "BOEVER ANDRE", courtier1: "ASM", secteur: "G" },
+        { nom: "BOEVER THIERRY", courtier1: "ASM", courtier2: "EC", secteur: "G" },
+        { nom: "BUNEL ERIC", courtier1: "EH", secteur: "G" },
+        { nom: "COCHUT", courtier1: "ASM", secteur: "G" },
+        { nom: "FAYE SERGE", courtier1: "ASM", secteur: "G" },
+        { nom: "HONORE LEBLANC", courtier1: "JBC", courtier2: "MAA", secteur: "G" },
+        { nom: "LA VOIE DES LOUPS", courtier1: "ASM", secteur: "G" },
+        { nom: "LEBLANC COLLARD", courtier1: "JBC", courtier2: "MAA", secteur: "G" },
+        { nom: "LOUVET Père et Fils", courtier1: "EC", courtier2: "MAA", secteur: "G" },
+        { nom: "MAHE", courtier1: "ASM", secteur: "G" },
+        { nom: "THOMAS BOEVER", courtier1: "ASM", secteur: "G" },
+        { nom: "VINICOLE DE LOUVOIS TAUXIERES", courtier1: "ASM", courtier2: "EC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Vallées en Champagne", lat: 49.0009, lng: 3.6203,
+      pressoirs: [
+        { nom: "ROULOT BRUNO", courtier1: "EH", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Vanault-le-Châtel", lat: 48.8653, lng: 4.702,
+      pressoirs: [
+        { nom: "GAUVIN", courtier1: "EC", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Vandières", lat: 49.1128, lng: 3.7237,
+      pressoirs: [
+        { nom: "ARDINAT FAUST", courtier1: "EH", secteur: "E" },
+        { nom: "DURDON DUMONT", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Vauchamps", lat: 48.8819, lng: 3.6261,
+      pressoirs: [
+        { nom: "NERET VELY", courtier1: "EC", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Vauciennes", lat: 49.0516, lng: 3.8826,
+      pressoirs: [
+        { nom: "JOSE LEMAIRE", courtier1: "EH", secteur: "H" },
+        { nom: "LEGRAS HERVE", courtier1: "ASM", courtier2: "EC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Vaudemange", lat: 49.0864, lng: 4.2417,
+      pressoirs: [
+        { nom: "CHAUDRON", courtier1: "ASM", courtier2: "EC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Vaudemange", lat: 49.0864, lng: 4.2417,
+      pressoirs: [
+        { nom: "PHILIPPE HAUTEM", courtier1: "EH", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Venteuil", lat: 49.0914, lng: 3.8401,
+      pressoirs: [
+        { nom: "GRANZAMY", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "LAUNAY JEAN FRANCOIS", courtier1: "EH", secteur: "H" },
+        { nom: "LIEBART Nathalie", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "MARNIQUET JEAN PIERRE", courtier1: "EC", courtier2: "JBC", secteur: "H" },
+        { nom: "MOUTTE VINCENT P&F", courtier1: "EC", courtier2: "JBC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Verneuil", lat: 49.1023, lng: 3.6684,
+      pressoirs: [
+        { nom: "A. HENRY", courtier1: "EH", secteur: "E" },
+        { nom: "BOUBY ET FILS", courtier1: "EH", secteur: "E" },
+        { nom: "GERARD ET DOLORES HENRY", courtier1: "EH", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Vert-Toulon", lat: 48.8425, lng: 3.9046,
+      pressoirs: [
+        { nom: "VINICOLE LA GRAPPE D'OR", courtier1: "EC", courtier2: "ASM", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Verzenay", lat: 49.1588, lng: 4.1482,
+      pressoirs: [
+        { nom: "BUSIN", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "GODME BARDOUX", courtier1: "ASM", secteur: "G" },
+        { nom: "LA MOUZONNERIE", courtier1: "ASM", secteur: "G" },
+        { nom: "LANSON (Verzenay)", courtier1: "EH", secteur: "G" },
+        { nom: "MHCS / Veuve CLICQUOT (Verzenay)", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "PEHU SIMONET", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "ROEDERER (Verzenay)", courtier1: "EH", secteur: "G" },
+        { nom: "ROUSSEAUX FRESNET", courtier1: "MAA", courtier2: "JBC", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Verzy", lat: 49.1451, lng: 4.1619,
+      pressoirs: [
+        { nom: "JEAN LALLEMENT - MARQUES", courtier1: "MAA", courtier2: "BO", secteur: "G" },
+        { nom: "LEPREUX PENET", courtier1: "EH", secteur: "G" },
+        { nom: "LES GALIPES DE L'AMOUR", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "LOUIS DE SACY", courtier1: "ASM", secteur: "G" },
+        { nom: "MHCS / Veuve CLICQUOT  (Verzy)", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "MUMM (Verzy)", courtier1: "ASM", secteur: "G" },
+        { nom: "PRESSOIRS FRESNET HANOTIN", courtier1: "ASM", secteur: "G" },
+        { nom: "RENOIR & FILS", courtier1: "MAA", courtier2: "JBC", secteur: "G" },
+        { nom: "VINICOLE DE VERZY", courtier1: "MAA", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Ville-Dommange", lat: 49.2041, lng: 3.94,
+      pressoirs: [
+        { nom: "LES PRODUCTEURS VILLEDOMMANGE", courtier1: "ASM", secteur: "C" },
+        { nom: "MHCS / Veuve CLICQUOT (Villedommange)", courtier1: "EC", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Ville-sur-Arce", lat: 48.1143, lng: 4.4473,
+      pressoirs: [
+        { nom: "CHAMPAGNE D. MASSIN", courtier1: "JPNC", secteur: "B" },
+        { nom: "COESSENS", courtier1: "EC", courtier2: "EB", secteur: "B" },
+        { nom: "FEVRE", courtier1: "JPNC", secteur: "B" },
+        { nom: "MARC HENNEQUIERE ( pressoir Ville sur Arce)", courtier1: "EB", secteur: "B" },
+        { nom: "PHILIPPE THEVENIN", courtier1: "EB", secteur: "B" },
+        { nom: "REGIS BARBE", courtier1: "JPNC", secteur: "B" },
+        { nom: "REMY MASSIN & FILS", courtier1: "JPNC", secteur: "B" },
+        { nom: "SCA CHAMP. CHASSENAY D'ARCE", courtier1: "EC", courtier2: "EB", secteur: "B" },
+        { nom: "DES COTANNES", courtier1: "JPNC", secteur: "B" },
+        { nom: "THIERRY MASSIN", courtier1: "JPNC", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Villenauxe-la-Grande", lat: 48.5951, lng: 3.5428,
+      pressoirs: [
+        { nom: "COPINET", courtier1: "BO", courtier2: "MAA", secteur: "F" },
+        { nom: "L'ORELIE", courtier1: "BO", courtier2: "MAA", secteur: "F" },
+        { nom: "TORCHET", courtier1: "ASM", secteur: "F" },
+        { nom: "OUDARD FRANCOIS", courtier1: "BO", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Villers-Allerand", lat: 49.1608, lng: 4.0196,
+      pressoirs: [
+        { nom: "STROEBEL ET FILLES", courtier1: "MAA", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Villers-Marmery", lat: 49.1306, lng: 4.1964,
+      pressoirs: [
+        { nom: "BOUTILLEZ ROBERT", courtier1: "EH", secteur: "G" },
+        { nom: "PASCAL ADNET ET FILS", courtier1: "EH", secteur: "G" },
+        { nom: "PAQUAY", courtier1: "ASM", secteur: "G" }
+      ]
+    },
+    {
+      nom: "Villers-aux-Nœuds", lat: 49.1936, lng: 3.9928,
+      pressoirs: [
+        { nom: "EMMANUEL BROCHET", courtier1: "EH", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Villevenard", lat: 48.8327, lng: 3.7928,
+      pressoirs: [
+        { nom: "DE L' HEPAILLET", courtier1: "EH", secteur: "F" },
+        { nom: "VINICOLE LA COOVIVIALE", courtier1: "BO", secteur: "F" }
+      ]
+    },
+    {
+      nom: "Villiers-Saint-Denis", lat: 48.9978, lng: 3.2621,
+      pressoirs: [
+        { nom: "CRICCO", courtier1: "BO", secteur: "A" }
+      ]
+    },
+    {
+      nom: "Vinay", lat: 49.0125, lng: 3.9009,
+      pressoirs: [
+        { nom: "LECOMTE Père et Fils", courtier1: "EC", courtier2: "BO", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Vincelles", lat: 49.0947, lng: 3.6379,
+      pressoirs: [
+        { nom: "DEPAUX  H. & FILS", courtier1: "EH", secteur: "E" },
+        { nom: "HENIN A et C", courtier1: "EH", secteur: "E" },
+        { nom: "JEAN HU", courtier1: "EH", secteur: "E" },
+        { nom: "PIOT SEVILLANO", courtier1: "BO", secteur: "E" }
+      ]
+    },
+    {
+      nom: "Vitry-en-Perthois", lat: 48.7471, lng: 4.6172,
+      pressoirs: [
+        { nom: "ANTOINE CHEVALIER", courtier1: "EC", courtier2: "JBC", secteur: "I" }
+      ]
+    },
+    {
+      nom: "Voigny", lat: 48.2351, lng: 4.7676,
+      pressoirs: [
+        { nom: "DIDIER FRERES", courtier1: "EB", secteur: "B" },
+        { nom: "VIGNOBLE  SAMPERS", courtier1: "EB", secteur: "B" }
+      ]
+    },
+    {
+      nom: "Écueil", lat: 49.1791, lng: 3.9528,
+      pressoirs: [
+        { nom: "VINICOLE D'ECUEIL", courtier1: "ASM", courtier2: "EC", secteur: "C" }
+      ]
+    },
+    {
+      nom: "Épernay", lat: 49.0391, lng: 3.9282,
+      pressoirs: [
+        { nom: "ALFRED GRATIEN", courtier1: "MAA", secteur: "H" },
+        { nom: "LECLERC - BRIANT", courtier1: "JPNC", secteur: "H" },
+        { nom: "POL ROGER", courtier1: "MAA", secteur: "H" },
+        { nom: "TESTULAT PERE & FILS", courtier1: "EH", secteur: "H" },
+        { nom: "VINICOLE VINAY MANCY - CVM - CHAMPAGNE ESTERLIN", courtier1: "EC", secteur: "G" },
+        { nom: "CHARLES MIGNON", courtier1: "BO", courtier2: "EC", secteur: "H" },
+        { nom: "MAISON BURTIN depuis 1933", courtier1: "MAA", secteur: "H" },
+        { nom: "MARTEL & CIE", courtier1: "MAA", secteur: "H" }
+      ]
+    },
+    {
+      nom: "Œuilly", lat: 49.0599, lng: 3.7936,
+      pressoirs: [
+        { nom: "LE CLOS SAINT VINCENT", courtier1: "MAA", courtier2: "JBC", secteur: "H" },
+        { nom: "LITTIERE ALAIN", courtier1: "BO", courtier2: "EC", secteur: "H" }
       ]
     }
   ];
@@ -613,7 +2194,7 @@
   // 1.5.3 échoue silencieusement (aucune icône créée) dès qu'un cluster ne
   // contient qu'un seul point à l'écran. Zoom initial ~9.3 → arrondi à 9.
   var map = L.map('map', {
-    center: [48.98, 3.98],
+    center: [48.66, 4.07],
     zoom: 9,
     zoomSnap: 1,
     zoomDelta: 1,
@@ -681,10 +2262,14 @@
   }
 
   // =========================================================================
-  // État courant : style d'étiquette actif + filtre courtier(s) sélectionné(s)
+  // État courant : style d'étiquette actif + filtres courtier(s)/secteur(s)
   // =========================================================================
   var currentStyle = 'pill'; // 'dot' | 'pill' | 'figure'
   var selectedCourtiers = new Set(); // vide => "Tous"
+  var selectedSecteurs = new Set();  // vide => "Tous"
+  // Assignée par StyleFilterControl : permet à d'autres contrôles (recherche)
+  // de rafraîchir les compteurs des chips courtier après un reset de filtre.
+  var refreshCourtierChipLabelsRef = null;
 
   var communeLayerGroup = L.layerGroup();
   var clusterGroup = L.markerClusterGroup({
@@ -692,21 +2277,46 @@
     spiderfyOnMaxZoom: true
   });
 
-  // Filtre : ne conserve que les pressoirs correspondant aux courtiers
-  // sélectionnés (courtier1 référent OU courtier2 secondaire), puis retire
-  // entièrement les communes qui n'ont plus aucun pressoir correspondant
-  // (masquage total, pas de grisé).
+  function pressoirMatchCourtiers(p){
+    return selectedCourtiers.size === 0 ||
+      selectedCourtiers.has(p.courtier1) ||
+      (p.courtier2 && selectedCourtiers.has(p.courtier2));
+  }
+
+  function pressoirMatchSecteur(p){
+    return selectedSecteurs.size === 0 || (p.secteur && selectedSecteurs.has(p.secteur));
+  }
+
+  // Filtre : ne conserve que les pressoirs correspondant à la fois au(x)
+  // courtier(s) sélectionné(s) (courtier1 référent OU courtier2 secondaire)
+  // ET au(x) secteur(s) sélectionné(s), puis retire entièrement les communes
+  // qui n'ont plus aucun pressoir correspondant (masquage total, pas de grisé).
   function getFilteredCommunes(){
     return communes
       .map(function(c){
         var pressoirs = c.pressoirs.filter(function(p){
-          return selectedCourtiers.size === 0 ||
-            selectedCourtiers.has(p.courtier1) ||
-            (p.courtier2 && selectedCourtiers.has(p.courtier2));
+          return pressoirMatchCourtiers(p) && pressoirMatchSecteur(p);
         });
         return { nom: c.nom, lat: c.lat, lng: c.lng, pressoirs: pressoirs };
       })
       .filter(function(c){ return c.pressoirs.length > 0; });
+  }
+
+  // Compte, pour chaque courtier, le nombre de pressoirs où il est référent
+  // (courtier1) et où il est secondaire (courtier2), en ne tenant compte que
+  // du filtre secteur actif (pas du filtre courtier lui-même, pour que
+  // chaque chip reflète "combien si je sélectionne celui-ci").
+  function computeCourtierCounts(){
+    var counts = {};
+    COURTIERS.forEach(function(k){ counts[k] = { c1: 0, c2: 0 }; });
+    communes.forEach(function(c){
+      c.pressoirs.forEach(function(p){
+        if(!pressoirMatchSecteur(p)) return;
+        if(counts[p.courtier1]) counts[p.courtier1].c1++;
+        if(p.courtier2 && counts[p.courtier2]) counts[p.courtier2].c2++;
+      });
+    });
+    return counts;
   }
 
   function zoomToCommune(commune){
@@ -783,13 +2393,18 @@
     marker._pressoirRef = pressoir;
     var courtierLines = '<p><strong>Courtier référent :</strong> ' + pressoir.courtier1 + '</p>';
     if(pressoir.courtier2){
-      courtierLines += '<p><strong>Courtier secondaire (futur référent) :</strong> ' + pressoir.courtier2 + '</p>';
+      courtierLines += '<p><strong>Courtier secondaire :</strong> ' + pressoir.courtier2 + '</p>';
     }
+    // La capacité n'est renseignée que pour certains pressoirs (donnée
+    // absente du fichier source réel) : ligne affichée uniquement si présente.
+    var capaciteLine = pressoir.capacite != null
+      ? '<p><strong>Capacité indicative :</strong> ' + pressoir.capacite.toLocaleString('fr-FR') + ' kg/marc</p>'
+      : '';
     var popupHtml =
       '<div class="pressoir-popup">' +
         '<h3>' + pressoir.nom + '</h3>' +
         '<p class="commune-line">' + commune.nom + '</p>' +
-        '<p><strong>Capacité indicative :</strong> ' + pressoir.capacite.toLocaleString('fr-FR') + ' kg/marc</p>' +
+        capaciteLine +
         courtierLines +
       '</div>';
     marker.bindPopup(popupHtml);
@@ -838,10 +2453,14 @@
     onAdd: function(){
       var container = L.DomUtil.create('div', 'control-panel');
 
-      var chipsHtml = COURTIERS.map(function(k){
+      var courtierChipsHtml = COURTIERS.map(function(k){
         var bg = COURTIER_COLORS[k];
         var fg = COURTIER_TEXT_COLORS[k];
         return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
+      }).join('');
+
+      var secteurChipsHtml = SECTEURS.map(function(s){
+        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
       }).join('');
 
       container.innerHTML =
@@ -859,10 +2478,17 @@
           '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
         '</div>' +
         '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par secteur</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
+            secteurChipsHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="filter-box">' +
           '<div class="panel-title">Filtrer par courtier</div>' +
           '<div class="chips">' +
             '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
-            chipsHtml +
+            courtierChipsHtml +
           '</div>' +
         '</div>';
 
@@ -890,13 +2516,27 @@
         });
       });
 
-      // Chips courtier : sélection multiple, "Tous" réinitialise
-      var allChip = container.querySelector('.chip-all');
-      var courtierChips = container.querySelectorAll('.chip:not(.chip-all)');
+      // Chips courtier : sélection multiple, "Tous" réinitialise. Le libellé
+      // de chaque chip affiche le nombre de pressoirs où ce courtier est
+      // référent (courtier1) et secondaire (courtier2), recalculé selon le
+      // filtre secteur actif.
+      var courtierAllChip = container.querySelector('[data-courtier="__all"]');
+      var courtierChips = container.querySelectorAll('[data-courtier]:not([data-courtier="__all"])');
 
-      allChip.addEventListener('click', function(){
+      function refreshCourtierChipLabels(){
+        var counts = computeCourtierCounts();
+        courtierChips.forEach(function(chip){
+          var k = chip.getAttribute('data-courtier');
+          var c = counts[k] || { c1: 0, c2: 0 };
+          chip.innerHTML = k + ' <span class="chip-count">' + c.c1 + '+' + c.c2 + '</span>';
+        });
+      }
+      refreshCourtierChipLabels();
+      refreshCourtierChipLabelsRef = refreshCourtierChipLabels;
+
+      courtierAllChip.addEventListener('click', function(){
         selectedCourtiers.clear();
-        allChip.classList.add('active');
+        courtierAllChip.classList.add('active');
         courtierChips.forEach(function(c){ c.classList.remove('active'); });
         rebuildCommuneLayer();
         rebuildClusterGroup();
@@ -912,9 +2552,40 @@
             selectedCourtiers.add(k);
             chip.classList.add('active');
           }
-          allChip.classList.toggle('active', selectedCourtiers.size === 0);
+          courtierAllChip.classList.toggle('active', selectedCourtiers.size === 0);
           rebuildCommuneLayer();
           rebuildClusterGroup();
+        });
+      });
+
+      // Chips secteur : sélection multiple, "Tous" réinitialise. Change le
+      // périmètre pris en compte par les compteurs des chips courtier.
+      var secteurAllChip = container.querySelector('[data-secteur="__all"]');
+      var secteurChips = container.querySelectorAll('[data-secteur]:not([data-secteur="__all"])');
+
+      secteurAllChip.addEventListener('click', function(){
+        selectedSecteurs.clear();
+        secteurAllChip.classList.add('active');
+        secteurChips.forEach(function(c){ c.classList.remove('active'); });
+        rebuildCommuneLayer();
+        rebuildClusterGroup();
+        refreshCourtierChipLabels();
+      });
+
+      secteurChips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          var s = chip.getAttribute('data-secteur');
+          if(selectedSecteurs.has(s)){
+            selectedSecteurs.delete(s);
+            chip.classList.remove('active');
+          } else {
+            selectedSecteurs.add(s);
+            chip.classList.add('active');
+          }
+          secteurAllChip.classList.toggle('active', selectedSecteurs.size === 0);
+          rebuildCommuneLayer();
+          rebuildClusterGroup();
+          refreshCourtierChipLabels();
         });
       });
 
@@ -954,31 +2625,39 @@
     return results.slice(0, SEARCH_RESULTS_LIMIT);
   }
 
-  // Réinitialise le filtre courtier (UI + état) : utilisé quand un résultat
-  // de recherche est masqué par le filtre actif, pour garantir qu'on montre
-  // toujours ce qu'on a trouvé.
+  // Réinitialise les filtres courtier et secteur (UI + état) : utilisé quand
+  // un résultat de recherche est masqué par un filtre actif, pour garantir
+  // qu'on montre toujours ce qu'on a trouvé.
   function resetCourtierFilterUI(){
     selectedCourtiers.clear();
-    var allChip = document.querySelector('.chip-all');
-    var courtierChips = document.querySelectorAll('.chip:not(.chip-all)');
+    var allChip = document.querySelector('[data-courtier="__all"]');
+    var courtierChips = document.querySelectorAll('[data-courtier]:not([data-courtier="__all"])');
     if(allChip) allChip.classList.add('active');
     courtierChips.forEach(function(c){ c.classList.remove('active'); });
     rebuildCommuneLayer();
     rebuildClusterGroup();
   }
 
-  function pressoirPasseFiltre(pressoir){
-    return selectedCourtiers.size === 0 ||
-      selectedCourtiers.has(pressoir.courtier1) ||
-      (pressoir.courtier2 && selectedCourtiers.has(pressoir.courtier2));
+  function resetSecteurFilterUI(){
+    selectedSecteurs.clear();
+    var allChip = document.querySelector('[data-secteur="__all"]');
+    var secteurChips = document.querySelectorAll('[data-secteur]:not([data-secteur="__all"])');
+    if(allChip) allChip.classList.add('active');
+    secteurChips.forEach(function(c){ c.classList.remove('active'); });
+    rebuildCommuneLayer();
+    rebuildClusterGroup();
+    if(refreshCourtierChipLabelsRef) refreshCourtierChipLabelsRef();
   }
 
   // Zoome sur un pressoir précis et ouvre sa popup, en dépliant (spiderfy)
   // le cluster si nécessaire — zoomToShowLayer gère ça nativement, y
   // compris quand plusieurs pressoirs partagent exactement la même position.
   function revealPressoir(commune, pressoir){
-    if(!pressoirPasseFiltre(pressoir)){
+    if(!pressoirMatchCourtiers(pressoir)){
       resetCourtierFilterUI();
+    }
+    if(!pressoirMatchSecteur(pressoir)){
+      resetSecteurFilterUI();
     }
     var lat = pressoir.lat != null ? pressoir.lat : commune.lat;
     var lng = pressoir.lng != null ? pressoir.lng : commune.lng;
