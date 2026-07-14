@@ -222,6 +222,65 @@
     color:var(--chalk);
   }
 
+  /* ---------- Recherche (pressoir ou commune) ---------- */
+  .search-panel{
+    background:var(--chalk);
+    border:1px solid var(--gold-light);
+    border-radius:10px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.18);
+    padding:10px;
+    width:230px;
+  }
+  .search-input{
+    width:100%;
+    box-sizing:border-box;
+    border:1px solid var(--gold-light);
+    border-radius:6px;
+    padding:7px 10px;
+    font-family:'Inter', sans-serif;
+    font-size:0.8rem;
+    color:var(--ink);
+    background:var(--ivory);
+  }
+  .search-input:focus{
+    outline:none;
+    border-color:var(--gold);
+  }
+  .search-results{
+    display:none;
+    margin-top:6px;
+    max-height:260px;
+    overflow-y:auto;
+  }
+  .search-results.visible{
+    display:block;
+  }
+  .search-result{
+    display:flex;
+    flex-direction:column;
+    padding:6px 8px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .search-result:hover{
+    background:var(--gold-light);
+  }
+  .search-result-title{
+    font-size:0.8rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .search-result-sub{
+    font-size:0.68rem;
+    color:var(--brown);
+  }
+  .search-empty{
+    padding:6px 8px;
+    font-size:0.76rem;
+    color:var(--brown);
+    font-style:italic;
+  }
+
   /* ---------- Marqueurs commune : style "point discret" ---------- */
   .dot-icon-wrapper{background:transparent;border:none;}
   .dot-marker{
@@ -719,6 +778,9 @@
     var lat = pressoir.lat != null ? pressoir.lat : commune.lat;
     var lng = pressoir.lng != null ? pressoir.lng : commune.lng;
     var marker = L.marker([lat, lng], { icon: icon });
+    // Référence gardée pour la recherche : permet de retrouver ce marqueur
+    // précis dans clusterGroup afin d'y zoomer/spiderfier depuis un résultat.
+    marker._pressoirRef = pressoir;
     var courtierLines = '<p><strong>Courtier référent :</strong> ' + pressoir.courtier1 + '</p>';
     if(pressoir.courtier2){
       courtierLines += '<p><strong>Courtier secondaire (futur référent) :</strong> ' + pressoir.courtier2 + '</p>';
@@ -860,6 +922,144 @@
     }
   });
   new StyleFilterControl().addTo(map);
+
+  // =========================================================================
+  // Contrôle : recherche par nom de pressoir ou de commune (haut droite)
+  // =========================================================================
+  var SEARCH_RESULTS_LIMIT = 8;
+
+  // Normalisation insensible à la casse/accents pour comparer les saisies
+  // libres aux noms (ex. "epernay" doit trouver "Épernay").
+  function normalizeSearchText(str){
+    return str.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  // Recherche à la fois sur le nom de commune et sur le nom de chaque
+  // pressoir (toutes communes confondues, indépendamment du filtre courtier
+  // actif, pour que la recherche trouve toujours ce qu'on lui demande).
+  function searchCommunesEtPressoirs(query){
+    var q = normalizeSearchText(query.trim());
+    if(!q) return [];
+    var results = [];
+    communes.forEach(function(c){
+      if(normalizeSearchText(c.nom).indexOf(q) !== -1){
+        results.push({ type: 'commune', commune: c });
+      }
+      c.pressoirs.forEach(function(p){
+        if(normalizeSearchText(p.nom).indexOf(q) !== -1){
+          results.push({ type: 'pressoir', commune: c, pressoir: p });
+        }
+      });
+    });
+    return results.slice(0, SEARCH_RESULTS_LIMIT);
+  }
+
+  // Réinitialise le filtre courtier (UI + état) : utilisé quand un résultat
+  // de recherche est masqué par le filtre actif, pour garantir qu'on montre
+  // toujours ce qu'on a trouvé.
+  function resetCourtierFilterUI(){
+    selectedCourtiers.clear();
+    var allChip = document.querySelector('.chip-all');
+    var courtierChips = document.querySelectorAll('.chip:not(.chip-all)');
+    if(allChip) allChip.classList.add('active');
+    courtierChips.forEach(function(c){ c.classList.remove('active'); });
+    rebuildCommuneLayer();
+    rebuildClusterGroup();
+  }
+
+  function pressoirPasseFiltre(pressoir){
+    return selectedCourtiers.size === 0 ||
+      selectedCourtiers.has(pressoir.courtier1) ||
+      (pressoir.courtier2 && selectedCourtiers.has(pressoir.courtier2));
+  }
+
+  // Zoome sur un pressoir précis et ouvre sa popup, en dépliant (spiderfy)
+  // le cluster si nécessaire — zoomToShowLayer gère ça nativement, y
+  // compris quand plusieurs pressoirs partagent exactement la même position.
+  function revealPressoir(commune, pressoir){
+    if(!pressoirPasseFiltre(pressoir)){
+      resetCourtierFilterUI();
+    }
+    var lat = pressoir.lat != null ? pressoir.lat : commune.lat;
+    var lng = pressoir.lng != null ? pressoir.lng : commune.lng;
+    map.setView([lat, lng], ZOOM_THRESHOLD + 1.5, { animate: true });
+    map.once('moveend', function(){
+      var target = null;
+      clusterGroup.getLayers().forEach(function(m){
+        if(m._pressoirRef === pressoir) target = m;
+      });
+      if(target){
+        clusterGroup.zoomToShowLayer(target, function(){
+          target.openPopup();
+        });
+      }
+    });
+  }
+
+  var SearchControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      var container = L.DomUtil.create('div', 'search-panel');
+      container.innerHTML =
+        '<input type="text" class="search-input" placeholder="Rechercher un pressoir ou une commune…" />' +
+        '<div class="search-results"></div>';
+
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+
+      var input = container.querySelector('.search-input');
+      var resultsEl = container.querySelector('.search-results');
+      var currentResults = [];
+
+      function renderResults(){
+        if(currentResults.length === 0){
+          resultsEl.innerHTML = '<div class="search-empty">Aucun résultat</div>';
+        } else {
+          resultsEl.innerHTML = currentResults.map(function(r, i){
+            if(r.type === 'commune'){
+              return '<div class="search-result" data-index="' + i + '">' +
+                '<span class="search-result-title">' + r.commune.nom + '</span>' +
+                '<span class="search-result-sub">Commune · ' + r.commune.pressoirs.length + ' pressoir(s)</span>' +
+              '</div>';
+            }
+            return '<div class="search-result" data-index="' + i + '">' +
+              '<span class="search-result-title">' + r.pressoir.nom + '</span>' +
+              '<span class="search-result-sub">' + r.commune.nom + '</span>' +
+            '</div>';
+          }).join('');
+        }
+        resultsEl.classList.add('visible');
+
+        resultsEl.querySelectorAll('.search-result').forEach(function(el){
+          el.addEventListener('click', function(){
+            var r = currentResults[parseInt(el.getAttribute('data-index'), 10)];
+            if(r.type === 'commune'){
+              zoomToCommune(r.commune);
+            } else {
+              revealPressoir(r.commune, r.pressoir);
+            }
+            input.value = '';
+            resultsEl.classList.remove('visible');
+            resultsEl.innerHTML = '';
+          });
+        });
+      }
+
+      input.addEventListener('input', function(){
+        var q = input.value;
+        if(!q.trim()){
+          resultsEl.classList.remove('visible');
+          resultsEl.innerHTML = '';
+          return;
+        }
+        currentResults = searchCommunesEtPressoirs(q);
+        renderResults();
+      });
+
+      return container;
+    }
+  });
+  new SearchControl().addTo(map);
 
   // =========================================================================
   // Initialisation
