@@ -2448,20 +2448,11 @@
   // =========================================================================
   // Contrôle : sélecteur de style + filtre courtier (haut gauche)
   // =========================================================================
-  var StyleFilterControl = L.Control.extend({
+  // Fond de carte + style des communes (haut gauche)
+  var BasemapStyleControl = L.Control.extend({
     options: { position: 'topleft' },
     onAdd: function(){
       var container = L.DomUtil.create('div', 'control-panel');
-
-      var courtierChipsHtml = COURTIERS.map(function(k){
-        var bg = COURTIER_COLORS[k];
-        var fg = COURTIER_TEXT_COLORS[k];
-        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
-      }).join('');
-
-      var secteurChipsHtml = SECTEURS.map(function(s){
-        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
-      }).join('');
 
       container.innerHTML =
         '<div class="basemap-box">' +
@@ -2476,20 +2467,6 @@
           '<button class="style-btn" data-style="dot">Point discret</button>' +
           '<button class="style-btn active" data-style="pill">Pastille compacte</button>' +
           '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
-        '</div>' +
-        '<div class="filter-box">' +
-          '<div class="panel-title">Filtrer par secteur</div>' +
-          '<div class="chips">' +
-            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
-            secteurChipsHtml +
-          '</div>' +
-        '</div>' +
-        '<div class="filter-box">' +
-          '<div class="panel-title">Filtrer par courtier</div>' +
-          '<div class="chips">' +
-            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
-            courtierChipsHtml +
-          '</div>' +
         '</div>';
 
       L.DomEvent.disableClickPropagation(container);
@@ -2515,6 +2492,47 @@
           rebuildCommuneLayer();
         });
       });
+
+      return container;
+    }
+  });
+  new BasemapStyleControl().addTo(map);
+
+  // Filtres secteur + courtier (haut droite, au-dessus de la recherche —
+  // voir l'ordre d'ajout à la carte plus bas)
+  var FilterControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      var container = L.DomUtil.create('div', 'control-panel');
+
+      var courtierChipsHtml = COURTIERS.map(function(k){
+        var bg = COURTIER_COLORS[k];
+        var fg = COURTIER_TEXT_COLORS[k];
+        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
+      }).join('');
+
+      var secteurChipsHtml = SECTEURS.map(function(s){
+        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
+      }).join('');
+
+      container.innerHTML =
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par secteur</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
+            secteurChipsHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par courtier</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
+            courtierChipsHtml +
+          '</div>' +
+        '</div>';
+
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
 
       // Chips courtier : sélection multiple, "Tous" réinitialise. Le libellé
       // de chaque chip affiche le nombre de pressoirs où ce courtier est
@@ -2592,7 +2610,7 @@
       return container;
     }
   });
-  new StyleFilterControl().addTo(map);
+  new FilterControl().addTo(map);
 
   // =========================================================================
   // Contrôle : recherche par nom de pressoir ou de commune (haut droite)
