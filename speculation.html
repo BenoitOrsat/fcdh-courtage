@@ -774,6 +774,19 @@ function App() {
     setPdfUploading(p=>({...p,[row.id]:false}));
   };
 
+  const deletePdf = async (row) => {
+    if(!window.confirm('Supprimer la fiche technique ? Cette action est irréversible.'))return;
+    const token=gTokenRef.current;
+    if(token&&row.pdfId){
+      try{await fetch(`https://www.googleapis.com/drive/v3/files/${row.pdfId}`,{method:'DELETE',headers:{Authorization:`Bearer ${token}`}});}
+      catch(e){console.error('deletePdf:',e);}
+    }
+    const setter=tab==='bouteilles'?setBouteilles:setVinsClairs;
+    setter(prev=>prev.map(x=>x.id===row.id?{...x,pdfId:null}:x));
+    setModal(m=>m?{...m,entry:{...m.entry,pdfId:null}}:m);
+    setIsDirty(true);
+  };
+
   const matchesFor = (entry, dataOverride) => {
     const d = dataOverride || data;
     const opp = entry.besoin==="Vend"?"Recherche":"Vend";
@@ -1076,7 +1089,7 @@ function App() {
               </div>
               <div style={{display:"flex"}}>
                 <div style={{width:"28%",flexShrink:0,borderRight:`1px solid ${G100}`,padding:"16px 14px",background:G50,display:"flex",flexDirection:"column",gap:12,overflowY:"auto",maxHeight:"70vh"}}>
-                  {modal.entry.pdfId&&<div><div style={{fontSize:10,textTransform:"uppercase",letterSpacing:"0.07em",color:G400,marginBottom:4,fontWeight:600}}>Fiche technique</div><a href={`https://drive.google.com/file/d/${modal.entry.pdfId}/view`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:"#dcfce7",color:"#166534",borderRadius:5,padding:"3px 9px",fontSize:11,fontWeight:500,textDecoration:"none"}}>📄 Voir la fiche</a></div>}
+                  {modal.entry.pdfId&&<div><div style={{fontSize:10,textTransform:"uppercase",letterSpacing:"0.07em",color:G400,marginBottom:4,fontWeight:600}}>Fiche technique</div><div style={{display:"flex",alignItems:"center",gap:6}}><a href={`https://drive.google.com/file/d/${modal.entry.pdfId}/view`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,background:"#dcfce7",color:"#166534",borderRadius:5,padding:"3px 9px",fontSize:11,fontWeight:500,textDecoration:"none"}}>📄 Voir la fiche</a><button onClick={()=>deletePdf(modal.entry)} title="Supprimer la fiche technique" style={{background:"none",border:"1px solid #fca5a5",borderRadius:5,cursor:"pointer",color:"#dc2626",fontSize:13,padding:"2px 6px",lineHeight:1,fontWeight:700}}>✕</button></div></div>}
                   {[
                     {l:"Campagne",v:modal.entry.campagne},
                     {l:"Statut",v:modal.entry.statut},
