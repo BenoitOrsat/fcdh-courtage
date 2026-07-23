@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foncier / Droits / Locations — FCDH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    /* ── Header ── */
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); flex-shrink: 0; gap: 16px; }
+    .hdr-left { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .back-btn { color: #C9A84C; text-decoration: none; font-size: 12px; font-weight: 600; white-space: nowrap; opacity: .8; }
+    .back-btn:hover { opacity: 1; }
+    .hdr-title { font-size: 14px; font-weight: 800; color: #C9A84C; white-space: nowrap; }
+    .hdr-sub   { font-size: 10px; color: #e8c97a; opacity: .7; margin-top: 1px; }
+    .sync-pill { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.07); border-radius: 99px; padding: 4px 12px; font-size: 11px; color: #e8c97a; white-space: nowrap; flex-shrink: 0; cursor: pointer; border: none; font-family: inherit; }
+    .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
+    .sync-dot.ok    { background: #4ade80; }
+    .sync-dot.error { background: #f87171; }
+    .sync-dot.spin  { background: #fbbf24; animation: pulse .8s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── Tabs ── */
+    .tab-bar { background: #ffffff; border-bottom: 2px solid #dde1eb; padding: 0 20px; display: flex; flex-shrink: 0; }
+    .tab-btn { padding: 10px 22px; font-size: 13px; font-weight: 700; color: #6b7280; background: none; border: none; cursor: pointer; font-family: inherit; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s; white-space: nowrap; }
+    .tab-btn:hover { color: #0d1b3e; background: #f8f9fb; }
+    .tab-btn.active { color: #0d1b3e; border-bottom-color: #C9A84C; }
+
+    /* ── Toolbar ── */
+    .toolbar { background: white; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; position: relative; }
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: all .15s; font-family: inherit; white-space: nowrap; }
+    .btn-dark  { background: #0d1b3e; color: #C9A84C; }
+    .btn-dark:hover  { background: #1a2f5a; }
+    .btn-green { background: #15803d; color: white; }
+    .btn-green:hover { background: #166534; }
+    .btn-ghost { background: #f3f4f6; color: #374151; }
+    .btn-ghost:hover { background: #e5e7eb; }
+    .btn-red   { background: #fee2e2; color: #dc2626; }
+    .btn-red:hover { background: #fecaca; }
+    .btn-icon  { padding: 5px 8px; font-size: 13px; }
+    .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+    .toolbar-sep { width: 1px; height: 24px; background: #e5e7eb; flex-shrink: 0; }
+    .cache-badge { font-size: 10px; color: #f59e0b; font-weight: 600; padding: 3px 8px; background: #fef3c7; border-radius: 99px; }
+
+    /* ── Column panel ── */
+    .col-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: white; border: 1px solid #dde1eb; border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.12); padding: 12px; z-index: 100; min-width: 220px; }
+    .col-panel.open { display: block; }
+    .col-panel-title { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+    .col-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: #374151; cursor: pointer; user-select: none; }
+    .col-item input[type=checkbox] { accent-color: #C9A84C; width: 14px; height: 14px; cursor: pointer; }
+    .col-panel-footer { display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid #edf0f5; padding-top: 10px; }
+
+    /* ── Filters ── */
+    .filters { background: #f8f9fb; border-bottom: 1px solid #dde1eb; padding: 7px 20px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+    .f-group { display: flex; align-items: center; gap: 5px; }
+    .f-label { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .f-input { height: 28px; padding: 0 8px; border: 1px solid #dde1eb; border-radius: 6px; font-size: 12px; font-family: inherit; background: white; color: #0d1b3e; }
+    .f-input:focus { outline: none; border-color: #C9A84C; }
+    input.f-input { min-width: 200px; }
+    .f-count { font-size: 11px; color: #9ca3af; margin-left: auto; font-weight: 600; white-space: nowrap; }
+
+    /* ── Stats ── */
+    .stats-bar { background: #0d1b3e; padding: 5px 20px; display: flex; gap: 0; flex-shrink: 0; overflow-x: auto; }
+    .stat { display: flex; flex-direction: column; align-items: center; padding: 0 16px; border-right: 1px solid #1a2f5a; }
+    .stat:last-child { border-right: none; }
+    .stat-v { font-size: 15px; font-weight: 800; color: #C9A84C; line-height: 1; }
+    .stat-l { font-size: 9px; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-top: 1px; white-space: nowrap; }
+
+    /* ── Table ── */
+    .table-outer  { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    .table-scroll { overflow-x: auto; min-width: 0; }
+    table { border-collapse: separate; border-spacing: 0; font-size: 12px; width: 100%; }
+    thead th {
+      background: #0d1b3e; color: #C9A84C; font-size: 10px; font-weight: 700;
+      padding: 7px 10px; border-bottom: 2px solid #C9A84C; border-right: 1px solid #1a2f5a;
+      position: sticky; top: 0; z-index: 4; white-space: nowrap; text-align: left;
+      user-select: none;
+    }
+    thead th:last-child { border-right: none; }
+    tbody tr { background: white; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:hover td { background: #eff6ff !important; }
+    td {
+      padding: 6px 10px; border-bottom: 1px solid #edf0f5; border-right: 1px solid #edf0f5;
+      vertical-align: middle; color: #1f2937; white-space: nowrap;
+    }
+    td:last-child { border-right: none; }
+    td.td-comment { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+    td.td-nom     { font-weight: 700; color: #0d1b3e; }
+
+    /* Row actions */
+    .row-actions { display: flex; gap: 4px; }
+
+    /* Empty / setup states */
+    .center-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 24px; gap: 14px; }
+    .center-icon  { font-size: 56px; }
+    .center-title { font-size: 18px; font-weight: 800; color: #0d1b3e; }
+    .center-sub   { font-size: 13px; color: #6b7280; text-align: center; max-width: 400px; line-height: 1.6; }
+
+    /* ── Modals ── */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 50; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: white; border-radius: 16px; padding: 28px; width: 95%; max-width: 580px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+    .modal.wide { max-width: 780px; }
+    .modal-title { font-size: 16px; font-weight: 800; color: #0d1b3e; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .form-row   { margin-bottom: 14px; }
+    .form-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 5px; }
+    .form-input { width: 100%; padding: 9px 12px; border: 1px solid #dde1eb; border-radius: 8px; font-size: 13px; font-family: inherit; color: #0d1b3e; }
+    .form-input:focus { outline: none; border-color: #C9A84C; box-shadow: 0 0 0 2px rgba(201,168,76,.15); }
+    select.form-input { background: white; cursor: pointer; }
+    textarea.form-input { resize: vertical; min-height: 70px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
+
+    /* Settings steps */
+    .step { background: #f8f9fb; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+    .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background: #0d1b3e; color: #C9A84C; border-radius: 50%; font-size: 11px; font-weight: 700; margin-right: 8px; flex-shrink: 0; }
+    .step-text { font-size: 12px; color: #374151; line-height: 1.6; }
+    .code-wrap { position: relative; background: #0d1b3e; border-radius: 8px; padding: 14px; margin: 8px 0; }
+    .code-wrap pre { font-family: 'Courier New', monospace; font-size: 10.5px; color: #e2e8f0; white-space: pre; overflow-x: auto; line-height: 1.5; max-height: 260px; overflow-y: auto; }
+    .copy-code-btn { position: absolute; top: 8px; right: 8px; background: #C9A84C; color: #0d1b3e; border: none; border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .copy-code-btn:hover { background: #d4b05c; }
+    .url-row { display: flex; gap: 8px; }
+    .url-row .form-input { flex: 1; }
+    .test-result { font-size: 11px; margin-top: 6px; font-weight: 600; }
+    .test-ok    { color: #16a34a; }
+    .test-error { color: #dc2626; }
+
+    footer { text-align: center; padding: 8px; font-size: 10px; color: #8a94aa; background: white; border-top: 1px solid #edf0f5; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="hdr-left">
+    <a class="back-btn" href="index.html">← Tableau de bord</a>
+    <span style="color:#1a2f5a">|</span>
+    <div>
+      <div class="hdr-title">📜 Foncier / Droits / Locations</div>
+      <div class="hdr-sub">FCDH Courtiers Associés</div>
+    </div>
+  </div>
+  <button class="sync-pill" onclick="manualRefresh()" title="Actualiser">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncLabel">Non configuré</span>
+  </button>
+</header>
+
+<!-- ── Tabs ── -->
+<div class="tab-bar">
+  <button class="tab-btn" data-tab="foncier"   onclick="switchTab('foncier')">🏞️ Foncier</button>
+  <button class="tab-btn" data-tab="droits"    onclick="switchTab('droits')">📜 Droits</button>
+  <button class="tab-btn" data-tab="locations" onclick="switchTab('locations')">🔑 Locations</button>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="toolbar" id="toolbar">
+  <button class="btn btn-green" id="btnAdd" onclick="openAdd()" disabled>➕ Nouvelle ligne</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-ghost" id="btnCols" onclick="toggleColPanel()">Colonnes ▾</button>
+  <div class="toolbar-sep"></div>
+  <button class="btn btn-ghost" onclick="openModal('modalSettings')">⚙️ Configuration</button>
+  <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
+
+  <!-- Column visibility panel -->
+  <div class="col-panel" id="colPanel">
+    <div class="col-panel-title">Afficher / masquer</div>
+    <div id="colCheckboxes"></div>
+    <div class="col-panel-footer">
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onclick="resetColOrder()">Réinitialiser</button>
+      <button class="btn btn-dark"  style="font-size:11px;padding:4px 10px" onclick="toggleColPanel()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Filters ── -->
+<div class="filters" id="filtersBar" style="display:none">
+  <div class="f-group">
+    <span class="f-label">Recherche</span>
+    <input class="f-input" type="text" id="fSearch" placeholder="Nom, commune, commentaire…" oninput="applyFilters()">
+  </div>
+  <div class="f-group">
+    <span class="f-label">Courtier</span>
+    <select class="f-input" id="fCourtier" onchange="applyFilters()"><option value="">Tous</option></select>
+  </div>
+  <span class="f-count" id="fCount"></span>
+</div>
+
+<!-- ── Stats ── -->
+<div class="stats-bar" id="statsBar" style="display:none">
+  <div class="stat"><div class="stat-v" id="sTotal">0</div><div class="stat-l">Lignes</div></div>
+  <div id="statsCourtiers" style="display:contents"></div>
+</div>
+
+<!-- ── Table ── -->
+<div class="table-outer" id="tableOuter">
+  <div class="center-state" id="setupState">
+    <div class="center-icon">⚙️</div>
+    <div class="center-title">Configuration requise</div>
+    <div class="center-sub">Connectez cet outil à un Google Sheet pour commencer.</div>
+    <button class="btn btn-dark" style="margin-top:8px" onclick="openModal('modalSettings')">⚙️ Configurer maintenant</button>
+  </div>
+  <div class="center-state" id="emptyState" style="display:none">
+    <div class="center-icon">📜</div>
+    <div class="center-title">Aucune ligne</div>
+    <div class="center-sub">Cliquez sur "Nouvelle ligne" pour ajouter la première entrée de cet onglet.</div>
+  </div>
+  <div class="table-scroll" id="tableScroll" style="display:none">
+    <table id="mainTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Modal : Paramètres ── -->
+<div class="modal-bg" id="modalSettings">
+  <div class="modal wide">
+    <div class="modal-title">⚙️ Configuration Google Sheets</div>
+    <div class="step">
+      <span class="step-num">1</span>
+      <span class="step-text">Ouvrez votre Google Sheet <strong>Foncier Droits Locations</strong> dans <em>Mon Drive / SPECULATION en cours</em>. Il contient déjà 3 onglets : <strong>Foncier</strong>, <strong>Droits</strong>, <strong>Locations</strong>.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">2</span>
+      <span class="step-text">Dans le Sheet, ouvrez <strong>Extensions → Apps Script</strong>. Supprimez le code existant et collez celui-ci (il gère automatiquement les 3 onglets) :</span>
+      <div class="code-wrap">
+        <button class="copy-code-btn" onclick="copyScript()">Copier</button>
+        <pre id="scriptCode"></pre>
+      </div>
+    </div>
+    <div class="step">
+      <span class="step-num">3</span>
+      <span class="step-text">Cliquez <strong>Déployer → Nouveau déploiement</strong> · Type : <em>Application Web</em> · Exécuter en tant que : <em>Moi</em> · Accès : <em>Tout le monde</em>. Copiez l'URL générée.</span>
+    </div>
+    <div class="step">
+      <span class="step-num">4</span>
+      <span class="step-text">Collez l'URL ci-dessous et testez la connexion. La même URL sert pour les 3 onglets.</span>
+      <div style="margin-top:10px">
+        <div class="url-row">
+          <input class="form-input" type="url" id="scriptUrlInput" placeholder="https://script.google.com/macros/s/…/exec">
+          <button class="btn btn-ghost" onclick="testConnection()">Tester</button>
+        </div>
+        <div class="test-result" id="testResult"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalSettings')">Annuler</button>
+      <button class="btn btn-dark"  onclick="saveSettings()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Ajouter / Modifier ── -->
+<div class="modal-bg" id="modalForm">
+  <div class="modal">
+    <div class="modal-title" id="formTitle">➕ Nouvelle ligne</div>
+    <div id="formFields"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalForm')">Annuler</button>
+      <button class="btn btn-dark" id="formSubmitBtn" onclick="submitForm()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal : Confirmation suppression ── -->
+<div class="modal-bg" id="modalDelete">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">🗑️ Supprimer la ligne</div>
+    <p style="font-size:13px;color:#374151;line-height:1.6">Êtes-vous sûr de vouloir supprimer cette ligne ? Cette action est irréversible.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalDelete')">Annuler</button>
+      <button class="btn btn-red"   onclick="confirmDelete()">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const COURTIERS = ['EC','EH','MAA','JPNC','BO','ASM','EB'];
+
+const TABS = {
+  foncier:   { label: '🏞️ Foncier',   sheet: 'Foncier'   },
+  droits:    { label: '📜 Droits',     sheet: 'Droits'    },
+  locations: { label: '🔑 Locations',  sheet: 'Locations' }
+};
+
+const FIELD_META = {
+  'Date':                        { type:'text',    width:'92px'  },
+  'Courtier':                    { type:'select',  width:'72px',  options: COURTIERS },
+  'NOM':                         { type:'text',    width:'190px' },
+  'Acheteur':                    { type:'text',    width:'150px' },
+  'Vendeur':                     { type:'text',    width:'150px' },
+  'Commune concernée':           { type:'text',    width:'200px' },
+  'Commentaire':                 { type:'textarea',width:'240px' },
+  'Reclassement':                { type:'select',  width:'110px', options:['OUI','NON'] },
+  'Info transmise':              { type:'text',    width:'130px' },
+  'Info transmise à':            { type:'text',    width:'130px' },
+  'Surface terrain sans droits': { type:'text',    width:'160px' },
+  'Droits sans terrain':         { type:'text',    width:'150px' },
+  'Date fin de droit':           { type:'text',    width:'110px' },
+  'Prix':                        { type:'text',    width:'110px' },
+  'Cherche location de vignes':  { type:'text',    width:'170px' },
+  'Vignes à mettre en loc':      { type:'text',    width:'170px' },
+};
+const DEFAULT_META = { type:'text', width:'140px' };
+function metaFor(h) { return FIELD_META[h] || DEFAULT_META; }
+
+const URL_KEY    = 'fcdh_fdl_url';
+const ACTIVE_KEY = 'fcdh_fdl_active_tab';
+const REFRESH_MS = 20000;
+
+const APPS_SCRIPT = `function getSheet(name){
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let s = ss.getSheetByName(name);
+  if(!s) s = ss.insertSheet(name);
+  return s;
+}
+
+function read(s){
+  if(s.getLastRow() < 1) return {headers:[], rows:[]};
+  const v = s.getRange(1,1,s.getLastRow(),s.getLastColumn()).getValues();
+  const rows = v.slice(1)
+    .map((r,i) => ({idx:i, data:r.map(c => c instanceof Date ? c.toISOString() : c)}))
+    .filter(r => r.data.some(c => c !== ''));
+  return {headers:v[0], rows};
+}
+
+function doGet(e){
+  const name = (e && e.parameter && e.parameter.sheet) || 'Foncier';
+  return ContentService
+    .createTextOutput(JSON.stringify(read(getSheet(name))))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e){
+  const lk = LockService.getScriptLock();
+  lk.waitLock(15000);
+  try{
+    const p = JSON.parse(e.postData.contents);
+    const s = getSheet(p.sheet || 'Foncier');
+    const headers = s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
+    if(p.action === 'addRow'){
+      s.appendRow(headers.map(h => p.data[h] !== undefined ? p.data[h] : ''));
+    } else if(p.action === 'updateRow'){
+      s.getRange(p.rowIdx+2,1,1,headers.length)
+       .setValues([headers.map(h => p.data[h] !== undefined ? p.data[h] : '')]);
+    } else if(p.action === 'deleteRow'){
+      s.deleteRow(p.rowIdx+2);
+    }
+    return ContentService
+      .createTextOutput(JSON.stringify(read(s)))
+      .setMimeType(ContentService.MimeType.JSON);
+  } finally { lk.releaseLock(); }
+}`;
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let scriptUrl    = localStorage.getItem(URL_KEY) || '';
+let activeTab    = localStorage.getItem(ACTIVE_KEY) || 'foncier';
+if (!TABS[activeTab]) activeTab = 'foncier';
+
+let headers      = [];
+let rows         = [];
+let filteredIdxs = [];
+let refreshTimer = null;
+let pauseUntil   = 0;
+let editingIdx   = null;
+let deletingIdx  = null;
+
+const tabState = {};
+Object.keys(TABS).forEach(k => {
+  tabState[k] = {
+    headers: [], rows: [],
+    colOrder:  JSON.parse(localStorage.getItem('fcdh_fdl_order_'  + k) || 'null'),
+    colHidden: new Set(JSON.parse(localStorage.getItem('fcdh_fdl_hidden_' + k) || '[]'))
+  };
+});
+
+function cacheKey(tab) { return 'fcdh_fdl_cache_' + tab; }
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('scriptCode').textContent = APPS_SCRIPT;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+  populateCourtierFilter();
+
+  if (scriptUrl) {
+    document.getElementById('scriptUrlInput').value = scriptUrl;
+    loadData();
+    startRefresh();
+  } else {
+    setSyncLabel('Non configuré', '');
+  }
+
+  document.addEventListener('click', e => {
+    const panel = document.getElementById('colPanel');
+    const btn   = document.getElementById('btnCols');
+    if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) {
+      panel.classList.remove('open');
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════
+function switchTab(tab) {
+  if (tab === activeTab) return;
+
+  tabState[activeTab].headers = headers;
+  tabState[activeTab].rows    = rows;
+
+  activeTab = tab;
+  localStorage.setItem(ACTIVE_KEY, tab);
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+
+  document.getElementById('fSearch').value   = '';
+  document.getElementById('fCourtier').value = '';
+
+  headers      = tabState[activeTab].headers;
+  rows         = tabState[activeTab].rows;
+  filteredIdxs = [];
+
+  clearInterval(refreshTimer);
+
+  if (headers.length) {
+    showTable(rows.length > 0);
+    applyFilters();
+    renderStats();
+    document.getElementById('cacheBadge').style.display = 'none';
+  } else {
+    const cache = JSON.parse(localStorage.getItem(cacheKey(activeTab)) || '{}');
+    if (cache.headers && cache.rows) {
+      applyData(cache);
+      document.getElementById('cacheBadge').style.display = '';
+    } else if (scriptUrl) {
+      showTable(false);
+    }
+  }
+
+  if (scriptUrl) {
+    loadData(!headers.length);
+    startRefresh();
+  } else {
+    setSyncLabel('Non configuré', '');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════════════════════════
+async function apiFetch() {
+  const sheet = encodeURIComponent(TABS[activeTab].sheet);
+  const r = await fetch(scriptUrl + '?sheet=' + sheet + '&t=' + Date.now());
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPost(data) {
+  const r = await fetch(scriptUrl, {
+    method: 'POST',
+    body: JSON.stringify({ ...data, sheet: TABS[activeTab].sheet })
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LOAD / REFRESH
+// ═══════════════════════════════════════════════════════════════
+async function loadData(showSpinner = true) {
+  if (!scriptUrl) return;
+  const tab = activeTab; // onglet actif avant l'await
+  if (showSpinner) setSyncLabel('Synchronisation…', 'spin');
+  try {
+    const data = await apiFetch();
+    if (activeTab !== tab) return; // onglet changé pendant la requête
+    applyData(data);
+    localStorage.setItem(cacheKey(tab), JSON.stringify({ headers: data.headers, rows: data.rows, ts: Date.now() }));
+    document.getElementById('cacheBadge').style.display = 'none';
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    if (activeTab !== tab) return;
+    setSyncLabel('Erreur de connexion', 'error');
+    const cache = JSON.parse(localStorage.getItem(cacheKey(tab)) || '{}');
+    if (cache.headers && !headers.length) {
+      applyData(cache);
+      document.getElementById('cacheBadge').style.display = '';
+    }
+  }
+}
+
+function applyData(data) {
+  headers = data.headers || [];
+  rows    = data.rows    || [];
+  tabState[activeTab].headers = headers;
+  tabState[activeTab].rows    = rows;
+  refreshColOrder();
+
+  showTable(rows.length > 0);
+  document.getElementById('btnAdd').disabled = !headers.length;
+  if (headers.length) {
+    populateCourtierFilter();
+    applyFilters();
+    renderStats();
+  }
+}
+
+async function manualRefresh() {
+  if (!scriptUrl) { openModal('modalSettings'); return; }
+  await loadData(true);
+}
+
+function startRefresh() {
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (scriptUrl && Date.now() > pauseUntil) loadData(false);
+  }, REFRESH_MS);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DISPLAY STATES
+// ═══════════════════════════════════════════════════════════════
+function showTable(hasRows) {
+  document.getElementById('setupState').style.display  = 'none';
+  document.getElementById('emptyState').style.display  = hasRows ? 'none' : '';
+  document.getElementById('tableScroll').style.display = hasRows ? '' : 'none';
+  document.getElementById('filtersBar').style.display  = hasRows ? '' : 'none';
+  document.getElementById('statsBar').style.display    = hasRows ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FILTERS
+// ═══════════════════════════════════════════════════════════════
+function populateCourtierFilter() {
+  document.getElementById('fCourtier').innerHTML = '<option value="">Tous</option>' + COURTIERS.map(c => `<option>${c}</option>`).join('');
+}
+
+function applyFilters() {
+  const search   = document.getElementById('fSearch').value.toLowerCase().trim();
+  const courtier = document.getElementById('fCourtier').value;
+  const cIdx = headers.indexOf('Courtier');
+
+  filteredIdxs = rows.map((_, i) => i).filter(i => {
+    const d = rows[i].data;
+    if (search && !d.some(v => String(v || '').toLowerCase().includes(search))) return false;
+    if (courtier && cIdx >= 0 && String(d[cIdx] || '').trim() !== courtier) return false;
+    return true;
+  });
+
+  renderTable();
+  const total = rows.length, shown = filteredIdxs.length;
+  document.getElementById('fCount').textContent = shown === total
+    ? total + ' ligne' + (total > 1 ? 's' : '')
+    : shown + ' / ' + total + ' lignes';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  COLUMN PANEL
+// ═══════════════════════════════════════════════════════════════
+function refreshColOrder() {
+  const st = tabState[activeTab];
+  const saved = st.colOrder;
+  if (!saved) { st.colOrder = [...headers]; return; }
+  const merged = saved.filter(c => headers.includes(c));
+  headers.forEach(c => { if (!merged.includes(c)) merged.push(c); });
+  st.colOrder = merged;
+}
+
+function saveColState() {
+  const st = tabState[activeTab];
+  localStorage.setItem('fcdh_fdl_order_'  + activeTab, JSON.stringify(st.colOrder));
+  localStorage.setItem('fcdh_fdl_hidden_' + activeTab, JSON.stringify([...st.colHidden]));
+}
+
+function visibleCols() {
+  const st = tabState[activeTab];
+  return (st.colOrder || headers).filter(c => !st.colHidden.has(c));
+}
+
+function toggleColPanel() {
+  const panel = document.getElementById('colPanel');
+  if (!panel.classList.contains('open')) buildColPanel();
+  panel.classList.toggle('open');
+}
+
+function buildColPanel() {
+  const st = tabState[activeTab];
+  const order = st.colOrder || headers;
+  const html = order.map(col => `
+    <label class="col-item">
+      <input type="checkbox" ${st.colHidden.has(col) ? '' : 'checked'} onchange="toggleCol('${esc(col)}', this.checked)">
+      ${esc(col)}
+    </label>`).join('');
+  document.getElementById('colCheckboxes').innerHTML = html;
+}
+
+function toggleCol(col, visible) {
+  const st = tabState[activeTab];
+  if (visible) st.colHidden.delete(col);
+  else         st.colHidden.add(col);
+  saveColState();
+  if (rows.length) renderTable();
+}
+
+function resetColOrder() {
+  const st = tabState[activeTab];
+  st.colOrder  = [...headers];
+  st.colHidden = new Set();
+  saveColState();
+  buildColPanel();
+  if (rows.length) renderTable();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════════════════
+function renderTable() {
+  renderHead();
+  renderBody();
+}
+
+function renderHead() {
+  const cols = visibleCols();
+  const ths = cols.map(col => `<th style="min-width:${metaFor(col).width}">${esc(col)}</th>`);
+  ths.push('<th style="min-width:80px;text-align:center">Actions</th>');
+  document.getElementById('tableHead').innerHTML = '<tr>' + ths.join('') + '</tr>';
+}
+
+function renderBody() {
+  const cols = visibleCols();
+  let html = '';
+  for (const i of filteredIdxs) {
+    const d = rows[i].data;
+    const tds = cols.map(col => {
+      const idx = headers.indexOf(col);
+      const val = d[idx];
+      const meta = metaFor(col);
+      if (meta.type === 'textarea') return `<td class="td-comment" title="${esc(val)}">${esc(val)}</td>`;
+      if (col === 'NOM')            return `<td class="td-nom">${esc(val)}</td>`;
+      return `<td>${esc(val)}</td>`;
+    });
+    tds.push(`<td>
+      <div class="row-actions">
+        <button class="btn btn-ghost btn-icon" title="Modifier"  onclick="openEdit(${i})">✏️</button>
+        <button class="btn btn-red   btn-icon" title="Supprimer" onclick="openDeleteConfirm(${i})">🗑️</button>
+      </div>
+    </td>`);
+    html += `<tr data-i="${i}">${tds.join('')}</tr>`;
+  }
+  document.getElementById('tableBody').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════════════
+function renderStats() {
+  const cIdx = headers.indexOf('Courtier');
+  document.getElementById('sTotal').textContent = rows.length;
+  document.getElementById('statsCourtiers').innerHTML = COURTIERS.map(c => {
+    const n = cIdx >= 0 ? rows.filter(r => String(r.data[cIdx] || '').trim() === c).length : 0;
+    return `<div class="stat"><div class="stat-v">${n}</div><div class="stat-l">${c}</div></div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FORM — ADD / EDIT
+// ═══════════════════════════════════════════════════════════════
+function fieldId(h) { return 'f_' + h.replace(/[^a-zA-Z0-9]+/g, '_'); }
+
+function buildFormFields() {
+  const html = headers.map(h => {
+    const m  = metaFor(h);
+    const id = fieldId(h);
+    if (m.type === 'select') {
+      return `<div class="form-row"><label class="form-label">${esc(h)}</label>
+        <select class="form-input" id="${id}"><option value="">—</option>${m.options.map(o => `<option>${esc(o)}</option>`).join('')}</select></div>`;
+    }
+    if (m.type === 'textarea') {
+      return `<div class="form-row"><label class="form-label">${esc(h)}</label><textarea class="form-input" id="${id}"></textarea></div>`;
+    }
+    return `<div class="form-row"><label class="form-label">${esc(h)}</label><input class="form-input" type="text" id="${id}"></div>`;
+  }).join('');
+  document.getElementById('formFields').innerHTML = html;
+}
+
+function clearForm() {
+  headers.forEach(h => {
+    const el = document.getElementById(fieldId(h));
+    if (el) el.value = '';
+  });
+}
+
+function openAdd() {
+  editingIdx = null;
+  document.getElementById('formTitle').textContent     = '➕ Nouvelle ligne — ' + TABS[activeTab].sheet;
+  document.getElementById('formSubmitBtn').textContent = 'Ajouter';
+  buildFormFields();
+  openModal('modalForm');
+}
+
+function openEdit(i) {
+  editingIdx = i;
+  document.getElementById('formTitle').textContent     = '✏️ Modifier — ' + TABS[activeTab].sheet;
+  document.getElementById('formSubmitBtn').textContent = 'Enregistrer';
+  buildFormFields();
+  const d = rows[i].data;
+  headers.forEach((h, idx) => {
+    const el = document.getElementById(fieldId(h));
+    if (el) el.value = d[idx] !== null && d[idx] !== undefined ? d[idx] : '';
+  });
+  openModal('modalForm');
+}
+
+async function submitForm() {
+  const nomIdx = headers.indexOf('NOM');
+  const data = {};
+  headers.forEach(h => { data[h] = (document.getElementById(fieldId(h)).value || '').trim(); });
+  if (nomIdx >= 0 && !data['NOM']) { alert('Veuillez saisir un nom.'); return; }
+
+  try {
+    closeModal('modalForm');
+    pauseUntil = Date.now() + 4000;
+    setSyncLabel('Sauvegarde…', 'spin');
+    const tab = activeTab;
+    const result = editingIdx === null
+      ? await apiPost({ action: 'addRow', data })
+      : await apiPost({ action: 'updateRow', rowIdx: rows[editingIdx].idx, data });
+    if (activeTab !== tab) return;
+    applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur', 'error');
+    alert('Erreur : ' + err.message);
+    await loadData(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DELETE
+// ═══════════════════════════════════════════════════════════════
+function openDeleteConfirm(i) {
+  deletingIdx = i;
+  openModal('modalDelete');
+}
+
+async function confirmDelete() {
+  if (deletingIdx === null) return;
+  const rowIdx = rows[deletingIdx].idx;
+  const tab = activeTab;
+  closeModal('modalDelete');
+  try {
+    pauseUntil = Date.now() + 4000;
+    setSyncLabel('Suppression…', 'spin');
+    const result = await apiPost({ action: 'deleteRow', rowIdx });
+    if (activeTab !== tab) return;
+    applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur', 'error');
+    alert('Erreur : ' + err.message);
+    await loadData(false);
+  }
+  deletingIdx = null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════════
+async function testConnection() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  const el  = document.getElementById('testResult');
+  if (!url) { el.textContent = '⚠️ Saisissez une URL.'; el.className = 'test-result test-error'; return; }
+  el.textContent = '⏳ Test en cours…'; el.className = 'test-result';
+  try {
+    const sheet = encodeURIComponent(TABS[activeTab].sheet);
+    const r = await fetch(url + '?sheet=' + sheet + '&t=' + Date.now());
+    const d = await r.json();
+    if (d.headers !== undefined) {
+      el.textContent = '✅ Connexion réussie — ' + (d.rows?.length || 0) + ' ligne(s) dans l\'onglet ' + TABS[activeTab].sheet + '.';
+      el.className = 'test-result test-ok';
+    } else { throw new Error('Format inattendu'); }
+  } catch (e) {
+    el.textContent = '❌ Échec : ' + e.message;
+    el.className = 'test-result test-error';
+  }
+}
+
+function saveSettings() {
+  const url = document.getElementById('scriptUrlInput').value.trim();
+  if (!url) { alert('Saisissez l\'URL du script.'); return; }
+  scriptUrl = url;
+  localStorage.setItem(URL_KEY, url);
+  closeModal('modalSettings');
+  document.getElementById('setupState').style.display = 'none';
+  loadData(true);
+  startRefresh();
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(APPS_SCRIPT).then(() => {
+    const btn = document.querySelector('.copy-code-btn');
+    btn.textContent = '✓ Copié !';
+    setTimeout(() => btn.textContent = 'Copier', 2000);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════
+function esc(s)      { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function nowStr()    { return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+
+function setSyncLabel(txt, state) {
+  document.getElementById('syncLabel').textContent = txt;
+  document.getElementById('syncDot').className = 'sync-dot' + (state ? ' ' + state : '');
+}
+
+// ── Modals
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-bg')) closeModal(e.target.id);
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
+});
+</script>
+</body>
+</html>
