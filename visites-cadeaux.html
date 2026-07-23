@@ -418,11 +418,7 @@ function doPost(e){
       if(c>0)s.deleteColumn(c);
     }
     else if(p.action==='resetData'){
-      const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
-      if(s.getLastRow()>1){
-        const nonFixed=h.reduce((acc,col,i)=>{if(!FIXED.includes(col))acc.push(i+1);return acc;},[]);
-        if(nonFixed.length)nonFixed.forEach(c=>{s.getRange(2,c,s.getLastRow()-1,1).setValue(0);});
-      }
+      if(s.getLastRow()>1) s.deleteRows(2,s.getLastRow()-1);
     }
     else if(p.action==='importData'){
       const ex=read(s),exH=ex.headers;
@@ -964,7 +960,7 @@ async function handleRAZ(e) {
     return;
   }
   const tabLabel = TABS[activeTab].label;
-  if (!confirm(`⚠️ REMISE À ZÉRO — ${tabLabel}\n\nTous les compteurs de visites et de cadeaux seront remis à 0.\nLa liste des pressoirs est conservée.\n\nCette action est irréversible. Continuer ?`)) return;
+  if (!confirm(`⚠️ REMISE À ZÉRO — ${tabLabel}\n\nToutes les lignes seront supprimées (pressoirs, compteurs, cadeaux).\nSeuls les en-têtes de colonnes sont conservés.\n\nCette action est irréversible. Continuer ?`)) return;
 
   try {
     const tab = activeTab;
