@@ -203,6 +203,10 @@
   <div class="toolbar-sep"></div>
 
   <button class="btn btn-ghost" onclick="openModal('modalSettings')">⚙️ Configuration</button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="btn btn-red" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Ctrl + Alt + Clic pour remettre tous les compteurs à zéro">⚠️ RAZ</button>
   <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
 </div>
 
@@ -412,6 +416,9 @@ function doPost(e){
       const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
       const c=h.indexOf(p.name)+1;
       if(c>0)s.deleteColumn(c);
+    }
+    else if(p.action==='resetData'){
+      if(s.getLastRow()>1) s.deleteRows(2,s.getLastRow()-1);
     }
     else if(p.action==='importData'){
       const ex=read(s),exH=ex.headers;
@@ -626,6 +633,7 @@ function applyData(data) {
     document.getElementById('statsBar').style.display   = rows.length ? '' : 'none';
     document.getElementById('btnAddRow').disabled = false;
     document.getElementById('btnAddCol').disabled = false;
+    document.getElementById('btnRAZ').disabled    = false;
     populateFilterOptions();
     applyFilters();
   }
@@ -940,6 +948,30 @@ async function removeColumn(name) {
   } catch (err) {
     if (activeTab !== tab) return;
     setSyncLabel('⚠️ Script à mettre à jour', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RAZ — REMISE À ZÉRO (Ctrl + Alt + Clic obligatoire)
+// ═══════════════════════════════════════════════════════════════
+async function handleRAZ(e) {
+  if (!e.ctrlKey || !e.altKey) {
+    alert('Pour activer la remise à zéro, maintenez Ctrl + Alt en cliquant sur le bouton RAZ.');
+    return;
+  }
+  const tabLabel = TABS[activeTab].label;
+  if (!confirm(`⚠️ REMISE À ZÉRO — ${tabLabel}\n\nToutes les lignes seront supprimées (pressoirs, compteurs, cadeaux).\nSeuls les en-têtes de colonnes sont conservés.\n\nCette action est irréversible. Continuer ?`)) return;
+
+  try {
+    const tab = activeTab;
+    setSyncLabel('Remise à zéro…', 'spin');
+    const result = await apiPost({ action: 'resetData' });
+    if (activeTab !== tab) return;
+    if (result.headers && result.rows) applyData(result);
+    setSyncLabel('Remis à zéro · ' + nowStr(), 'ok');
+  } catch (err) {
+    setSyncLabel('Erreur lors de la RAZ', 'error');
+    alert('Erreur : ' + err.message);
   }
 }
 
