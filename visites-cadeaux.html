@@ -364,8 +364,8 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════════
-const FIXED  = ['Secteur', 'Commune', 'Pressoir', 'Courtier'];
-const VISITS = ['EC', 'MAA', 'EH', 'JPNC', 'ASM', 'EB', 'BO'];
+const FIXED         = ['Secteur', 'Commune', 'Pressoir', 'Courtier'];
+const DEFAULT_VISITS = ['EC', 'MAA', 'EH', 'JPNC', 'ASM', 'EB', 'BO']; // liste de secours si pas encore importé
 const URL_KEY    = 'fcdh_script_url';
 const REFRESH_MS = 15000;
 
@@ -421,6 +421,7 @@ function doPost(e){
       if(s.getLastRow()>1) s.deleteRows(2,s.getLastRow()-1);
     }
     else if(p.action==='importData'){
+      const vCols=p.visitCols&&p.visitCols.length?p.visitCols:VISITS;
       const ex=read(s),exH=ex.headers;
       const map={};
       ex.rows.forEach(r=>{
@@ -428,11 +429,11 @@ function doPost(e){
         if(!k)return;map[k]={};
         exH.forEach((h,i)=>{if(!FIXED.includes(h))map[k][h]=Number(r[i])||0;});
       });
-      const custom=exH.filter(h=>!FIXED.includes(h)&&!VISITS.includes(h));
-      const nH=[...FIXED,...VISITS,...custom];
+      const custom=exH.filter(h=>!FIXED.includes(h)&&!vCols.includes(h));
+      const nH=[...FIXED,...vCols,...custom];
       const nR=p.rows.map(r=>{
         const k=String(r.pressoir||'').trim().toLowerCase(),ex2=map[k]||{};
-        return[r.secteur,r.commune,r.pressoir,r.courtier,...VISITS.map(c=>ex2[c]||0),...custom.map(c=>ex2[c]||0)];
+        return[r.secteur,r.commune,r.pressoir,r.courtier,...vCols.map(c=>ex2[c]||0),...custom.map(c=>ex2[c]||0)];
       });
       s.clearContents();
       s.getRange(1,1,1+nR.length,nH.length).setValues([nH,...nR]);
@@ -455,21 +456,27 @@ let refreshTimer = null;
 let pauseUntil   = 0;
 let fromCache    = false;
 
-// Per-tab state: headers/rows are synced from globals; deletedCols is persistent
+// Per-tab state: headers/rows are synced from globals; deletedCols + visits sont persistants
 const tabState = {
   vendanges: {
     headers: [], rows: [],
-    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_vendanges') || '[]'))
+    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_vendanges') || '[]')),
+    visits: JSON.parse(localStorage.getItem('fcdh_visits_vendanges') || 'null') || DEFAULT_VISITS
   },
   voeux: {
     headers: [], rows: [],
-    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_voeux') || '[]'))
+    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_voeux') || '[]')),
+    visits: JSON.parse(localStorage.getItem('fcdh_visits_voeux') || 'null') || DEFAULT_VISITS
   }
 };
 
 // Per-tab localStorage key helpers
 function cacheKey()   { return 'fcdh_cache_'   + activeTab; }
 function deletedKey() { return 'fcdh_deleted_' + activeTab; }
+function visitsKey()  { return 'fcdh_visits_'  + activeTab; }
+
+// Colonnes de visites de l'onglet actif (définies à l'import Excel)
+function visitCols()  { return tabState[activeTab].visits; }
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
@@ -694,7 +701,8 @@ function renderTable() {
 }
 
 function renderHead(gc) {
-  const visitSpan = VISITS.length;
+  const vc = visitCols();
+  const visitSpan = vc.length;
   const giftSpan  = gc.length;
   document.getElementById('tableHead').innerHTML = `
     <tr class="g-row">
@@ -708,7 +716,7 @@ function renderHead(gc) {
       <th class="s2" style="min-width:120px;text-align:left">Commune</th>
       <th class="s3" style="min-width:200px;text-align:left">Pressoir</th>
       <th class="s4" style="min-width:70px">Crt. Réf.</th>
-      ${VISITS.map(v => `<th style="min-width:82px;border-left:${v==='EC'?'2px solid #C9A84C88':'1px solid #1a2f5a'}">${v}</th>`).join('')}
+      ${vc.map((v, i) => `<th style="min-width:82px;border-left:${i===0?'2px solid #C9A84C88':'1px solid #1a2f5a'}">${v}</th>`).join('')}
       <th style="min-width:50px;border-left:1px solid #1a2f5a;color:#6ee7b7">TOTAL</th>
       ${gc.map(g => `
         <th style="min-width:90px;border-left:${g===gc[0]?'2px solid #C9A84C':'1px solid #1a2f5a'}">
@@ -722,13 +730,14 @@ function renderBody(gc) {
   let html = '';
   for (const i of filteredRows) {
     const r = rows[i];
-    const total = VISITS.reduce((s, v) => s + (Number(r[ci(v)]) || 0), 0);
+    const vc = visitCols();
+    const total = vc.reduce((s, v) => s + (Number(r[ci(v)]) || 0), 0);
     html += `<tr data-idx="${i}">
       <td class="s1">${esc(r[sIdx])}</td>
       <td class="s2 text-left">${esc(r[coIdx])}</td>
       <td class="s3 text-left pressoir-cell" title="${esc(r[prIdx])}">${esc(r[prIdx])}</td>
       <td class="s4">${esc(r[crIdx])}</td>
-      ${VISITS.map(v => counterCell(i, v, Number(r[ci(v)])||0)).join('')}
+      ${vc.map(v => counterCell(i, v, Number(r[ci(v)])||0)).join('')}
       <td class="total-td">${total || ''}</td>
       ${gc.map(g => counterCell(i, g, Number(r[ci(g)])||0)).join('')}
     </tr>`;
@@ -792,11 +801,12 @@ async function increment(rowIdx, col, delta) {
 // ═══════════════════════════════════════════════════════════════
 function renderStats() {
   const gc = giftCols();
-  const total = rows.reduce((s, r) => s + VISITS.reduce((a, v) => a + (Number(r[ci(v)]) || 0), 0), 0);
+  const vc = visitCols();
+  const total = rows.reduce((s, r) => s + vc.reduce((a, v) => a + (Number(r[ci(v)]) || 0), 0), 0);
   document.getElementById('sPressoirs').textContent = rows.length;
   document.getElementById('sTotal').textContent     = total;
 
-  document.getElementById('statsVisits').innerHTML = VISITS.map(v => {
+  document.getElementById('statsVisits').innerHTML = vc.map(v => {
     const n = rows.reduce((s, r) => s + (Number(r[ci(v)]) || 0), 0);
     return `<div class="stat"><div class="stat-v">${n}</div><div class="stat-l">${v}</div></div>`;
   }).join('');
@@ -824,6 +834,11 @@ function importXlsx(file) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
+    // Ligne d'en-têtes Excel : row index 2 (juste avant les données qui démarrent à index 3)
+    const headerRow = (raw[2] || []).map(h => (h !== null && h !== undefined) ? String(h).trim() : '');
+    // Colonnes de visites = tout ce qui suit les 4 colonnes fixes (index 4+), non vides
+    const detectedVisits = headerRow.slice(4).filter(h => h !== '');
+
     const validSectors = new Set(['A','B','C','D','E','F','G','H','I','M','S','1']);
     const imported = [];
     for (let i = 3; i < raw.length; i++) {
@@ -839,13 +854,18 @@ function importXlsx(file) {
     }
 
     if (!imported.length) { alert('Aucune ligne valide trouvée dans le fichier.'); return; }
+    const effectiveVisits = detectedVisits.length > 0 ? detectedVisits : DEFAULT_VISITS;
     const tabLabel = TABS[activeTab].label;
-    const ok = confirm(`${imported.length} pressoirs trouvés.\nImport vers : ${tabLabel}\nLes compteurs existants seront conservés pour les pressoirs connus.\n\nContinuer ?`);
+    const ok = confirm(`${imported.length} pressoirs trouvés.\nImport vers : ${tabLabel}\nColonnes visites détectées : ${effectiveVisits.join(', ')}\nLes compteurs existants seront conservés pour les pressoirs connus.\n\nContinuer ?`);
     if (!ok) return;
+
+    // Mémoriser les colonnes de visites pour cet onglet
+    tabState[activeTab].visits = effectiveVisits;
+    localStorage.setItem(visitsKey(), JSON.stringify(effectiveVisits));
 
     try {
       setSyncLabel('Import en cours…', 'spin');
-      const result = await apiPost({ action: 'importData', rows: imported });
+      const result = await apiPost({ action: 'importData', rows: imported, visitCols: effectiveVisits });
       if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
       applyData({ headers, rows });
       setSyncLabel('Importé · ' + nowStr(), 'ok');
@@ -1028,7 +1048,7 @@ function copyScript() {
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════
 function ci(col)     { return headers.indexOf(col); }
-function giftCols()  { return headers.filter(h => !FIXED.includes(h) && !VISITS.includes(h)); }
+function giftCols()  { return headers.filter(h => !FIXED.includes(h) && !visitCols().includes(h)); }
 function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function nowStr()    { return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
 
