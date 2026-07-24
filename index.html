@@ -92,7 +92,7 @@
         <div class="desc">Demandes acheteurs et vendeurs de raisins — suivi des quantités, prix et statuts</div>
         <div class="badge">Accéder →</div>
       </a>
-      <a class="card" href="pressoir.html">
+      <a class="card" href="pressoir.html" data-acces="b.orsat">
         <div class="icon">🗺️</div>
         <div class="name">Pressoir</div>
         <div class="desc">Carte interactive des centres de pressurage en Champagne</div>
@@ -127,11 +127,22 @@
       // Ajouter les autres utilisateurs ici
     ];
 
+    function applyPermissions(user) {
+      document.querySelectorAll('.card[data-acces]').forEach(card => {
+        const allowed = card.dataset.acces.split(',').map(s => s.trim());
+        if (!allowed.includes(user)) {
+          card.classList.add('soon');
+          card.removeAttribute('href');
+        }
+      });
+    }
+
     function checkAuth() {
       const user = sessionStorage.getItem('fcdh_user');
       if (user) {
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('header-username').textContent = user;
+        applyPermissions(user);
       }
     }
 
@@ -153,6 +164,7 @@
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('header-username').textContent = login;
         document.getElementById('login-error').textContent = '';
+        applyPermissions(login);
       } else {
         document.getElementById('login-error').textContent = 'Identifiant ou mot de passe incorrect.';
         document.getElementById('inp-pwd').value = '';
