@@ -206,7 +206,7 @@
 
   <div class="toolbar-sep"></div>
 
-  <button class="btn btn-red" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Ctrl + Alt + Clic pour remettre tous les compteurs à zéro">⚠️ RAZ</button>
+  <button class="btn btn-red" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Remettre à zéro toutes les lignes de cet onglet">⚠️ RAZ</button>
   <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
 </div>
 
@@ -975,10 +975,6 @@ async function removeColumn(name) {
 //  RAZ — REMISE À ZÉRO (Ctrl + Alt + Clic obligatoire)
 // ═══════════════════════════════════════════════════════════════
 async function handleRAZ(e) {
-  if (!e.ctrlKey || !e.altKey) {
-    alert('Pour activer la remise à zéro, maintenez Ctrl + Alt en cliquant sur le bouton RAZ.');
-    return;
-  }
   const tabLabel = TABS[activeTab].label;
   if (!confirm(`⚠️ REMISE À ZÉRO — ${tabLabel}\n\nToutes les lignes seront supprimées (pressoirs, compteurs, cadeaux).\nSeuls les en-têtes de colonnes sont conservés.\n\nCette action est irréversible. Continuer ?`)) return;
 
