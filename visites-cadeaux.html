@@ -206,7 +206,7 @@
 
   <div class="toolbar-sep"></div>
 
-  <button class="btn btn-red" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Ctrl + Alt + Clic pour remettre tous les compteurs à zéro">⚠️ RAZ</button>
+  <button class="btn btn-red" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Remettre à zéro toutes les lignes de cet onglet">⚠️ RAZ</button>
   <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
 </div>
 
@@ -364,8 +364,8 @@
 // ═══════════════════════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════════════════════
-const FIXED  = ['Secteur', 'Commune', 'Pressoir', 'Courtier'];
-const VISITS = ['EC', 'MAA', 'EH', 'JPNC', 'ASM', 'EB', 'BO'];
+const FIXED         = ['Secteur', 'Commune', 'Pressoir', 'Courtier'];
+const DEFAULT_VISITS = ['EC', 'MAA', 'EH', 'JPNC', 'ASM', 'EB', 'BO']; // liste de secours si pas encore importé
 const URL_KEY    = 'fcdh_script_url';
 const REFRESH_MS = 15000;
 
@@ -406,7 +406,8 @@ function doPost(e){
     }
     else if(p.action==='addRow'){
       const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
-      s.appendRow(h.map(x=>FIXED.includes(x)?(p.data[x]||''):0));
+      const vCols=p.visitCols||VISITS;
+      s.appendRow(h.map(x=>FIXED.includes(x)?(p.data[x]||''):(vCols.includes(x)?0:'')));
     }
     else if(p.action==='addColumn'){
       const c=s.getLastColumn()+1;s.getRange(1,c).setValue(p.name);
@@ -421,18 +422,25 @@ function doPost(e){
       if(s.getLastRow()>1) s.deleteRows(2,s.getLastRow()-1);
     }
     else if(p.action==='importData'){
+      const vCols=p.visitCols&&p.visitCols.length?p.visitCols:VISITS;
+      const pCols=p.plainCols||[];
       const ex=read(s),exH=ex.headers;
       const map={};
       ex.rows.forEach(r=>{
         const k=String(r[exH.indexOf('Pressoir')]||'').trim().toLowerCase();
         if(!k)return;map[k]={};
-        exH.forEach((h,i)=>{if(!FIXED.includes(h))map[k][h]=Number(r[i])||0;});
+        exH.forEach((h,i)=>{if(!FIXED.includes(h))map[k][h]=r[i];});
       });
-      const custom=exH.filter(h=>!FIXED.includes(h)&&!VISITS.includes(h));
-      const nH=[...FIXED,...VISITS,...custom];
+      const custom=exH.filter(h=>!FIXED.includes(h)&&!vCols.includes(h)&&!pCols.includes(h));
+      const nH=[...FIXED,...vCols,...pCols,...custom];
       const nR=p.rows.map(r=>{
         const k=String(r.pressoir||'').trim().toLowerCase(),ex2=map[k]||{};
-        return[r.secteur,r.commune,r.pressoir,r.courtier,...VISITS.map(c=>ex2[c]||0),...custom.map(c=>ex2[c]||0)];
+        return[
+          r.secteur,r.commune,r.pressoir,r.courtier,
+          ...vCols.map(c=>Number(ex2[c])||0),
+          ...pCols.map(c=>r.plain&&r.plain[c]!=null?r.plain[c]:(ex2[c]!=null?String(ex2[c]):'') ),
+          ...custom.map(c=>Number(ex2[c])||0)
+        ];
       });
       s.clearContents();
       s.getRange(1,1,1+nR.length,nH.length).setValues([nH,...nR]);
@@ -455,21 +463,31 @@ let refreshTimer = null;
 let pauseUntil   = 0;
 let fromCache    = false;
 
-// Per-tab state: headers/rows are synced from globals; deletedCols is persistent
+// Per-tab state: headers/rows are synced from globals; deletedCols + visits sont persistants
 const tabState = {
   vendanges: {
     headers: [], rows: [],
-    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_vendanges') || '[]'))
+    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_vendanges') || '[]')),
+    visits: JSON.parse(localStorage.getItem('fcdh_visits_vendanges') || 'null') || DEFAULT_VISITS,
+    plain:  JSON.parse(localStorage.getItem('fcdh_plain_vendanges')  || '[]')
   },
   voeux: {
     headers: [], rows: [],
-    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_voeux') || '[]'))
+    deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_voeux') || '[]')),
+    visits: JSON.parse(localStorage.getItem('fcdh_visits_voeux') || 'null') || DEFAULT_VISITS,
+    plain:  JSON.parse(localStorage.getItem('fcdh_plain_voeux')  || '[]')
   }
 };
 
 // Per-tab localStorage key helpers
 function cacheKey()   { return 'fcdh_cache_'   + activeTab; }
 function deletedKey() { return 'fcdh_deleted_' + activeTab; }
+function visitsKey()  { return 'fcdh_visits_'  + activeTab; }
+function plainsKey()  { return 'fcdh_plain_'   + activeTab; }
+
+// Colonnes de visites (compteurs) et colonnes texte brut de l'onglet actif
+function visitCols()  { return tabState[activeTab].visits; }
+function plainCols()  { return tabState[activeTab].plain  || []; }
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
@@ -689,27 +707,32 @@ function applyFilters() {
 function renderTable() {
   if (!rows.length) return;
   const gc = giftCols();
-  renderHead(gc);
-  renderBody(gc);
+  const pc = plainCols();
+  renderHead(gc, pc);
+  renderBody(gc, pc);
 }
 
-function renderHead(gc) {
-  const visitSpan = VISITS.length;
+function renderHead(gc, pc) {
+  const vc = visitCols();
+  const visitSpan = vc.length;
+  const plainSpan = pc.length;
   const giftSpan  = gc.length;
   document.getElementById('tableHead').innerHTML = `
     <tr class="g-row">
       <th colspan="4" style="position:sticky;left:0;z-index:7;text-align:left;padding-left:10px;background:#1a2f5a">Localisation</th>
       <th colspan="${visitSpan}" style="border-left:2px solid #C9A84C88">Visites par courtier</th>
       <th style="border-left:1px solid #0d1b3e">Total</th>
-      ${giftSpan ? `<th colspan="${giftSpan}" style="border-left:2px solid #C9A84C">Cadeaux</th>` : ''}
+      ${plainSpan ? `<th colspan="${plainSpan}" style="border-left:2px solid #6b728088">Infos Excel</th>` : ''}
+      ${giftSpan  ? `<th colspan="${giftSpan}"  style="border-left:2px solid #C9A84C">Cadeaux</th>` : ''}
     </tr>
     <tr class="h-row">
       <th class="s1" style="min-width:48px">Sec.</th>
       <th class="s2" style="min-width:120px;text-align:left">Commune</th>
       <th class="s3" style="min-width:200px;text-align:left">Pressoir</th>
       <th class="s4" style="min-width:70px">Crt. Réf.</th>
-      ${VISITS.map(v => `<th style="min-width:82px;border-left:${v==='EC'?'2px solid #C9A84C88':'1px solid #1a2f5a'}">${v}</th>`).join('')}
+      ${vc.map((v, i) => `<th style="min-width:82px;border-left:${i===0?'2px solid #C9A84C88':'1px solid #1a2f5a'}">${v}</th>`).join('')}
       <th style="min-width:50px;border-left:1px solid #1a2f5a;color:#6ee7b7">TOTAL</th>
+      ${pc.map((p, i) => `<th style="min-width:110px;text-align:left;border-left:${i===0?'2px solid #6b728088':'1px solid #1a2f5a'};color:#9ca3af">${esc(p)}</th>`).join('')}
       ${gc.map(g => `
         <th style="min-width:90px;border-left:${g===gc[0]?'2px solid #C9A84C':'1px solid #1a2f5a'}">
           <div class="gift-th">${esc(g)}<button class="rm-col" data-col="${esc(g)}" title="Supprimer cette colonne">✕</button></div>
@@ -717,19 +740,21 @@ function renderHead(gc) {
     </tr>`;
 }
 
-function renderBody(gc) {
+function renderBody(gc, pc) {
   const sIdx=ci('Secteur'), coIdx=ci('Commune'), prIdx=ci('Pressoir'), crIdx=ci('Courtier');
   let html = '';
   for (const i of filteredRows) {
     const r = rows[i];
-    const total = VISITS.reduce((s, v) => s + (Number(r[ci(v)]) || 0), 0);
+    const vc = visitCols();
+    const total = vc.reduce((s, v) => s + (Number(r[ci(v)]) || 0), 0);
     html += `<tr data-idx="${i}">
       <td class="s1">${esc(r[sIdx])}</td>
       <td class="s2 text-left">${esc(r[coIdx])}</td>
       <td class="s3 text-left pressoir-cell" title="${esc(r[prIdx])}">${esc(r[prIdx])}</td>
       <td class="s4">${esc(r[crIdx])}</td>
-      ${VISITS.map(v => counterCell(i, v, Number(r[ci(v)])||0)).join('')}
+      ${vc.map(v => counterCell(i, v, Number(r[ci(v)])||0)).join('')}
       <td class="total-td">${total || ''}</td>
+      ${pc.map((p, idx) => `<td class="text-left" style="border-left:${idx===0?'2px solid #6b728044':'1px solid #edf0f5'};color:#6b7280">${esc(String(r[ci(p)] ?? ''))}</td>`).join('')}
       ${gc.map(g => counterCell(i, g, Number(r[ci(g)])||0)).join('')}
     </tr>`;
   }
@@ -792,11 +817,12 @@ async function increment(rowIdx, col, delta) {
 // ═══════════════════════════════════════════════════════════════
 function renderStats() {
   const gc = giftCols();
-  const total = rows.reduce((s, r) => s + VISITS.reduce((a, v) => a + (Number(r[ci(v)]) || 0), 0), 0);
+  const vc = visitCols();
+  const total = rows.reduce((s, r) => s + vc.reduce((a, v) => a + (Number(r[ci(v)]) || 0), 0), 0);
   document.getElementById('sPressoirs').textContent = rows.length;
   document.getElementById('sTotal').textContent     = total;
 
-  document.getElementById('statsVisits').innerHTML = VISITS.map(v => {
+  document.getElementById('statsVisits').innerHTML = vc.map(v => {
     const n = rows.reduce((s, r) => s + (Number(r[ci(v)]) || 0), 0);
     return `<div class="stat"><div class="stat-v">${n}</div><div class="stat-l">${v}</div></div>`;
   }).join('');
@@ -824,28 +850,61 @@ function importXlsx(file) {
     const ws = wb.Sheets[wb.SheetNames[0]];
     const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
+    // Ligne d'en-têtes Excel : row index 2 (juste avant les données à index 3)
+    const headerRow = (raw[2] || []).map(h => (h !== null && h !== undefined) ? String(h).trim() : '');
+    // Initiales de courtiers = majuscules uniquement, 2-6 caractères → compteur
+    // Toute autre colonne après la 4e → texte brut
+    const courtiersPattern = /^[A-Z]{2,6}$/;
+    const excelVisitCols = [];
+    const excelPlainCols = [];
+    const plainColIdxs   = [];
+    headerRow.forEach((h, idx) => {
+      if (idx < 4 || !h) return;
+      if (courtiersPattern.test(h)) { excelVisitCols.push(h); }
+      else { excelPlainCols.push(h); plainColIdxs.push(idx); }
+    });
+
     const validSectors = new Set(['A','B','C','D','E','F','G','H','I','M','S','1']);
     const imported = [];
     for (let i = 3; i < raw.length; i++) {
       const r = raw[i];
       if (!r[0] || !validSectors.has(String(r[0]))) continue;
       if (typeof r[10] === 'string' && r[10].startsWith('=')) continue;
+      const plain = {};
+      excelPlainCols.forEach((col, k) => {
+        const v = r[plainColIdxs[k]];
+        plain[col] = (v !== null && v !== undefined) ? String(v) : '';
+      });
       imported.push({
         secteur:  String(r[0] || ''),
         commune:  String(r[1] || ''),
         pressoir: String(r[2] || ''),
         courtier: String(r[3] || ''),
+        plain,
       });
     }
 
     if (!imported.length) { alert('Aucune ligne valide trouvée dans le fichier.'); return; }
+    const effectiveVisits = excelVisitCols.length > 0 ? excelVisitCols : DEFAULT_VISITS;
+    const effectivePlains = excelPlainCols;
     const tabLabel = TABS[activeTab].label;
-    const ok = confirm(`${imported.length} pressoirs trouvés.\nImport vers : ${tabLabel}\nLes compteurs existants seront conservés pour les pressoirs connus.\n\nContinuer ?`);
+    const ok = confirm(
+      `${imported.length} pressoirs trouvés — Import vers : ${tabLabel}\n` +
+      `Compteurs (courtiers) : ${effectiveVisits.join(', ')}\n` +
+      (effectivePlains.length ? `Colonnes texte : ${effectivePlains.join(', ')}\n` : '') +
+      `\nLes compteurs existants seront conservés pour les pressoirs connus.\nContinuer ?`
+    );
     if (!ok) return;
+
+    // Mémoriser les colonnes pour cet onglet
+    tabState[activeTab].visits = effectiveVisits;
+    tabState[activeTab].plain  = effectivePlains;
+    localStorage.setItem(visitsKey(), JSON.stringify(effectiveVisits));
+    localStorage.setItem(plainsKey(), JSON.stringify(effectivePlains));
 
     try {
       setSyncLabel('Import en cours…', 'spin');
-      const result = await apiPost({ action: 'importData', rows: imported });
+      const result = await apiPost({ action: 'importData', rows: imported, visitCols: effectiveVisits, plainCols: effectivePlains });
       if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
       applyData({ headers, rows });
       setSyncLabel('Importé · ' + nowStr(), 'ok');
@@ -871,7 +930,7 @@ async function submitAddRow() {
     closeModal('modalAddRow');
     setSyncLabel('Ajout en cours…', 'spin');
     const tab = activeTab;
-    const result = await apiPost({ action: 'addRow', data: { Secteur: secteur, Commune: commune, Pressoir: pressoir, Courtier: courtier } });
+    const result = await apiPost({ action: 'addRow', data: { Secteur: secteur, Commune: commune, Pressoir: pressoir, Courtier: courtier }, visitCols: visitCols() });
     if (activeTab !== tab) return;
     if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
     applyData({ headers, rows });
@@ -955,10 +1014,6 @@ async function removeColumn(name) {
 //  RAZ — REMISE À ZÉRO (Ctrl + Alt + Clic obligatoire)
 // ═══════════════════════════════════════════════════════════════
 async function handleRAZ(e) {
-  if (!e.ctrlKey || !e.altKey) {
-    alert('Pour activer la remise à zéro, maintenez Ctrl + Alt en cliquant sur le bouton RAZ.');
-    return;
-  }
   const tabLabel = TABS[activeTab].label;
   if (!confirm(`⚠️ REMISE À ZÉRO — ${tabLabel}\n\nToutes les lignes seront supprimées (pressoirs, compteurs, cadeaux).\nSeuls les en-têtes de colonnes sont conservés.\n\nCette action est irréversible. Continuer ?`)) return;
 
@@ -1028,7 +1083,7 @@ function copyScript() {
 //  HELPERS
 // ═══════════════════════════════════════════════════════════════
 function ci(col)     { return headers.indexOf(col); }
-function giftCols()  { return headers.filter(h => !FIXED.includes(h) && !VISITS.includes(h)); }
+function giftCols()  { return headers.filter(h => !FIXED.includes(h) && !visitCols().includes(h) && !plainCols().includes(h)); }
 function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function nowStr()    { return new Date().toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
 
