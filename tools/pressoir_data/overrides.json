@@ -1,0 +1,19 @@
+{
+  "_comment": "Corrections de la chaîne de recherche AVANT géocodage automatique (le géocodage lui-même reste automatique via geo.api.gouv.fr). dash_overrides : lieux-dits notés \"X - Y\" dans le fichier source, où X n'existe pas comme commune autonome -> on cherche Y. standalone_overrides : autres corrections ponctuelles (lieu-dit seul sans le suffixe \" - Y\", ou orthographe du fichier source différente du nom officiel actuel).",
+
+  "dash_overrides": {
+    "bouquigny troissy": "TROISSY",
+    "cerseuil mareuil le port": "MAREUIL LE PORT",
+    "chavenay dormans": "DORMANS",
+    "ludes craon de ludes": "LUDES",
+    "port a binson mareuil le port": "MAREUIL LE PORT"
+  },
+
+  "standalone_overrides": {
+    "cerseuil": "MAREUIL LE PORT",
+    "olizy violaine": "Olizy",
+    "villedommange": "Ville-Dommange",
+    "vaudemanges": "Vaudemange",
+    "vaudancourt": "BRUGNY VAUDANCOURT"
+  }
+}

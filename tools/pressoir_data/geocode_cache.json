@@ -1,0 +1,988 @@
+{
+  "_comment": "Cache canon_key -> {label, lat, lng}. Entrées pré-remplies ci-dessous : villages fusionnés dans une commune nouvelle mais géocodés à leur propre position (Nominatim/OSM) plutôt qu'au centroïde de la commune fusionnée, car ils n'existent plus comme communes autonomes dans geo.api.gouv.fr. Toutes les autres entrées sont ajoutées automatiquement par build_pressoir_data.py au fil des exécutions.",
+  "ailleville": {
+    "label": "Ailleville",
+    "lat": 48.2562,
+    "lng": 4.6911
+  },
+  "allemant": {
+    "label": "Allemant",
+    "lat": 48.7633,
+    "lng": 3.8221
+  },
+  "ambonnay": {
+    "label": "Ambonnay",
+    "lat": 49.0926,
+    "lng": 4.1778
+  },
+  "arrentieres": {
+    "label": "Arrentières",
+    "lat": 48.2684,
+    "lng": 4.7396
+  },
+  "avenay val d or": {
+    "label": "Avenay-Val-d'Or",
+    "lat": 49.0743,
+    "lng": 4.0453
+  },
+  "avirey lingey": {
+    "label": "Avirey-Lingey",
+    "lat": 48.0341,
+    "lng": 4.2912
+  },
+  "avize": {
+    "label": "Avize",
+    "lat": 48.9724,
+    "lng": 4.0056
+  },
+  "ay champagne": {
+    "label": "Aÿ-Champagne",
+    "lat": 49.0561,
+    "lng": 4.0414
+  },
+  "azy sur marne": {
+    "label": "Azy-sur-Marne",
+    "lat": 49.0061,
+    "lng": 3.3575
+  },
+  "bagneux la fosse": {
+    "label": "Bagneux-la-Fosse",
+    "lat": 47.9984,
+    "lng": 4.2954
+  },
+  "balnot sur laignes": {
+    "label": "Balnot-sur-Laignes",
+    "lat": 48.0367,
+    "lng": 4.3487
+  },
+  "bar sur aube": {
+    "label": "Bar-sur-Aube",
+    "lat": 48.233,
+    "lng": 4.7166
+  },
+  "bar sur seine": {
+    "label": "Bar-sur-Seine",
+    "lat": 48.1144,
+    "lng": 4.3787
+  },
+  "barbonne fayel": {
+    "label": "Barbonne-Fayel",
+    "lat": 48.6541,
+    "lng": 3.6885
+  },
+  "baroville": {
+    "label": "Baroville",
+    "lat": 48.1821,
+    "lng": 4.7455
+  },
+  "barzy sur marne": {
+    "label": "Barzy-sur-Marne",
+    "lat": 49.09,
+    "lng": 3.5586
+  },
+  "baslieux sous chatillon": {
+    "label": "Baslieux-sous-Châtillon",
+    "lat": 49.1245,
+    "lng": 3.794
+  },
+  "bassu": {
+    "label": "Bassu",
+    "lat": 48.8334,
+    "lng": 4.6918
+  },
+  "bassuet": {
+    "label": "Bassuet",
+    "lat": 48.8023,
+    "lng": 4.6699
+  },
+  "baye": {
+    "label": "Baye",
+    "lat": 48.8595,
+    "lng": 3.7566
+  },
+  "beaumont sur vesle": {
+    "label": "Beaumont-sur-Vesle",
+    "lat": 49.175,
+    "lng": 4.1826
+  },
+  "beaunay": {
+    "label": "Beaunay",
+    "lat": 48.8771,
+    "lng": 3.8857
+  },
+  "beauvoir sur sarce": {
+    "_note": "Commune associée de Bragelogne-Beauvoir depuis 1973",
+    "label": "Beauvoir-sur-Sarce",
+    "lat": 47.9669224,
+    "lng": 4.296727
+  },
+  "belval sous chatillon": {
+    "label": "Belval-sous-Châtillon",
+    "lat": 49.124,
+    "lng": 3.8533
+  },
+  "bergeres": {
+    "label": "Bergères",
+    "lat": 48.1852,
+    "lng": 4.6734
+  },
+  "bergeres les vertus": {
+    "label": "Bergères-lès-Vertus",
+    "lat": 48.8747,
+    "lng": 4.0108
+  },
+  "berru": {
+    "label": "Berru",
+    "lat": 49.2711,
+    "lng": 4.1631
+  },
+  "bethon": {
+    "label": "Bethon",
+    "lat": 48.6105,
+    "lng": 3.6084
+  },
+  "bisseuil": {
+    "_note": "Commune déléguée d'Aÿ-Champagne depuis 2016",
+    "label": "Bisseuil",
+    "lat": 49.0456722,
+    "lng": 4.0888058
+  },
+  "blancs coteaux": {
+    "label": "Blancs-Coteaux",
+    "lat": 48.9227,
+    "lng": 3.9714
+  },
+  "blesmes": {
+    "label": "Blesmes",
+    "lat": 49.0258,
+    "lng": 3.4628
+  },
+  "bligny": {
+    "label": "Bligny",
+    "lat": 48.1696,
+    "lng": 4.5963
+  },
+  "boursault": {
+    "label": "Boursault",
+    "lat": 49.0513,
+    "lng": 3.8401
+  },
+  "bouzy": {
+    "label": "Bouzy",
+    "lat": 49.0861,
+    "lng": 4.1297
+  },
+  "bragelogne beauvoir": {
+    "label": "Bragelogne-Beauvoir",
+    "lat": 47.9703,
+    "lng": 4.2673
+  },
+  "brasles": {
+    "label": "Brasles",
+    "lat": 49.0579,
+    "lng": 3.4195
+  },
+  "broyes": {
+    "label": "Broyes",
+    "lat": 48.7611,
+    "lng": 3.7603
+  },
+  "brugny vaudancourt": {
+    "label": "Brugny-Vaudancourt",
+    "lat": 48.9849,
+    "lng": 3.8603
+  },
+  "buxeuil": {
+    "label": "Buxeuil",
+    "lat": 48.0521,
+    "lng": 4.4092
+  },
+  "buxieres sur arce": {
+    "label": "Buxières-sur-Arce",
+    "lat": 48.1359,
+    "lng": 4.4521
+  },
+  "celles sur ource": {
+    "label": "Celles-sur-Ource",
+    "lat": 48.0703,
+    "lng": 4.4207
+  },
+  "chamery": {
+    "label": "Chamery",
+    "lat": 49.1681,
+    "lng": 3.9577
+  },
+  "champigneul champagne": {
+    "label": "Champigneul-Champagne",
+    "lat": 48.9619,
+    "lng": 4.1744
+  },
+  "champignol lez mondeville": {
+    "label": "Champignol-lez-Mondeville",
+    "lat": 48.1224,
+    "lng": 4.679
+  },
+  "champillon": {
+    "label": "Champillon",
+    "lat": 49.0859,
+    "lng": 3.9753
+  },
+  "champlat et boujacourt": {
+    "label": "Champlat-et-Boujacourt",
+    "lat": 49.1545,
+    "lng": 3.8268
+  },
+  "channes": {
+    "label": "Channes",
+    "lat": 47.94,
+    "lng": 4.2634
+  },
+  "charly sur marne": {
+    "label": "Charly-sur-Marne",
+    "lat": 48.9821,
+    "lng": 3.2936
+  },
+  "chatillon sur marne": {
+    "label": "Châtillon-sur-Marne",
+    "lat": 49.1044,
+    "lng": 3.7734
+  },
+  "chaumuzy": {
+    "label": "Chaumuzy",
+    "lat": 49.1543,
+    "lng": 3.8704
+  },
+  "chavot courcourt": {
+    "label": "Chavot-Courcourt",
+    "lat": 48.9966,
+    "lng": 3.9181
+  },
+  "chervey": {
+    "label": "Chervey",
+    "lat": 48.1339,
+    "lng": 4.4905
+  },
+  "chezy sur marne": {
+    "label": "Chézy-sur-Marne",
+    "lat": 48.9857,
+    "lng": 3.3882
+  },
+  "chigny les roses": {
+    "label": "Chigny-les-Roses",
+    "lat": 49.1514,
+    "lng": 4.0608
+  },
+  "chouilly": {
+    "label": "Chouilly",
+    "lat": 49.0146,
+    "lng": 4.0013
+  },
+  "coeur de la vallee": {
+    "label": "Cœur-de-la-Vallée",
+    "lat": 49.0945,
+    "lng": 3.8089
+  },
+  "colombe le sec": {
+    "label": "Colombé-le-Sec",
+    "lat": 48.2599,
+    "lng": 4.8022
+  },
+  "colombey les deux eglises": {
+    "label": "Colombey les Deux Églises",
+    "lat": 48.2418,
+    "lng": 4.924
+  },
+  "congy": {
+    "label": "Congy",
+    "lat": 48.8707,
+    "lng": 3.8191
+  },
+  "connigis": {
+    "label": "Connigis",
+    "lat": 49.0357,
+    "lng": 3.532
+  },
+  "cormicy": {
+    "label": "Cormicy",
+    "lat": 49.3794,
+    "lng": 3.892
+  },
+  "cormoyeux": {
+    "label": "Cormoyeux",
+    "lat": 49.1093,
+    "lng": 3.9147
+  },
+  "coulommes la montagne": {
+    "label": "Coulommes-la-Montagne",
+    "lat": 49.2271,
+    "lng": 3.9136
+  },
+  "courmas": {
+    "label": "Courmas",
+    "lat": 49.19,
+    "lng": 3.9103
+  },
+  "courtemont varennes": {
+    "label": "Courtemont-Varennes",
+    "lat": 49.0719,
+    "lng": 3.5414
+  },
+  "courteron": {
+    "label": "Courteron",
+    "lat": 48.016,
+    "lng": 4.4652
+  },
+  "cramant": {
+    "label": "Cramant",
+    "lat": 48.9879,
+    "lng": 4.0004
+  },
+  "crouttes sur marne": {
+    "label": "Crouttes-sur-Marne",
+    "lat": 48.9775,
+    "lng": 3.247
+  },
+  "cuchery": {
+    "label": "Cuchery",
+    "lat": 49.1275,
+    "lng": 3.827
+  },
+  "cuis": {
+    "label": "Cuis",
+    "lat": 48.9989,
+    "lng": 3.967
+  },
+  "cuisles": {
+    "label": "Cuisles",
+    "lat": 49.1293,
+    "lng": 3.7782
+  },
+  "cumieres": {
+    "label": "Cumières",
+    "lat": 49.0715,
+    "lng": 3.9214
+  },
+  "damery": {
+    "label": "Damery",
+    "lat": 49.0841,
+    "lng": 3.8852
+  },
+  "dizy": {
+    "label": "Dizy",
+    "lat": 49.0699,
+    "lng": 3.9716
+  },
+  "domptin": {
+    "label": "Domptin",
+    "lat": 49.0151,
+    "lng": 3.2705
+  },
+  "dormans": {
+    "label": "Dormans",
+    "lat": 49.0636,
+    "lng": 3.6447
+  },
+  "ecueil": {
+    "label": "Écueil",
+    "lat": 49.1791,
+    "lng": 3.9528
+  },
+  "epernay": {
+    "label": "Épernay",
+    "lat": 49.0391,
+    "lng": 3.9282
+  },
+  "essomes sur marne": {
+    "label": "Essômes-sur-Marne",
+    "lat": 49.033,
+    "lng": 3.3427
+  },
+  "essoyes": {
+    "label": "Essoyes",
+    "lat": 48.0473,
+    "lng": 4.5426
+  },
+  "ferebrianges": {
+    "label": "Fèrebrianges",
+    "lat": 48.8708,
+    "lng": 3.8409
+  },
+  "festigny": {
+    "label": "Festigny",
+    "lat": 49.0274,
+    "lng": 3.7673
+  },
+  "fleury la riviere": {
+    "label": "Fleury-la-Rivière",
+    "lat": 49.0994,
+    "lng": 3.8839
+  },
+  "fontaine": {
+    "label": "Fontaine",
+    "lat": 48.2085,
+    "lng": 4.7194
+  },
+  "fontaine denis nuisy": {
+    "label": "Fontaine-Denis-Nuisy",
+    "lat": 48.635,
+    "lng": 3.6792
+  },
+  "fontette": {
+    "label": "Fontette",
+    "lat": 48.0751,
+    "lng": 4.6133
+  },
+  "fossoy": {
+    "label": "Fossoy",
+    "lat": 49.0426,
+    "lng": 3.4821
+  },
+  "grauves": {
+    "label": "Grauves",
+    "lat": 48.9702,
+    "lng": 3.9604
+  },
+  "gye sur seine": {
+    "label": "Gyé-sur-Seine",
+    "lat": 48.0038,
+    "lng": 4.4401
+  },
+  "hautvillers": {
+    "label": "Hautvillers",
+    "lat": 49.0839,
+    "lng": 3.942
+  },
+  "hourges": {
+    "label": "Hourges",
+    "lat": 49.2801,
+    "lng": 3.7693
+  },
+  "janvry": {
+    "label": "Janvry",
+    "lat": 49.2461,
+    "lng": 3.875
+  },
+  "jonquery": {
+    "label": "Jonquery",
+    "lat": 49.1461,
+    "lng": 3.7904
+  },
+  "la celle sous chantemerle": {
+    "label": "La Celle-sous-Chantemerle",
+    "lat": 48.6054,
+    "lng": 3.6834
+  },
+  "la neuville aux larris": {
+    "label": "La Neuville-aux-Larris",
+    "lat": 49.1434,
+    "lng": 3.8309
+  },
+  "landreville": {
+    "label": "Landreville",
+    "lat": 48.0755,
+    "lng": 4.4659
+  },
+  "le breuil": {
+    "label": "Le Breuil",
+    "lat": 48.9787,
+    "lng": 3.6556
+  },
+  "le mesnil sur oger": {
+    "label": "Le Mesnil-sur-Oger",
+    "lat": 48.9404,
+    "lng": 4.0183
+  },
+  "les mesneux": {
+    "label": "Les Mesneux",
+    "lat": 49.2232,
+    "lng": 3.9605
+  },
+  "les riceys": {
+    "label": "Les Riceys",
+    "lat": 47.9907,
+    "lng": 4.3793
+  },
+  "leuvrigny": {
+    "label": "Leuvrigny",
+    "lat": 49.0525,
+    "lng": 3.7763
+  },
+  "lisse en champagne": {
+    "label": "Lisse-en-Champagne",
+    "lat": 48.8188,
+    "lng": 4.6469
+  },
+  "loches sur ource": {
+    "label": "Loches-sur-Ource",
+    "lat": 48.0705,
+    "lng": 4.5025
+  },
+  "ludes": {
+    "label": "Ludes",
+    "lat": 49.1595,
+    "lng": 4.0841
+  },
+  "mailly champagne": {
+    "label": "Mailly-Champagne",
+    "lat": 49.1528,
+    "lng": 4.1123
+  },
+  "mardeuil": {
+    "label": "Mardeuil",
+    "lat": 49.0552,
+    "lng": 3.9222
+  },
+  "mareuil le port": {
+    "label": "Mareuil-le-Port",
+    "lat": 49.074,
+    "lng": 3.7504
+  },
+  "mareuil sur ay": {
+    "_note": "Commune déléguée d'Aÿ-Champagne depuis 2016",
+    "label": "Mareuil-sur-Aÿ",
+    "lat": 49.0460053,
+    "lng": 4.0387323
+  },
+  "marfaux": {
+    "label": "Marfaux",
+    "lat": 49.1681,
+    "lng": 3.9038
+  },
+  "merfy": {
+    "label": "Merfy",
+    "lat": 49.293,
+    "lng": 3.9552
+  },
+  "merrey sur arce": {
+    "label": "Merrey-sur-Arce",
+    "lat": 48.0964,
+    "lng": 4.4059
+  },
+  "meurville": {
+    "label": "Meurville",
+    "lat": 48.2066,
+    "lng": 4.61
+  },
+  "montgenost": {
+    "label": "Montgenost",
+    "lat": 48.598,
+    "lng": 3.5926
+  },
+  "montgueux": {
+    "label": "Montgueux",
+    "lat": 48.2967,
+    "lng": 3.9551
+  },
+  "monthelon": {
+    "label": "Monthelon",
+    "lat": 48.999,
+    "lng": 3.9347
+  },
+  "montier en l isle": {
+    "label": "Montier-en-l'Isle",
+    "lat": 48.2678,
+    "lng": 4.6849
+  },
+  "montigny sous chatillon": {
+    "_note": "Hameau de Châtillon-sur-Marne",
+    "label": "Montigny-sous-Châtillon",
+    "lat": 49.1036274,
+    "lng": 3.7745662
+  },
+  "moslins": {
+    "label": "Moslins",
+    "lat": 48.9588,
+    "lng": 3.9022
+  },
+  "moussy": {
+    "label": "Moussy",
+    "lat": 49.0151,
+    "lng": 3.9271
+  },
+  "mutigny": {
+    "label": "Mutigny",
+    "lat": 49.0772,
+    "lng": 4.018
+  },
+  "nanteuil la foret": {
+    "label": "Nanteuil-la-Forêt",
+    "lat": 49.1307,
+    "lng": 3.9229
+  },
+  "nesle le repons": {
+    "label": "Nesle-le-Repons",
+    "lat": 49.0444,
+    "lng": 3.7155
+  },
+  "neuville sur seine": {
+    "label": "Neuville-sur-Seine",
+    "lat": 48.0313,
+    "lng": 4.4146
+  },
+  "noe les mallets": {
+    "label": "Noé-les-Mallets",
+    "lat": 48.0974,
+    "lng": 4.5592
+  },
+  "nogent l abbesse": {
+    "label": "Nogent-l'Abbesse",
+    "lat": 49.2439,
+    "lng": 4.1613
+  },
+  "oeuilly": {
+    "label": "Œuilly",
+    "lat": 49.0599,
+    "lng": 3.7936
+  },
+  "oiry": {
+    "label": "Oiry",
+    "lat": 49.0075,
+    "lng": 4.0415
+  },
+  "olizy": {
+    "label": "Olizy",
+    "lat": 49.1468,
+    "lng": 3.7585
+  },
+  "passy grigny": {
+    "label": "Passy-Grigny",
+    "lat": 49.1271,
+    "lng": 3.6805
+  },
+  "passy sur marne": {
+    "label": "Passy-sur-Marne",
+    "lat": 49.068,
+    "lng": 3.5747
+  },
+  "pevy": {
+    "label": "Pévy",
+    "lat": 49.3186,
+    "lng": 3.8531
+  },
+  "pierry": {
+    "label": "Pierry",
+    "lat": 49.0195,
+    "lng": 3.9527
+  },
+  "plaines saint lange": {
+    "label": "Plaines-Saint-Lange",
+    "lat": 47.9981,
+    "lng": 4.4766
+  },
+  "polisot": {
+    "label": "Polisot",
+    "lat": 48.0733,
+    "lng": 4.3553
+  },
+  "polisy": {
+    "label": "Polisy",
+    "lat": 48.0594,
+    "lng": 4.3626
+  },
+  "pouillon": {
+    "label": "Pouillon",
+    "lat": 49.3134,
+    "lng": 3.9447
+  },
+  "prouilly": {
+    "label": "Prouilly",
+    "lat": 49.2958,
+    "lng": 3.8446
+  },
+  "prunay": {
+    "label": "Prunay",
+    "lat": 49.2114,
+    "lng": 4.1734
+  },
+  "puisieulx": {
+    "label": "Puisieulx",
+    "lat": 49.204,
+    "lng": 4.1154
+  },
+  "reims": {
+    "label": "Reims",
+    "lat": 49.2535,
+    "lng": 4.0551
+  },
+  "reuil": {
+    "_note": "Commune déléguée de Cœur-de-la-Vallée",
+    "label": "Reuil",
+    "lat": 49.08198,
+    "lng": 3.7994
+  },
+  "rilly la montagne": {
+    "label": "Rilly-la-Montagne",
+    "lat": 49.1621,
+    "lng": 4.048
+  },
+  "romery": {
+    "label": "Romery",
+    "lat": 49.0955,
+    "lng": 3.9135
+  },
+  "rouvres les vignes": {
+    "label": "Rouvres-les-Vignes",
+    "lat": 48.2379,
+    "lng": 4.8248
+  },
+  "saacy sur marne": {
+    "label": "Saâcy-sur-Marne",
+    "lat": 48.9524,
+    "lng": 3.2128
+  },
+  "sacy": {
+    "label": "Sacy",
+    "lat": 49.1978,
+    "lng": 3.9525
+  },
+  "saint amand sur fion": {
+    "label": "Saint-Amand-sur-Fion",
+    "lat": 48.8236,
+    "lng": 4.6118
+  },
+  "saint euphraise et clairizet": {
+    "label": "Saint-Euphraise-et-Clairizet",
+    "lat": 49.213,
+    "lng": 3.8866
+  },
+  "saint leonard": {
+    "label": "Saint-Léonard",
+    "lat": 49.2247,
+    "lng": 4.1089
+  },
+  "saint martin d ablois": {
+    "label": "Saint-Martin-d'Ablois",
+    "lat": 49.0128,
+    "lng": 3.846
+  },
+  "saint thierry": {
+    "label": "Saint-Thierry",
+    "lat": 49.2947,
+    "lng": 3.9736
+  },
+  "sainte gemme": {
+    "label": "Sainte-Gemme",
+    "lat": 49.1444,
+    "lng": 3.659
+  },
+  "saudoy": {
+    "label": "Saudoy",
+    "lat": 48.6806,
+    "lng": 3.6969
+  },
+  "saulcy": {
+    "label": "Saulcy",
+    "lat": 48.2763,
+    "lng": 4.8362
+  },
+  "savigny sur ardres": {
+    "label": "Savigny-sur-Ardres",
+    "lat": 49.2526,
+    "lng": 3.7954
+  },
+  "sermiers": {
+    "label": "Sermiers",
+    "lat": 49.1498,
+    "lng": 3.9771
+  },
+  "serzy et prin": {
+    "label": "Serzy-et-Prin",
+    "lat": 49.2465,
+    "lng": 3.766
+  },
+  "sezanne": {
+    "label": "Sézanne",
+    "lat": 48.724,
+    "lng": 3.7244
+  },
+  "sillery": {
+    "label": "Sillery",
+    "lat": 49.1921,
+    "lng": 4.1429
+  },
+  "songy": {
+    "label": "Songy",
+    "lat": 48.7919,
+    "lng": 4.4705
+  },
+  "spoy": {
+    "label": "Spoy",
+    "lat": 48.2294,
+    "lng": 4.6179
+  },
+  "suizy le franc": {
+    "label": "Suizy-le-Franc",
+    "lat": 48.9506,
+    "lng": 3.7275
+  },
+  "taissy": {
+    "label": "Taissy",
+    "lat": 49.2046,
+    "lng": 4.084
+  },
+  "talus saint prix": {
+    "label": "Talus-Saint-Prix",
+    "lat": 48.8341,
+    "lng": 3.7467
+  },
+  "tours sur marne": {
+    "label": "Tours-sur-Marne",
+    "lat": 49.0517,
+    "lng": 4.1258
+  },
+  "trelou sur marne": {
+    "label": "Trélou-sur-Marne",
+    "lat": 49.0903,
+    "lng": 3.6055
+  },
+  "trepail": {
+    "label": "Trépail",
+    "lat": 49.1088,
+    "lng": 4.1815
+  },
+  "trigny": {
+    "label": "Trigny",
+    "lat": 49.2975,
+    "lng": 3.8899
+  },
+  "trois puits": {
+    "label": "Trois-Puits",
+    "lat": 49.2054,
+    "lng": 4.0424
+  },
+  "troissy": {
+    "label": "Troissy",
+    "lat": 49.073,
+    "lng": 3.703
+  },
+  "urville": {
+    "label": "Urville",
+    "lat": 48.1706,
+    "lng": 4.6712
+  },
+  "val de livre": {
+    "label": "Val de Livre",
+    "lat": 49.105,
+    "lng": 4.1154
+  },
+  "vallees en champagne": {
+    "label": "Vallées en Champagne",
+    "lat": 49.0009,
+    "lng": 3.6203
+  },
+  "vanault le chatel": {
+    "label": "Vanault-le-Châtel",
+    "lat": 48.8653,
+    "lng": 4.702
+  },
+  "vandieres": {
+    "label": "Vandières",
+    "lat": 49.1128,
+    "lng": 3.7237
+  },
+  "vauchamps": {
+    "label": "Vauchamps",
+    "lat": 48.8819,
+    "lng": 3.6261
+  },
+  "vauciennes": {
+    "label": "Vauciennes",
+    "lat": 49.0516,
+    "lng": 3.8826
+  },
+  "vaudancourt": {
+    "label": "Brugny-Vaudancourt",
+    "lat": 48.9849,
+    "lng": 3.8603
+  },
+  "vaudemange": {
+    "label": "Vaudemange",
+    "lat": 49.0864,
+    "lng": 4.2417
+  },
+  "venteuil": {
+    "label": "Venteuil",
+    "lat": 49.0914,
+    "lng": 3.8401
+  },
+  "verneuil": {
+    "label": "Verneuil",
+    "lat": 49.1023,
+    "lng": 3.6684
+  },
+  "vert toulon": {
+    "label": "Vert-Toulon",
+    "lat": 48.8425,
+    "lng": 3.9046
+  },
+  "verzenay": {
+    "label": "Verzenay",
+    "lat": 49.1588,
+    "lng": 4.1482
+  },
+  "verzy": {
+    "label": "Verzy",
+    "lat": 49.1451,
+    "lng": 4.1619
+  },
+  "ville dommange": {
+    "label": "Ville-Dommange",
+    "lat": 49.2041,
+    "lng": 3.94
+  },
+  "ville sur arce": {
+    "label": "Ville-sur-Arce",
+    "lat": 48.1143,
+    "lng": 4.4473
+  },
+  "villenauxe la grande": {
+    "label": "Villenauxe-la-Grande",
+    "lat": 48.5951,
+    "lng": 3.5428
+  },
+  "villers allerand": {
+    "label": "Villers-Allerand",
+    "lat": 49.1608,
+    "lng": 4.0196
+  },
+  "villers aux noeuds": {
+    "label": "Villers-aux-Nœuds",
+    "lat": 49.1936,
+    "lng": 3.9928
+  },
+  "villers marmery": {
+    "label": "Villers-Marmery",
+    "lat": 49.1306,
+    "lng": 4.1964
+  },
+  "villevenard": {
+    "label": "Villevenard",
+    "lat": 48.8327,
+    "lng": 3.7928
+  },
+  "villiers saint denis": {
+    "label": "Villiers-Saint-Denis",
+    "lat": 48.9978,
+    "lng": 3.2621
+  },
+  "vinay": {
+    "label": "Vinay",
+    "lat": 49.0125,
+    "lng": 3.9009
+  },
+  "vincelles": {
+    "label": "Vincelles",
+    "lat": 49.0947,
+    "lng": 3.6379
+  },
+  "vitry en perthois": {
+    "label": "Vitry-en-Perthois",
+    "lat": 48.7471,
+    "lng": 4.6172
+  },
+  "voigny": {
+    "label": "Voigny",
+    "lat": 48.2351,
+    "lng": 4.7676
+  }
+}
