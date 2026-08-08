@@ -125,7 +125,8 @@
       { login: 'as.malingre', password: 'gautier',   role: 'courtier' },
       { login: 'e.heidsieck', password: 'laure',     role: 'courtier' },
       // Correspondants de secteur
-      { login: 'contact1',    password: 'fcdh1',     role: 'correspondant' },
+      // "secteurs" : liste des secteurs gérés par ce correspondant (1 ou 2 max) — TODO: à ajuster selon l'affectation réelle
+      { login: 'contact1',    password: 'fcdh1',     role: 'correspondant', secteurs: ['A'] },
     ];
 
     function applyPermissions(user) {
@@ -151,6 +152,8 @@
 
     function logout() {
       sessionStorage.removeItem('fcdh_user');
+      sessionStorage.removeItem('fcdh_role');
+      sessionStorage.removeItem('fcdh_secteurs');
       document.getElementById('login-overlay').style.display = 'flex';
       document.getElementById('inp-login').value = '';
       document.getElementById('inp-pwd').value = '';
@@ -165,7 +168,11 @@
       if (match) {
         sessionStorage.setItem('fcdh_user', login);
         sessionStorage.setItem('fcdh_role', match.role);
-        if (match.role === 'correspondant') { window.location.replace('index-correspondants.html'); return; }
+        if (match.role === 'correspondant') {
+          sessionStorage.setItem('fcdh_secteurs', JSON.stringify(match.secteurs || []));
+          window.location.replace('index-correspondants.html');
+          return;
+        }
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('header-username').textContent = login;
         document.getElementById('login-error').textContent = '';
