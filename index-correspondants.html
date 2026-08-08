@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FCDH Courtiers Associés — Espace Correspondants</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 32px; height: 72px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); }
+    header h1 { font-size: 20px; font-weight: 800; color: #C9A84C; letter-spacing: 0.04em; }
+    header p { font-size: 12px; color: #e8c97a; letter-spacing: 0.05em; margin-top: 2px; }
+    #header-user { display: flex; align-items: center; gap: 12px; }
+    #header-username { font-size: 12px; color: #e8c97a; font-weight: 600; }
+    #btn-logout { background: rgba(201,168,76,.15); border: 1px solid rgba(201,168,76,.4); color: #C9A84C; border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s; }
+    #btn-logout:hover { background: rgba(201,168,76,.3); }
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 60px 24px; }
+    .title { font-size: 28px; font-weight: 800; color: #0d1b3e; margin-bottom: 8px; text-align: center; }
+    .subtitle { font-size: 14px; color: #8a94aa; margin-bottom: 48px; text-align: center; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; width: 100%; max-width: 400px; }
+    .card { background: #ffffff; border: 1px solid #dde1eb; border-radius: 16px; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-decoration: none; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; box-shadow: 0 2px 8px rgba(13,27,62,.06); }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(13,27,62,.14); border-color: #C9A84C; }
+    .card .icon { font-size: 44px; line-height: 1; }
+    .card .name { font-size: 16px; font-weight: 700; color: #0d1b3e; text-align: center; }
+    .card .desc { font-size: 12px; color: #8a94aa; text-align: center; line-height: 1.5; }
+    .card .badge { background: #0d1b3e; color: #C9A84C; border-radius: 99px; padding: 4px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }
+    footer { text-align: center; padding: 24px; font-size: 11px; color: #8a94aa; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>FCDH Courtiers Associés</h1>
+      <p>Espace Correspondants</p>
+    </div>
+    <div id="header-user">
+      <span id="header-username"></span>
+      <button id="btn-logout" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+  <main>
+    <div class="title">Espace Correspondants</div>
+    <div class="subtitle">Sélectionnez un outil pour commencer</div>
+    <div class="grid">
+      <a class="card" href="pressoir.html">
+        <div class="icon">🗺️</div>
+        <div class="name">Pressoir</div>
+        <div class="desc">Carte interactive des centres de pressurage en Champagne</div>
+        <div class="badge">Accéder →</div>
+      </a>
+    </div>
+  </main>
+  <footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+  <script>
+    function logout() {
+      sessionStorage.removeItem('fcdh_user');
+      sessionStorage.removeItem('fcdh_role');
+      window.location.replace('index.html');
+    }
+
+    const user = sessionStorage.getItem('fcdh_user');
+    const role = sessionStorage.getItem('fcdh_role');
+    if (!user || role !== 'correspondant') {
+      window.location.replace('index.html');
+    } else {
+      document.getElementById('header-username').textContent = user;
+    }
+  </script>
+</body>
+</html>
