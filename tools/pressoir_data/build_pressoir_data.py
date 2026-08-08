@@ -308,20 +308,13 @@ def splice_into_html(html_path, new_block):
         f.writelines(new_lines)
 
 
-FRENCH_MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
-                 "août", "septembre", "octobre", "novembre", "décembre"]
-
-
-def french_date(struct_time):
-    return "%d %s %d" % (struct_time.tm_mday, FRENCH_MONTHS[struct_time.tm_mon - 1], struct_time.tm_year)
-
-
 def update_import_date(html_path):
-    """Réécrit la date affichée sous le titre (#update-date) avec la date du
-    jour, à chaque exécution réussie du script."""
+    """Réécrit la date affichée sous le titre (#update-date) avec la date/heure
+    locale du jour (format JJ/MM/AAAA HH:MM, 24h), à chaque exécution réussie
+    du script."""
     with open(html_path, encoding="utf-8") as f:
         content = f.read()
-    label = french_date(time.gmtime())
+    label = time.strftime("%d/%m/%Y %H:%M", time.localtime())
     new_content, n = re.subn(
         r'(<div class="update-date" id="update-date">)[^<]*(</div>)',
         r"\g<1>Données importées le %s\g<2>" % label,

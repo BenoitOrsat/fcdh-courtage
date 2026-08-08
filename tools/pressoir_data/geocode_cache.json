@@ -277,6 +277,11 @@
     "lat": 49.0146,
     "lng": 4.0013
   },
+  "citry": {
+    "label": "Citry",
+    "lat": 48.961,
+    "lng": 3.2462
+  },
   "coeur de la vallee": {
     "label": "Cœur-de-la-Vallée",
     "lat": 49.0945,
