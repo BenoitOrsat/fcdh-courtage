@@ -22,7 +22,9 @@ Ce que fait le script :
      courtier devient courtier1, l'ancien passe en courtier2.
   5. Génère le bloc JS `var communes = [...]` et le remplace dans
      pressoir.html.
-  6. Met à jour geocode_cache.json et affiche un résumé (communes/pressoirs
+  6. Réécrit la date affichée sous le titre (#update-date) avec la date du
+     jour (date d'import, pas date du fichier source).
+  7. Met à jour geocode_cache.json et affiche un résumé (communes/pressoirs
      totaux, nouveautés, avertissements).
 
 Ce script NE COMMIT NI NE POUSSE RIEN sur git — il modifie seulement le
@@ -306,6 +308,32 @@ def splice_into_html(html_path, new_block):
         f.writelines(new_lines)
 
 
+FRENCH_MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+                 "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+def french_date(struct_time):
+    return "%d %s %d" % (struct_time.tm_mday, FRENCH_MONTHS[struct_time.tm_mon - 1], struct_time.tm_year)
+
+
+def update_import_date(html_path):
+    """Réécrit la date affichée sous le titre (#update-date) avec la date du
+    jour, à chaque exécution réussie du script."""
+    with open(html_path, encoding="utf-8") as f:
+        content = f.read()
+    label = french_date(time.gmtime())
+    new_content, n = re.subn(
+        r'(<div class="update-date" id="update-date">)[^<]*(</div>)',
+        r"\g<1>Données importées le %s\g<2>" % label,
+        content,
+    )
+    if n == 0:
+        print("⚠️  Élément #update-date introuvable dans " + html_path + " — date non mise à jour.")
+        return
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+
 # =============================================================================
 # Main
 # =============================================================================
@@ -339,6 +367,7 @@ def main():
 
     js_block = generate_js_block(communes)
     splice_into_html(args.html_path, js_block)
+    update_import_date(args.html_path)
 
     if args.source_modified_time or args.source_file_id:
         state = load_json(STATE_PATH, {})
