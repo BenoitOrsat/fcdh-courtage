@@ -3,116 +3,35 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>FCDH Courtiers Associés — Tableau de bord</title>
+  <title>FCDH Courtiers Associés — Connexion</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; min-height: 100vh; display: flex; flex-direction: column; }
-    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 32px; height: 72px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); }
-    header h1 { font-size: 20px; font-weight: 800; color: #C9A84C; letter-spacing: 0.04em; }
-    header p { font-size: 12px; color: #e8c97a; letter-spacing: 0.05em; margin-top: 2px; }
-    #header-user { display: flex; align-items: center; gap: 12px; }
-    #header-username { font-size: 12px; color: #e8c97a; font-weight: 600; }
-    #btn-logout { background: rgba(201,168,76,.15); border: 1px solid rgba(201,168,76,.4); color: #C9A84C; border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s; }
-    #btn-logout:hover { background: rgba(201,168,76,.3); }
-    main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 60px 24px; }
-    .title { font-size: 28px; font-weight: 800; color: #0d1b3e; margin-bottom: 8px; text-align: center; }
-    .subtitle { font-size: 14px; color: #8a94aa; margin-bottom: 48px; text-align: center; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; width: 100%; max-width: 800px; }
-    .card { background: #ffffff; border: 1px solid #dde1eb; border-radius: 16px; padding: 32px 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-decoration: none; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; box-shadow: 0 2px 8px rgba(13,27,62,.06); }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(13,27,62,.14); border-color: #C9A84C; }
-    .card .icon { font-size: 44px; line-height: 1; }
-    .card .name { font-size: 16px; font-weight: 700; color: #0d1b3e; text-align: center; }
-    .card .desc { font-size: 12px; color: #8a94aa; text-align: center; line-height: 1.5; }
-    .card .badge { background: #0d1b3e; color: #C9A84C; border-radius: 99px; padding: 4px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }
-    .card.soon { opacity: 0.5; cursor: default; pointer-events: none; }
-    .card.soon .badge { background: #eef0f5; color: #8a94aa; }
-    footer { text-align: center; padding: 24px; font-size: 11px; color: #8a94aa; }
-
-    /* Login overlay */
-    #login-overlay { position: fixed; inset: 0; background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
-    #login-box { background: #fff; border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 380px; box-shadow: 0 24px 64px rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; gap: 0; }
-    #login-box .logo { font-size: 22px; font-weight: 800; color: #0d1b3e; letter-spacing: 0.04em; text-align: center; }
-    #login-box .logo span { color: #C9A84C; }
-    #login-box .tagline { font-size: 12px; color: #8a94aa; margin-top: 4px; margin-bottom: 32px; text-align: center; }
-    #login-box label { align-self: flex-start; font-size: 11px; font-weight: 700; color: #0d1b3e; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
-    #login-box input { width: 100%; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; color: #0d1b3e; outline: none; transition: border-color 0.15s; margin-bottom: 18px; }
-    #login-box input:focus { border-color: #C9A84C; }
-    #login-box button { width: 100%; background: linear-gradient(135deg, #0d1b3e, #1a2f5a); color: #C9A84C; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 0.04em; margin-top: 6px; transition: opacity 0.15s; }
-    #login-box button:hover { opacity: 0.88; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    #login-box { background: #fff; border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 380px; box-shadow: 0 24px 64px rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; }
+    .logo { font-size: 22px; font-weight: 800; color: #0d1b3e; letter-spacing: 0.04em; text-align: center; }
+    .logo span { color: #C9A84C; }
+    .tagline { font-size: 12px; color: #8a94aa; margin-top: 4px; margin-bottom: 32px; text-align: center; }
+    label { align-self: flex-start; font-size: 11px; font-weight: 700; color: #0d1b3e; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+    input { width: 100%; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; color: #0d1b3e; outline: none; transition: border-color 0.15s; margin-bottom: 18px; }
+    input:focus { border-color: #C9A84C; }
+    button { width: 100%; background: linear-gradient(135deg, #0d1b3e, #1a2f5a); color: #C9A84C; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 0.04em; margin-top: 6px; transition: opacity 0.15s; }
+    button:hover { opacity: 0.88; }
     #login-error { font-size: 12px; color: #e05050; font-weight: 600; margin-top: 12px; min-height: 16px; }
   </style>
 </head>
 <body>
-
-  <!-- Login overlay -->
-  <div id="login-overlay">
-    <div id="login-box">
-      <div class="logo">FCDH <span>Courtiers</span></div>
-      <div class="tagline">Tableau de bord — Accès restreint</div>
-      <label for="inp-login">Identifiant</label>
-      <input type="text" id="inp-login" autocomplete="username" placeholder="votre.login"/>
-      <label for="inp-pwd">Mot de passe</label>
-      <input type="password" id="inp-pwd" autocomplete="current-password" placeholder="••••••••"/>
-      <button id="btn-login">Se connecter</button>
-      <div id="login-error"></div>
-    </div>
+  <div id="login-box">
+    <div class="logo">FCDH <span>Courtiers</span></div>
+    <div class="tagline">Tableau de bord — Accès restreint</div>
+    <label for="inp-login">Identifiant</label>
+    <input type="text" id="inp-login" autocomplete="username" placeholder="votre.login"/>
+    <label for="inp-pwd">Mot de passe</label>
+    <input type="password" id="inp-pwd" autocomplete="current-password" placeholder="••••••••"/>
+    <button id="btn-login">Se connecter</button>
+    <div id="login-error"></div>
   </div>
-
-  <header>
-    <div>
-      <h1>FCDH Courtiers Associés</h1>
-      <p>Tableau de bord</p>
-    </div>
-    <div id="header-user">
-      <span id="header-username"></span>
-      <button id="btn-logout" onclick="logout()">Déconnexion</button>
-    </div>
-  </header>
-  <main>
-    <div class="title">Tableau de bord</div>
-    <div class="subtitle">Sélectionnez un outil pour commencer</div>
-    <div class="grid">
-      <a class="card" href="speculation.html">
-        <div class="icon">🍾</div>
-        <div class="name">Spéculation</div>
-        <div class="desc">Gestion des affaires en cours, matchs potentiels et cotations</div>
-        <div class="badge">Accéder →</div>
-      </a>
-      <a class="card" href="visites-cadeaux.html">
-        <div class="icon">🎁</div>
-        <div class="name">Visites &amp; Cadeaux</div>
-        <div class="desc">Liste visites pressoirs et distribution des bouteilles / chocolats / vins</div>
-        <div class="badge">Accéder →</div>
-      </a>
-      <a class="card" href="raisins-vendange.html">
-        <div class="icon">🍇</div>
-        <div class="name">Raisins à la Vendange</div>
-        <div class="desc">Demandes acheteurs et vendeurs de raisins — suivi des quantités, prix et statuts</div>
-        <div class="badge">Accéder →</div>
-      </a>
-      <a class="card" href="pressoir.html" data-acces="b.orsat">
-        <div class="icon">🗺️</div>
-        <div class="name">Pressoir</div>
-        <div class="desc">Carte interactive des centres de pressurage en Champagne</div>
-        <div class="badge">Accéder →</div>
-      </a>
-      <a class="card" href="contrats.html">
-        <div class="icon">📋</div>
-        <div class="name">Renouvellement des Contrats</div>
-        <div class="desc">Suivi des contrats pluriannuels 2026 — renouvellements, nouveaux contrats et statistiques par courtier</div>
-        <div class="badge">Accéder →</div>
-      </a>
-      <a class="card" href="foncier-droits-locations.html">
-        <div class="icon">📜</div>
-        <div class="name">Foncier/Droits/Locations</div>
-        <div class="desc">Suivi des dossiers fonciers, droits de plantation et locations de vignes par courtier</div>
-        <div class="badge">Accéder →</div>
-      </a>
-    </div>
-  </main>
-  <footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
 
   <script>
     const USERS = [
@@ -128,34 +47,10 @@
       { login: 'contact1',    password: 'fcdh1',     role: 'correspondant' },
     ];
 
-    function applyPermissions(user) {
-      document.querySelectorAll('.card[data-acces]').forEach(card => {
-        const allowed = card.dataset.acces.split(',').map(s => s.trim());
-        if (!allowed.includes(user)) {
-          card.classList.add('soon');
-          card.removeAttribute('href');
-        }
-      });
-    }
-
-    function checkAuth() {
-      const user = sessionStorage.getItem('fcdh_user');
-      const role = sessionStorage.getItem('fcdh_role');
-      if (user) {
-        if (role === 'correspondant') { window.location.replace('index-correspondants.html'); return; }
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('header-username').textContent = user;
-        applyPermissions(user);
-      }
-    }
-
-    function logout() {
-      sessionStorage.removeItem('fcdh_user');
-      document.getElementById('login-overlay').style.display = 'flex';
-      document.getElementById('inp-login').value = '';
-      document.getElementById('inp-pwd').value = '';
-      document.getElementById('login-error').textContent = '';
-      document.getElementById('inp-login').focus();
+    const existingUser = sessionStorage.getItem('fcdh_user');
+    const existingRole = sessionStorage.getItem('fcdh_role');
+    if (existingUser && existingRole) {
+      window.location.replace(existingRole === 'correspondant' ? 'index-correspondants.html' : 'index-courtiers.html');
     }
 
     document.getElementById('btn-login').addEventListener('click', () => {
@@ -165,11 +60,7 @@
       if (match) {
         sessionStorage.setItem('fcdh_user', login);
         sessionStorage.setItem('fcdh_role', match.role);
-        if (match.role === 'correspondant') { window.location.replace('index-correspondants.html'); return; }
-        document.getElementById('login-overlay').style.display = 'none';
-        document.getElementById('header-username').textContent = login;
-        document.getElementById('login-error').textContent = '';
-        applyPermissions(login);
+        window.location.replace(match.role === 'correspondant' ? 'index-correspondants.html' : 'index-courtiers.html');
       } else {
         document.getElementById('login-error').textContent = 'Identifiant ou mot de passe incorrect.';
         document.getElementById('inp-pwd').value = '';
@@ -183,8 +74,6 @@
     document.getElementById('inp-login').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('inp-pwd').focus();
     });
-
-    checkAuth();
   </script>
 </body>
 </html>
