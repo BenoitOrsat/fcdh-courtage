@@ -45,6 +45,20 @@
     #btn-generer:hover { opacity: 0.88; }
     #form-error { font-size: 12.5px; color: #e05050; font-weight: 600; margin-top: 12px; min-height: 16px; text-align: center; }
 
+    .btn-secondary { margin-top: 10px; background: #fff; color: #0d1b3e; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 10px 16px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; transition: border-color 0.15s; }
+    .btn-secondary:hover { border-color: #C9A84C; }
+
+    .detail-wrap { margin-top: 16px; display: none; }
+    .detail-wrap.show { display: block; }
+    .detail-scroll { overflow-x: auto; border: 1px solid #dde1eb; border-radius: 10px; }
+    #table-pressoirs { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 11.5px; }
+    #table-pressoirs th { text-align: left; padding: 8px 8px; background: #f8f9fb; color: #4a5468; font-weight: 700; border-bottom: 1.5px solid #dde1eb; position: sticky; top: 0; }
+    #table-pressoirs td { padding: 6px 8px; border-bottom: 1px solid #eef0f5; color: #0d1b3e; vertical-align: middle; }
+    #table-pressoirs input[type="date"], #table-pressoirs input[type="number"] { width: 100%; border: 1px solid #dde1eb; border-radius: 6px; padding: 4px 6px; font-size: 11px; font-family: inherit; }
+    #table-pressoirs input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    #table-pressoirs td.center { text-align: center; }
+    .detail-hint { font-size: 11px; color: #8a94aa; padding: 8px 4px 0; }
+
     .preview { margin-top: 28px; padding-top: 24px; border-top: 1px solid #eef0f5; display: none; }
     .preview.show { display: block; }
     .preview h3 { font-size: 14px; color: #0d1b3e; margin-bottom: 12px; }
@@ -90,6 +104,27 @@
       <div class="field">
         <label class="main" for="inp-visites-jour">Visites réalisées le jour J : sous-secteur ou communes visitées</label>
         <textarea id="inp-visites-jour" placeholder="Ex : Secteur B — Ambonnay, Bouzy…"></textarea>
+        <button type="button" class="btn-secondary" id="btn-detail-pressoirs">Détail par pressoir</button>
+        <div class="detail-wrap" id="detail-wrap">
+          <div class="detail-scroll">
+            <table id="table-pressoirs">
+              <thead>
+                <tr>
+                  <th>Commune</th>
+                  <th>Pressoir</th>
+                  <th>Courtier(s)</th>
+                  <th>Visité aujourd'hui</th>
+                  <th>Compteur de visite</th>
+                  <th>Ouverture</th>
+                  <th>Livraison FCDH</th>
+                  <th>Bouteilles distribuées</th>
+                </tr>
+              </thead>
+              <tbody id="table-pressoirs-body"></tbody>
+            </table>
+          </div>
+          <div class="detail-hint">Seuls les pressoirs cochés « Visité aujourd'hui » seront inclus dans le mail généré.</div>
+        </div>
       </div>
 
       <div class="field">
@@ -191,6 +226,34 @@
     };
     const TOUS_SECTEURS = ['A','B','C','D','E','F','G','H','I','M','S'];
 
+    // Référentiel des pressoirs par secteur : chargé dynamiquement depuis pressoir.html (pas de copie figée ici)
+    let PRESSOIRS = [];
+    let pressoirsErreur = false;
+
+    function parsePressoirsDepuisHtml(html) {
+      const pressoirs = [];
+      const communeRe = /nom:\s*"([^"]+)",\s*lat:\s*([-\d.]+),\s*lng:\s*([-\d.]+),\s*pressoirs:\s*\[([\s\S]*?)\]\s*\}/g;
+      const pressoirRe = /\{\s*nom:\s*"([^"]+)"(?:,\s*courtier1:\s*"([^"]+)")?(?:,\s*courtier2:\s*"([^"]+)")?,\s*secteur:\s*"([^"]+)"\s*\}/g;
+      let cm;
+      while ((cm = communeRe.exec(html)) !== null) {
+        const commune = cm[1];
+        const body = cm[4];
+        let pm;
+        pressoirRe.lastIndex = 0;
+        while ((pm = pressoirRe.exec(body)) !== null) {
+          const nom = pm[1], c1 = pm[2], c2 = pm[3], secteur = pm[4];
+          pressoirs.push([secteur, commune, nom, c1 + (c2 ? '/' + c2 : '')]);
+        }
+      }
+      return pressoirs;
+    }
+
+    const pressoirsPromise = fetch('pressoir.html')
+      .then(function(res) { return res.text(); })
+      .then(function(html) { PRESSOIRS = parsePressoirsDepuisHtml(html); })
+      .catch(function() { pressoirsErreur = true; });
+
+
     // ---- Rendu des chips de secteur (limités aux secteurs du correspondant) ----
     const secteursDisponibles = mesSecteurs.length ? mesSecteurs : TOUS_SECTEURS;
     const chipsContainer = document.getElementById('secteur-chips');
@@ -220,6 +283,102 @@
       return Array.from(initiales).map(function(i) { return COURTIER_INFO[i]; }).filter(Boolean);
     }
 
+    // ---- Détail par pressoir : compteur persistant (localStorage) ----
+    function pressoirId(row) {
+      return row[0] + '|' + row[1] + '|' + row[2];
+    }
+    function getCompteur(id) {
+      return parseInt(localStorage.getItem('crj_compteur_' + id) || '0', 10);
+    }
+    function getDerniereVisite(id) {
+      return localStorage.getItem('crj_derniere_visite_' + id) || '';
+    }
+
+    function renderTablePressoirs() {
+      const secteurs = getSelectedSecteurs();
+      const tbody = document.getElementById('table-pressoirs-body');
+      const rows = PRESSOIRS.filter(function(r) { return secteurs.indexOf(r[0]) !== -1; });
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#8a94aa; text-align:center;">Sélectionnez un secteur pour afficher ses pressoirs.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(r, i) {
+        const id = pressoirId(r);
+        const compteur = getCompteur(id);
+        return '<tr data-id="' + id + '" data-base-compteur="' + compteur + '">' +
+          '<td>' + r[1] + '</td>' +
+          '<td>' + r[2] + '</td>' +
+          '<td>' + r[3] + '</td>' +
+          '<td class="center"><input type="checkbox" class="chk-visite"></td>' +
+          '<td class="center"><span class="span-compteur">' + compteur + '</span></td>' +
+          '<td><input type="date" class="inp-ouverture"></td>' +
+          '<td><input type="date" class="inp-livraison"></td>' +
+          '<td><input type="number" min="0" placeholder="0" class="inp-bouteilles"></td>' +
+          '</tr>';
+      }).join('');
+      tbody.querySelectorAll('.chk-visite').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+          const tr = cb.closest('tr');
+          const base = parseInt(tr.dataset.baseCompteur, 10);
+          tr.querySelector('.span-compteur').textContent = base + (cb.checked ? 1 : 0);
+        });
+      });
+    }
+
+    document.getElementById('btn-detail-pressoirs').addEventListener('click', async function() {
+      const wrap = document.getElementById('detail-wrap');
+      const opening = !wrap.classList.contains('show');
+      wrap.classList.toggle('show');
+      if (opening) {
+        document.getElementById('table-pressoirs-body').innerHTML = '<tr><td colspan="8" style="padding:12px; color:#8a94aa; text-align:center;">Chargement des pressoirs depuis pressoir.html…</td></tr>';
+        await pressoirsPromise;
+        if (pressoirsErreur) {
+          document.getElementById('table-pressoirs-body').innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e05050; text-align:center;">Impossible de charger les données depuis pressoir.html.</td></tr>';
+          return;
+        }
+        renderTablePressoirs();
+      }
+    });
+    document.getElementById('secteur-chips').addEventListener('change', async function() {
+      if (document.getElementById('detail-wrap').classList.contains('show')) {
+        await pressoirsPromise;
+        if (!pressoirsErreur) renderTablePressoirs();
+      }
+    });
+
+    // Commet les visites cochées : incrémente le compteur persistant (une seule fois par jour) et renvoie le détail à inclure dans le mail
+    function commitVisitesPressoirs(dateIso) {
+      const tbody = document.getElementById('table-pressoirs-body');
+      const detail = [];
+      tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
+        const cb = tr.querySelector('.chk-visite');
+        if (!cb || !cb.checked) return;
+        const id = tr.dataset.id;
+        const base = parseInt(tr.dataset.baseCompteur, 10);
+        const dejaCompteAujourdhui = getDerniereVisite(id) === dateIso;
+        const nouveauCompteur = dejaCompteAujourdhui ? base : base + 1;
+        localStorage.setItem('crj_compteur_' + id, String(nouveauCompteur));
+        localStorage.setItem('crj_derniere_visite_' + id, dateIso);
+        tr.dataset.baseCompteur = String(nouveauCompteur);
+        tr.querySelector('.span-compteur').textContent = nouveauCompteur;
+
+        const parts = id.split('|');
+        const ouverture = tr.querySelector('.inp-ouverture').value;
+        const livraison = tr.querySelector('.inp-livraison').value;
+        const bouteilles = tr.querySelector('.inp-bouteilles').value;
+        detail.push({
+          commune: parts[1],
+          nom: parts[2],
+          courtiers: tr.children[2].textContent,
+          compteur: nouveauCompteur,
+          ouverture: ouverture ? formatDateFr(ouverture) : '—',
+          livraison: livraison ? formatDateFr(livraison) : '—',
+          bouteilles: bouteilles || '0',
+        });
+      });
+      return detail;
+    }
+
     document.getElementById('btn-generer').addEventListener('click', function() {
       const errorEl = document.getElementById('form-error');
       errorEl.textContent = '';
@@ -247,6 +406,10 @@
         return;
       }
 
+      const detailPressoirs = document.getElementById('detail-wrap').classList.contains('show')
+        ? commitVisitesPressoirs(dateIso)
+        : [];
+
       const dateFr = formatDateFr(dateIso);
       const subject = 'CRJ ' + dateFr + ' - Secteur' + (secteurs.length > 1 ? 's ' : ' ') + secteurs.join(', ') + ' - ' + user;
 
@@ -257,6 +420,21 @@
         '',
         'Visites réalisées le jour J (sous-secteur / communes) :',
         visitesJour || '—',
+      ];
+
+      if (detailPressoirs.length > 0) {
+        lignes.push('');
+        lignes.push('Détail par pressoir visité :');
+        detailPressoirs.forEach(function(d) {
+          lignes.push('  - ' + d.nom + ' (' + d.commune + ') — Courtier(s) : ' + d.courtiers +
+            ' — Compteur de visite : ' + d.compteur +
+            ' — Ouverture : ' + d.ouverture +
+            ' — Livraison FCDH : ' + d.livraison +
+            ' — Bouteilles distribuées : ' + d.bouteilles);
+        });
+      }
+
+      lignes.push(
         '',
         'Remarques qualitatives particulières :',
         remarques || '—',
@@ -270,8 +448,8 @@
         '  Autres : ' + (rencontreAutres || '—'),
         '',
         'Visites prévues à J+1 (sous-secteur / communes) :',
-        visitesJ1 || '—',
-      ];
+        visitesJ1 || '—'
+      );
       const body = lignes.join('\n');
       const toList = destinataires.map(function(d) { return d.email; });
       const toDisplay = destinataires.map(function(d) { return d.nom + ' <' + d.email + '>'; }).join(', ');
