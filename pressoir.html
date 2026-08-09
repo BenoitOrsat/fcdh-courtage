@@ -2407,6 +2407,10 @@
         courtierLines +
       '</div>';
     marker.bindPopup(popupHtml);
+    // Affichage au survol en plus du clic (déjà géré par bindPopup) : on
+    // ouvre/ferme la même popup au passage de la souris.
+    marker.on('mouseover', function(){ marker.openPopup(); });
+    marker.on('mouseout', function(){ marker.closePopup(); });
     return marker;
   }
 
