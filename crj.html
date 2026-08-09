@@ -283,15 +283,52 @@
       return Array.from(initiales).map(function(i) { return COURTIER_INFO[i]; }).filter(Boolean);
     }
 
-    // ---- Détail par pressoir : compteur persistant (localStorage) ----
+    // ---- Détail par pressoir : état partagé (Google Sheet via Apps Script Web App) ----
+    const PRESSOIR_STORE_URL = 'https://script.google.com/macros/s/AKfycbzyGJXUqWURffOjPpBgMD-e14Gg6afQ3jQHvBMC0NtoUs2L6Ze9seBmHPBjRIKvCoHD/exec';
+    let etatPressoirs = {};
+    let etatPressoirsErreur = false;
+
     function pressoirId(row) {
       return row[0] + '|' + row[1] + '|' + row[2];
     }
-    function getCompteur(id) {
-      return parseInt(localStorage.getItem('crj_compteur_' + id) || '0', 10);
+
+    function pressoirStoreConfigure() {
+      return PRESSOIR_STORE_URL && PRESSOIR_STORE_URL.indexOf('REMPLACER_PAR') !== 0;
     }
-    function getDerniereVisite(id) {
-      return localStorage.getItem('crj_derniere_visite_' + id) || '';
+
+    // Ramène toute valeur de date renvoyée par la Sheet (texte, ou datetime ISO si jamais Sheets l'a
+    // malgré tout convertie en Date) au format YYYY-MM-DD attendu par <input type="date">
+    function normaliserDateIso(valeur) {
+      if (!valeur) return '';
+      const m = String(valeur).match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : '';
+    }
+
+    async function chargerEtatPressoirs(secteurs) {
+      etatPressoirsErreur = false;
+      etatPressoirs = {};
+      if (!pressoirStoreConfigure()) { etatPressoirsErreur = true; return; }
+      try {
+        const res = await fetch(PRESSOIR_STORE_URL + '?secteurs=' + encodeURIComponent(secteurs.join(',')));
+        const data = await res.json();
+        (data.rows || []).forEach(function(r) { etatPressoirs[r.id] = r; });
+      } catch (e) {
+        etatPressoirsErreur = true;
+      }
+    }
+
+    async function sauvegarderEtatPressoirs(updates) {
+      if (!updates.length || !pressoirStoreConfigure()) return false;
+      try {
+        await fetch(PRESSOIR_STORE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ updates: updates }),
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
 
     function renderTablePressoirs() {
@@ -302,17 +339,23 @@
         tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#8a94aa; text-align:center;">Sélectionnez un secteur pour afficher ses pressoirs.</td></tr>';
         return;
       }
-      tbody.innerHTML = rows.map(function(r, i) {
+      const avertissement = etatPressoirsErreur
+        ? '<tr><td colspan="8" style="padding:8px 12px; color:#b3762b; background:#fdf3e2; text-align:center;">⚠️ Stockage partagé indisponible — compteurs et dates non chargés, et ne seront pas enregistrés cette fois-ci.</td></tr>'
+        : '';
+      tbody.innerHTML = avertissement + rows.map(function(r) {
         const id = pressoirId(r);
-        const compteur = getCompteur(id);
-        return '<tr data-id="' + id + '" data-base-compteur="' + compteur + '">' +
+        const etat = etatPressoirs[id] || {};
+        const compteur = parseInt(etat.compteur || 0, 10);
+        const ouverture = normaliserDateIso(etat.ouverture);
+        const livraison = normaliserDateIso(etat.livraison);
+        return '<tr data-id="' + id + '" data-base-compteur="' + compteur + '" data-derniere-visite="' + normaliserDateIso(etat.derniereVisite) + '" data-init-ouverture="' + ouverture + '" data-init-livraison="' + livraison + '">' +
           '<td>' + r[1] + '</td>' +
           '<td>' + r[2] + '</td>' +
           '<td>' + r[3] + '</td>' +
           '<td class="center"><input type="checkbox" class="chk-visite"></td>' +
           '<td class="center"><span class="span-compteur">' + compteur + '</span></td>' +
-          '<td><input type="date" class="inp-ouverture"></td>' +
-          '<td><input type="date" class="inp-livraison"></td>' +
+          '<td><input type="date" class="inp-ouverture" value="' + ouverture + '"></td>' +
+          '<td><input type="date" class="inp-livraison" value="' + livraison + '"></td>' +
           '<td><input type="number" min="0" placeholder="0" class="inp-bouteilles"></td>' +
           '</tr>';
       }).join('');
@@ -336,38 +379,47 @@
           document.getElementById('table-pressoirs-body').innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e05050; text-align:center;">Impossible de charger les données depuis pressoir.html.</td></tr>';
           return;
         }
+        await chargerEtatPressoirs(getSelectedSecteurs());
         renderTablePressoirs();
       }
     });
     document.getElementById('secteur-chips').addEventListener('change', async function() {
       if (document.getElementById('detail-wrap').classList.contains('show')) {
         await pressoirsPromise;
-        if (!pressoirsErreur) renderTablePressoirs();
+        if (!pressoirsErreur) {
+          await chargerEtatPressoirs(getSelectedSecteurs());
+          renderTablePressoirs();
+        }
       }
     });
 
-    // Collecte toute ligne modifiée (cochée, et/ou date/bouteilles renseignées) ; incrémente le compteur persistant
-    // uniquement pour les lignes cochées "Visité aujourd'hui" (une seule fois par jour)
-    function commitVisitesPressoirs(dateIso) {
+    // Collecte toute ligne modifiée (cochée, et/ou date/bouteilles renseignées ou changées) pour le mail,
+    // et prépare les mises à jour à sauvegarder dans le stockage partagé (compteur + dates, pas les bouteilles
+    // qui sont ressaisies à chaque fois). Le compteur ne s'incrémente que sur une visite cochée (1x/jour).
+    function collecterDetailPressoirs(dateIso) {
       const tbody = document.getElementById('table-pressoirs-body');
       const detail = [];
+      const updates = [];
       tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
         const cb = tr.querySelector('.chk-visite');
         const ouverture = tr.querySelector('.inp-ouverture').value;
         const livraison = tr.querySelector('.inp-livraison').value;
         const bouteilles = tr.querySelector('.inp-bouteilles').value;
         const visite = !!(cb && cb.checked);
-        const touched = visite || ouverture || livraison || bouteilles;
+        const ouvertureChangee = ouverture !== (tr.dataset.initOuverture || '');
+        const livraisonChangee = livraison !== (tr.dataset.initLivraison || '');
+        const touched = visite || ouvertureChangee || livraisonChangee || bouteilles;
         if (!touched) return;
 
         const id = tr.dataset.id;
         let compteur = parseInt(tr.dataset.baseCompteur, 10);
+        let derniereVisite = tr.dataset.derniereVisite || '';
         if (visite) {
-          const dejaCompteAujourdhui = getDerniereVisite(id) === dateIso;
+          const dejaCompteAujourdhui = derniereVisite === dateIso;
           compteur = dejaCompteAujourdhui ? compteur : compteur + 1;
-          localStorage.setItem('crj_compteur_' + id, String(compteur));
-          localStorage.setItem('crj_derniere_visite_' + id, dateIso);
+          derniereVisite = dateIso;
           tr.dataset.baseCompteur = String(compteur);
+          tr.dataset.derniereVisite = derniereVisite;
           tr.querySelector('.span-compteur').textContent = compteur;
         }
 
@@ -382,8 +434,16 @@
           livraison: livraison ? formatDateFr(livraison) : '—',
           bouteilles: bouteilles || '—',
         });
+
+        if (visite || ouvertureChangee || livraisonChangee) {
+          updates.push({
+            id: id, secteur: parts[0], commune: parts[1], pressoir: parts[2],
+            compteur: compteur, derniereVisite: derniereVisite,
+            ouverture: ouverture, livraison: livraison,
+          });
+        }
       });
-      return detail;
+      return { detail: detail, updates: updates };
     }
 
     // Construit un tableau texte aligné (colonnes de largeur fixe) pour un rendu lisible dans le corps du mail
@@ -400,7 +460,7 @@
       return lignes.join('\n');
     }
 
-    document.getElementById('btn-generer').addEventListener('click', function() {
+    document.getElementById('btn-generer').addEventListener('click', async function() {
       const errorEl = document.getElementById('form-error');
       errorEl.textContent = '';
 
@@ -427,9 +487,17 @@
         return;
       }
 
-      const detailPressoirs = document.getElementById('detail-wrap').classList.contains('show')
-        ? commitVisitesPressoirs(dateIso)
-        : [];
+      let detailPressoirs = [];
+      if (document.getElementById('detail-wrap').classList.contains('show')) {
+        const resultat = collecterDetailPressoirs(dateIso);
+        detailPressoirs = resultat.detail;
+        if (resultat.updates.length > 0) {
+          const sauvegarde = await sauvegarderEtatPressoirs(resultat.updates);
+          if (!sauvegarde) {
+            errorEl.textContent = "⚠️ Mail généré, mais le compteur/dates n'ont pas pu être enregistrés dans le stockage partagé (indisponible).";
+          }
+        }
+      }
 
       const dateFr = formatDateFr(dateIso);
       const subject = 'CRJ ' + dateFr + ' - Secteur' + (secteurs.length > 1 ? 's ' : ' ') + secteurs.join(', ') + ' - ' + user;
