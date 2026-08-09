@@ -346,37 +346,58 @@
       }
     });
 
-    // Commet les visites cochées : incrémente le compteur persistant (une seule fois par jour) et renvoie le détail à inclure dans le mail
+    // Collecte toute ligne modifiée (cochée, et/ou date/bouteilles renseignées) ; incrémente le compteur persistant
+    // uniquement pour les lignes cochées "Visité aujourd'hui" (une seule fois par jour)
     function commitVisitesPressoirs(dateIso) {
       const tbody = document.getElementById('table-pressoirs-body');
       const detail = [];
       tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
         const cb = tr.querySelector('.chk-visite');
-        if (!cb || !cb.checked) return;
-        const id = tr.dataset.id;
-        const base = parseInt(tr.dataset.baseCompteur, 10);
-        const dejaCompteAujourdhui = getDerniereVisite(id) === dateIso;
-        const nouveauCompteur = dejaCompteAujourdhui ? base : base + 1;
-        localStorage.setItem('crj_compteur_' + id, String(nouveauCompteur));
-        localStorage.setItem('crj_derniere_visite_' + id, dateIso);
-        tr.dataset.baseCompteur = String(nouveauCompteur);
-        tr.querySelector('.span-compteur').textContent = nouveauCompteur;
-
-        const parts = id.split('|');
         const ouverture = tr.querySelector('.inp-ouverture').value;
         const livraison = tr.querySelector('.inp-livraison').value;
         const bouteilles = tr.querySelector('.inp-bouteilles').value;
+        const visite = !!(cb && cb.checked);
+        const touched = visite || ouverture || livraison || bouteilles;
+        if (!touched) return;
+
+        const id = tr.dataset.id;
+        let compteur = parseInt(tr.dataset.baseCompteur, 10);
+        if (visite) {
+          const dejaCompteAujourdhui = getDerniereVisite(id) === dateIso;
+          compteur = dejaCompteAujourdhui ? compteur : compteur + 1;
+          localStorage.setItem('crj_compteur_' + id, String(compteur));
+          localStorage.setItem('crj_derniere_visite_' + id, dateIso);
+          tr.dataset.baseCompteur = String(compteur);
+          tr.querySelector('.span-compteur').textContent = compteur;
+        }
+
+        const parts = id.split('|');
         detail.push({
           commune: parts[1],
           nom: parts[2],
           courtiers: tr.children[2].textContent,
-          compteur: nouveauCompteur,
+          visite: visite ? 'Oui' : 'Non',
+          compteur: String(compteur),
           ouverture: ouverture ? formatDateFr(ouverture) : '—',
           livraison: livraison ? formatDateFr(livraison) : '—',
-          bouteilles: bouteilles || '0',
+          bouteilles: bouteilles || '—',
         });
       });
       return detail;
+    }
+
+    // Construit un tableau texte aligné (colonnes de largeur fixe) pour un rendu lisible dans le corps du mail
+    function formatTableauTexte(headers, rows) {
+      const widths = headers.map(function(h, i) {
+        return rows.reduce(function(max, r) { return Math.max(max, String(r[i]).length); }, h.length);
+      });
+      function formatLigne(cells) {
+        return cells.map(function(c, i) { return String(c).padEnd(widths[i], ' '); }).join('  ');
+      }
+      const lignes = [formatLigne(headers)];
+      lignes.push(widths.map(function(w) { return '-'.repeat(w); }).join('  '));
+      rows.forEach(function(r) { lignes.push(formatLigne(r)); });
+      return lignes.join('\n');
     }
 
     document.getElementById('btn-generer').addEventListener('click', function() {
@@ -424,13 +445,24 @@
 
       if (detailPressoirs.length > 0) {
         lignes.push('');
-        lignes.push('Détail par pressoir visité :');
+        lignes.push('Détail par pressoir :');
+        const groupesParCourtier = {};
         detailPressoirs.forEach(function(d) {
-          lignes.push('  - ' + d.nom + ' (' + d.commune + ') — Courtier(s) : ' + d.courtiers +
-            ' — Compteur de visite : ' + d.compteur +
-            ' — Ouverture : ' + d.ouverture +
-            ' — Livraison FCDH : ' + d.livraison +
-            ' — Bouteilles distribuées : ' + d.bouteilles);
+          d.courtiers.split('/').forEach(function(code) {
+            if (!groupesParCourtier[code]) groupesParCourtier[code] = [];
+            groupesParCourtier[code].push(d);
+          });
+        });
+        Object.keys(groupesParCourtier).sort().forEach(function(code) {
+          const infoCourtier = COURTIER_INFO[code];
+          lignes.push('');
+          lignes.push(code + (infoCourtier ? ' — ' + infoCourtier.nom : '') + ' :');
+          lignes.push(formatTableauTexte(
+            ['Pressoir', 'Commune', 'Courtier(s)', 'Visité', 'Compteur', 'Ouverture', 'Livraison FCDH', 'Bouteilles distr.'],
+            groupesParCourtier[code].map(function(d) {
+              return [d.nom, d.commune, d.courtiers, d.visite, d.compteur, d.ouverture, d.livraison, d.bouteilles];
+            })
+          ));
         });
       }
 
