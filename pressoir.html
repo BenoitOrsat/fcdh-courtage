@@ -2407,10 +2407,14 @@
         courtierLines +
       '</div>';
     marker.bindPopup(popupHtml);
-    // Affichage au survol en plus du clic (déjà géré par bindPopup) : on
-    // ouvre/ferme la même popup au passage de la souris.
+    // Affichage au survol en plus du clic. Un clic "épingle" la popup : elle
+    // reste ouverte même quand la souris s'en va ensuite, et ne se referme
+    // au survol que si elle n'a pas été ouverte par un clic.
+    var pinnedByClick = false;
+    marker.on('click', function(){ pinnedByClick = true; });
     marker.on('mouseover', function(){ marker.openPopup(); });
-    marker.on('mouseout', function(){ marker.closePopup(); });
+    marker.on('mouseout', function(){ if(!pinnedByClick) marker.closePopup(); });
+    marker.on('popupclose', function(){ pinnedByClick = false; });
     return marker;
   }
 
