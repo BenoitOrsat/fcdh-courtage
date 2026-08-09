@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FCDH Courtiers Associés — CRJ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #f8f9fb; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: linear-gradient(135deg, #0d1b3e 0%, #1a2f5a 100%); padding: 0 32px; height: 72px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(13,27,62,.4); }
+    header h1 { font-size: 20px; font-weight: 800; color: #C9A84C; letter-spacing: 0.04em; }
+    header p { font-size: 12px; color: #e8c97a; letter-spacing: 0.05em; margin-top: 2px; }
+    #header-user { display: flex; align-items: center; gap: 12px; }
+    #header-username { font-size: 12px; color: #e8c97a; font-weight: 600; }
+    #btn-logout, #btn-back { background: rgba(201,168,76,.15); border: 1px solid rgba(201,168,76,.4); color: #C9A84C; border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s; text-decoration: none; }
+    #btn-logout:hover, #btn-back:hover { background: rgba(201,168,76,.3); }
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 40px 24px 80px; }
+    .title { font-size: 28px; font-weight: 800; color: #0d1b3e; margin-bottom: 8px; text-align: center; }
+    .subtitle { font-size: 14px; color: #8a94aa; margin-bottom: 36px; text-align: center; }
+    .panel { background: #fff; border: 1px solid #dde1eb; border-radius: 16px; padding: 32px; width: 100%; max-width: 720px; box-shadow: 0 2px 8px rgba(13,27,62,.06); }
+    .field { margin-bottom: 24px; }
+    .field label.main { display: block; font-size: 13px; font-weight: 700; color: #0d1b3e; margin-bottom: 6px; }
+    .field .hint { font-size: 11.5px; color: #b3762b; font-weight: 600; margin-bottom: 8px; background: #fdf3e2; border: 1px solid #f0ddb0; border-radius: 8px; padding: 8px 12px; }
+    .field textarea, .field input[type="text"], .field input[type="date"] {
+      width: 100%; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 11px 14px; font-size: 14px; font-family: inherit; color: #0d1b3e; outline: none; transition: border-color 0.15s; resize: vertical;
+    }
+    .field textarea:focus, .field input:focus { border-color: #C9A84C; }
+    .field textarea { min-height: 70px; }
+    .secteur-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+    .secteur-chip { position: relative; }
+    .secteur-chip input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; margin: 0; }
+    .secteur-chip span {
+      display: inline-flex; align-items: center; justify-content: center; min-width: 44px; padding: 8px 14px; border-radius: 999px;
+      border: 1.5px solid #dde1eb; font-size: 13px; font-weight: 700; color: #0d1b3e; background: #f8f9fb; transition: all 0.15s;
+    }
+    .secteur-chip input:checked + span { background: #0d1b3e; border-color: #0d1b3e; color: #C9A84C; }
+    .sub-field { margin-bottom: 14px; }
+    .sub-field label { display: block; font-size: 12px; font-weight: 600; color: #4a5468; margin-bottom: 5px; }
+    .sub-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
+    fieldset { border: none; padding: 0; }
+    legend { padding: 0; }
+    #btn-generer { width: 100%; background: linear-gradient(135deg, #0d1b3e, #1a2f5a); color: #C9A84C; border: none; border-radius: 10px; padding: 15px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 0.04em; transition: opacity 0.15s; margin-top: 8px; }
+    #btn-generer:hover { opacity: 0.88; }
+    #form-error { font-size: 12.5px; color: #e05050; font-weight: 600; margin-top: 12px; min-height: 16px; text-align: center; }
+
+    .btn-secondary { margin-top: 10px; background: #fff; color: #0d1b3e; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 10px 16px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; transition: border-color 0.15s; }
+    .btn-secondary:hover { border-color: #C9A84C; }
+
+    .detail-wrap { margin-top: 16px; display: none; }
+    .detail-wrap.show { display: block; }
+    .detail-scroll { overflow-x: auto; border: 1px solid #dde1eb; border-radius: 10px; }
+    #table-pressoirs { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 11.5px; }
+    #table-pressoirs th { text-align: left; padding: 8px 8px; background: #f8f9fb; color: #4a5468; font-weight: 700; border-bottom: 1.5px solid #dde1eb; position: sticky; top: 0; }
+    #table-pressoirs td { padding: 6px 8px; border-bottom: 1px solid #eef0f5; color: #0d1b3e; vertical-align: middle; }
+    #table-pressoirs input[type="date"], #table-pressoirs input[type="number"] { width: 100%; border: 1px solid #dde1eb; border-radius: 6px; padding: 4px 6px; font-size: 11px; font-family: inherit; }
+    #table-pressoirs input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    #table-pressoirs td.center { text-align: center; }
+    .detail-hint { font-size: 11px; color: #8a94aa; padding: 8px 4px 0; }
+
+    .preview { margin-top: 28px; padding-top: 24px; border-top: 1px solid #eef0f5; display: none; }
+    .preview.show { display: block; }
+    .preview h3 { font-size: 14px; color: #0d1b3e; margin-bottom: 12px; }
+    .preview .row { font-size: 12.5px; color: #4a5468; margin-bottom: 10px; }
+    .preview .row b { color: #0d1b3e; }
+    .preview textarea { width: 100%; min-height: 220px; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 12px; font-size: 12.5px; font-family: 'Menlo', monospace; color: #0d1b3e; resize: vertical; }
+    .preview-actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .preview-actions button, .preview-actions a {
+      flex: 1; min-width: 160px; text-align: center; background: #eef0f5; color: #0d1b3e; border: 1px solid #dde1eb; border-radius: 10px; padding: 11px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none;
+    }
+    .preview-actions a.primary { background: linear-gradient(135deg, #0d1b3e, #1a2f5a); color: #C9A84C; border: none; }
+    #copy-feedback { font-size: 11.5px; color: #2a8f4f; font-weight: 700; margin-top: 8px; min-height: 14px; text-align: center; }
+    footer { text-align: center; padding: 24px; font-size: 11px; color: #8a94aa; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>FCDH Courtiers Associés</h1>
+      <p>Compte-Rendu Journalier</p>
+    </div>
+    <div id="header-user">
+      <span id="header-username"></span>
+      <a id="btn-back" href="index-correspondants.html">← Retour</a>
+      <button id="btn-logout" onclick="logout()">Déconnexion</button>
+    </div>
+  </header>
+  <main>
+    <div class="title">CRJ — Compte-Rendu Journalier</div>
+    <div class="subtitle">Complétez le formulaire puis générez le mail à destination des courtiers du secteur</div>
+
+    <div class="panel">
+      <div class="field">
+        <label class="main" for="inp-date">Date</label>
+        <input type="date" id="inp-date"/>
+      </div>
+
+      <div class="field">
+        <label class="main">Secteur(s) concerné(s)</label>
+        <fieldset id="secteur-chips" class="secteur-chips"></fieldset>
+      </div>
+
+      <div class="field">
+        <label class="main" for="inp-visites-jour">Visites réalisées le jour J : sous-secteur ou communes visitées</label>
+        <textarea id="inp-visites-jour" placeholder="Ex : Secteur B — Ambonnay, Bouzy…"></textarea>
+        <button type="button" class="btn-secondary" id="btn-detail-pressoirs">Détail par pressoir</button>
+        <div class="detail-wrap" id="detail-wrap">
+          <div class="detail-scroll">
+            <table id="table-pressoirs">
+              <thead>
+                <tr>
+                  <th>Commune</th>
+                  <th>Pressoir</th>
+                  <th>Courtier(s)</th>
+                  <th>Visité aujourd'hui</th>
+                  <th>Compteur de visite</th>
+                  <th>Ouverture</th>
+                  <th>Livraison FCDH</th>
+                  <th>Bouteilles distribuées</th>
+                </tr>
+              </thead>
+              <tbody id="table-pressoirs-body"></tbody>
+            </table>
+          </div>
+          <div class="detail-hint">Seuls les pressoirs cochés « Visité aujourd'hui » seront inclus dans le mail généré.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="main" for="inp-remarques">Remarques qualitatives particulières (pour info)</label>
+        <div class="hint">⚠️ En informer immédiatement le courtier responsable par téléphone</div>
+        <textarea id="inp-remarques"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="main" for="inp-problemes">Problèmes rencontrés (pour info)</label>
+        <div class="hint">⚠️ En informer immédiatement le courtier responsable par téléphone</div>
+        <textarea id="inp-problemes"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="main">Personnes rencontrées</label>
+        <div class="sub-grid">
+          <div class="sub-field">
+            <label for="inp-rencontre-maisons">Maisons de champagne</label>
+            <input type="text" id="inp-rencontre-maisons"/>
+          </div>
+          <div class="sub-field">
+            <label for="inp-rencontre-courtiers">Courtiers</label>
+            <input type="text" id="inp-rencontre-courtiers"/>
+          </div>
+          <div class="sub-field">
+            <label for="inp-rencontre-autres">Autres</label>
+            <input type="text" id="inp-rencontre-autres"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="main" for="inp-visites-j1">Visites prévues à J+1 : sous-secteur ou communes</label>
+        <textarea id="inp-visites-j1"></textarea>
+      </div>
+
+      <button id="btn-generer">Générer le mail →</button>
+      <div id="form-error"></div>
+
+      <div class="preview" id="preview">
+        <h3>Aperçu du mail</h3>
+        <div class="row"><b>Destinataires :</b> <span id="preview-to"></span></div>
+        <div class="row"><b>Objet :</b> <span id="preview-subject"></span></div>
+        <textarea id="preview-body" readonly></textarea>
+        <div class="preview-actions">
+          <a id="btn-ouvrir-mail" class="primary" href="#">📧 Ouvrir dans Outlook</a>
+          <button id="btn-copier">📋 Copier le texte du mail</button>
+        </div>
+        <div id="copy-feedback"></div>
+      </div>
+    </div>
+  </main>
+  <footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
+
+  <script>
+    // ---- Contrôle d'accès ----
+    function logout() {
+      sessionStorage.removeItem('fcdh_user');
+      sessionStorage.removeItem('fcdh_role');
+      sessionStorage.removeItem('fcdh_secteurs');
+      window.location.replace('index.html');
+    }
+    const user = sessionStorage.getItem('fcdh_user');
+    const role = sessionStorage.getItem('fcdh_role');
+    if (!user || role !== 'correspondant') {
+      window.location.replace('index.html');
+    } else {
+      document.getElementById('header-username').textContent = user;
+    }
+    const mesSecteurs = JSON.parse(sessionStorage.getItem('fcdh_secteurs') || '[]');
+
+    // ---- Référentiel courtiers / secteurs ----
+    // TODO : compléter/corriger les emails ci-dessous (placeholders en attendant les adresses réelles)
+    const COURTIER_INFO = {
+      BO:   { nom: 'Benoît Orsat',   email: 'b.orsat@fcdh.fr' },
+      JBC:  { nom: 'JB Cau',         email: 'jb.cau@fcdh.fr' },
+      EB:   { nom: 'E. Bertout',     email: 'e.bertout@fcdh.fr' },
+      MAA:  { nom: 'MA Daymery',     email: 'ma.daymery@fcdh.fr' },
+      EC:   { nom: 'E. Cossiez',     email: 'e.cossiez@fcdh.fr' },
+      ASM:  { nom: 'AS Malingre',    email: 'as.malingre@fcdh.fr' },
+      EH:   { nom: 'E. Heidsieck',   email: 'e.heidsieck@fcdh.fr' },
+      JPNC: { nom: 'JPNC (à vérifier)', email: 'jpnc@fcdh.fr' }, // TODO : courtier non présent dans la liste USERS actuelle, à confirmer
+    };
+
+    // Tous les courtiers présents sur chaque secteur (d'après pressoir.html) — à ajuster si besoin
+    const SECTEUR_COURTIERS = {
+      A: ['ASM','BO','EC','EH','JBC','JPNC','MAA'],
+      B: ['BO','EB','EC','JPNC','MAA'],
+      C: ['ASM','BO','EC','EH','JBC','JPNC','MAA'],
+      D: ['ASM','BO','EC','EH','JBC','JPNC','MAA'],
+      E: ['ASM','BO','EC','EH','JBC','JPNC','MAA'],
+      F: ['ASM','BO','EB','EC','EH','JBC','JPNC','MAA'],
+      G: ['ASM','BO','EC','EH','JBC','JPNC','MAA'],
+      H: ['ASM','BO','EC','EH','JBC','JPNC','MAA'],
+      I: ['EC','JBC','MAA'],
+      M: ['EB','JPNC'],
+      S: ['EB','EC','JPNC'],
+    };
+    const TOUS_SECTEURS = ['A','B','C','D','E','F','G','H','I','M','S'];
+
+    // Référentiel des pressoirs par secteur : chargé dynamiquement depuis pressoir.html (pas de copie figée ici)
+    let PRESSOIRS = [];
+    let pressoirsErreur = false;
+
+    function parsePressoirsDepuisHtml(html) {
+      const pressoirs = [];
+      const communeRe = /nom:\s*"([^"]+)",\s*lat:\s*([-\d.]+),\s*lng:\s*([-\d.]+),\s*pressoirs:\s*\[([\s\S]*?)\]\s*\}/g;
+      const pressoirRe = /\{\s*nom:\s*"([^"]+)"(?:,\s*courtier1:\s*"([^"]+)")?(?:,\s*courtier2:\s*"([^"]+)")?,\s*secteur:\s*"([^"]+)"\s*\}/g;
+      let cm;
+      while ((cm = communeRe.exec(html)) !== null) {
+        const commune = cm[1];
+        const body = cm[4];
+        let pm;
+        pressoirRe.lastIndex = 0;
+        while ((pm = pressoirRe.exec(body)) !== null) {
+          const nom = pm[1], c1 = pm[2], c2 = pm[3], secteur = pm[4];
+          pressoirs.push([secteur, commune, nom, c1 + (c2 ? '/' + c2 : '')]);
+        }
+      }
+      return pressoirs;
+    }
+
+    const pressoirsPromise = fetch('pressoir.html')
+      .then(function(res) { return res.text(); })
+      .then(function(html) { PRESSOIRS = parsePressoirsDepuisHtml(html); })
+      .catch(function() { pressoirsErreur = true; });
+
+
+    // ---- Rendu des chips de secteur (limités aux secteurs du correspondant) ----
+    const secteursDisponibles = mesSecteurs.length ? mesSecteurs : TOUS_SECTEURS;
+    const chipsContainer = document.getElementById('secteur-chips');
+    chipsContainer.innerHTML = secteursDisponibles.map(function(s, i) {
+      return '<label class="secteur-chip">' +
+        '<input type="checkbox" name="secteur" value="' + s + '"' + (secteursDisponibles.length === 1 ? ' checked' : '') + '/>' +
+        '<span>' + s + '</span></label>';
+    }).join('');
+
+    // ---- Date du jour par défaut ----
+    document.getElementById('inp-date').value = new Date().toISOString().slice(0, 10);
+
+    function formatDateFr(iso) {
+      const [y, m, d] = iso.split('-');
+      return d + '/' + m + '/' + y;
+    }
+
+    function getSelectedSecteurs() {
+      return Array.from(document.querySelectorAll('input[name="secteur"]:checked')).map(function(el) { return el.value; });
+    }
+
+    function getDestinataires(secteurs) {
+      const initiales = new Set();
+      secteurs.forEach(function(s) {
+        (SECTEUR_COURTIERS[s] || []).forEach(function(c) { initiales.add(c); });
+      });
+      return Array.from(initiales).map(function(i) { return COURTIER_INFO[i]; }).filter(Boolean);
+    }
+
+    // ---- Détail par pressoir : compteur persistant (localStorage) ----
+    function pressoirId(row) {
+      return row[0] + '|' + row[1] + '|' + row[2];
+    }
+    function getCompteur(id) {
+      return parseInt(localStorage.getItem('crj_compteur_' + id) || '0', 10);
+    }
+    function getDerniereVisite(id) {
+      return localStorage.getItem('crj_derniere_visite_' + id) || '';
+    }
+
+    function renderTablePressoirs() {
+      const secteurs = getSelectedSecteurs();
+      const tbody = document.getElementById('table-pressoirs-body');
+      const rows = PRESSOIRS.filter(function(r) { return secteurs.indexOf(r[0]) !== -1; });
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:12px; color:#8a94aa; text-align:center;">Sélectionnez un secteur pour afficher ses pressoirs.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(function(r, i) {
+        const id = pressoirId(r);
+        const compteur = getCompteur(id);
+        return '<tr data-id="' + id + '" data-base-compteur="' + compteur + '">' +
+          '<td>' + r[1] + '</td>' +
+          '<td>' + r[2] + '</td>' +
+          '<td>' + r[3] + '</td>' +
+          '<td class="center"><input type="checkbox" class="chk-visite"></td>' +
+          '<td class="center"><span class="span-compteur">' + compteur + '</span></td>' +
+          '<td><input type="date" class="inp-ouverture"></td>' +
+          '<td><input type="date" class="inp-livraison"></td>' +
+          '<td><input type="number" min="0" placeholder="0" class="inp-bouteilles"></td>' +
+          '</tr>';
+      }).join('');
+      tbody.querySelectorAll('.chk-visite').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+          const tr = cb.closest('tr');
+          const base = parseInt(tr.dataset.baseCompteur, 10);
+          tr.querySelector('.span-compteur').textContent = base + (cb.checked ? 1 : 0);
+        });
+      });
+    }
+
+    document.getElementById('btn-detail-pressoirs').addEventListener('click', async function() {
+      const wrap = document.getElementById('detail-wrap');
+      const opening = !wrap.classList.contains('show');
+      wrap.classList.toggle('show');
+      if (opening) {
+        document.getElementById('table-pressoirs-body').innerHTML = '<tr><td colspan="8" style="padding:12px; color:#8a94aa; text-align:center;">Chargement des pressoirs depuis pressoir.html…</td></tr>';
+        await pressoirsPromise;
+        if (pressoirsErreur) {
+          document.getElementById('table-pressoirs-body').innerHTML = '<tr><td colspan="8" style="padding:12px; color:#e05050; text-align:center;">Impossible de charger les données depuis pressoir.html.</td></tr>';
+          return;
+        }
+        renderTablePressoirs();
+      }
+    });
+    document.getElementById('secteur-chips').addEventListener('change', async function() {
+      if (document.getElementById('detail-wrap').classList.contains('show')) {
+        await pressoirsPromise;
+        if (!pressoirsErreur) renderTablePressoirs();
+      }
+    });
+
+    // Collecte toute ligne modifiée (cochée, et/ou date/bouteilles renseignées) ; incrémente le compteur persistant
+    // uniquement pour les lignes cochées "Visité aujourd'hui" (une seule fois par jour)
+    function commitVisitesPressoirs(dateIso) {
+      const tbody = document.getElementById('table-pressoirs-body');
+      const detail = [];
+      tbody.querySelectorAll('tr[data-id]').forEach(function(tr) {
+        const cb = tr.querySelector('.chk-visite');
+        const ouverture = tr.querySelector('.inp-ouverture').value;
+        const livraison = tr.querySelector('.inp-livraison').value;
+        const bouteilles = tr.querySelector('.inp-bouteilles').value;
+        const visite = !!(cb && cb.checked);
+        const touched = visite || ouverture || livraison || bouteilles;
+        if (!touched) return;
+
+        const id = tr.dataset.id;
+        let compteur = parseInt(tr.dataset.baseCompteur, 10);
+        if (visite) {
+          const dejaCompteAujourdhui = getDerniereVisite(id) === dateIso;
+          compteur = dejaCompteAujourdhui ? compteur : compteur + 1;
+          localStorage.setItem('crj_compteur_' + id, String(compteur));
+          localStorage.setItem('crj_derniere_visite_' + id, dateIso);
+          tr.dataset.baseCompteur = String(compteur);
+          tr.querySelector('.span-compteur').textContent = compteur;
+        }
+
+        const parts = id.split('|');
+        detail.push({
+          commune: parts[1],
+          nom: parts[2],
+          courtiers: tr.children[2].textContent,
+          visite: visite ? 'Oui' : 'Non',
+          compteur: String(compteur),
+          ouverture: ouverture ? formatDateFr(ouverture) : '—',
+          livraison: livraison ? formatDateFr(livraison) : '—',
+          bouteilles: bouteilles || '—',
+        });
+      });
+      return detail;
+    }
+
+    // Construit un tableau texte aligné (colonnes de largeur fixe) pour un rendu lisible dans le corps du mail
+    function formatTableauTexte(headers, rows) {
+      const widths = headers.map(function(h, i) {
+        return rows.reduce(function(max, r) { return Math.max(max, String(r[i]).length); }, h.length);
+      });
+      function formatLigne(cells) {
+        return cells.map(function(c, i) { return String(c).padEnd(widths[i], ' '); }).join('  ');
+      }
+      const lignes = [formatLigne(headers)];
+      lignes.push(widths.map(function(w) { return '-'.repeat(w); }).join('  '));
+      rows.forEach(function(r) { lignes.push(formatLigne(r)); });
+      return lignes.join('\n');
+    }
+
+    document.getElementById('btn-generer').addEventListener('click', function() {
+      const errorEl = document.getElementById('form-error');
+      errorEl.textContent = '';
+
+      const dateIso = document.getElementById('inp-date').value;
+      const secteurs = getSelectedSecteurs();
+      const visitesJour = document.getElementById('inp-visites-jour').value.trim();
+      const remarques = document.getElementById('inp-remarques').value.trim();
+      const problemes = document.getElementById('inp-problemes').value.trim();
+      const rencontreMaisons = document.getElementById('inp-rencontre-maisons').value.trim();
+      const rencontreCourtiers = document.getElementById('inp-rencontre-courtiers').value.trim();
+      const rencontreAutres = document.getElementById('inp-rencontre-autres').value.trim();
+      const visitesJ1 = document.getElementById('inp-visites-j1').value.trim();
+
+      if (!dateIso) { errorEl.textContent = 'Merci de renseigner la date.'; return; }
+      if (secteurs.length === 0) { errorEl.textContent = 'Merci de sélectionner au moins un secteur.'; return; }
+      if (!visitesJour && !remarques && !problemes && !rencontreMaisons && !rencontreCourtiers && !rencontreAutres && !visitesJ1) {
+        errorEl.textContent = 'Merci de renseigner au moins une information avant de générer le mail.';
+        return;
+      }
+
+      const destinataires = getDestinataires(secteurs);
+      if (destinataires.length === 0) {
+        errorEl.textContent = "Aucun courtier n'est référencé pour le(s) secteur(s) sélectionné(s).";
+        return;
+      }
+
+      const detailPressoirs = document.getElementById('detail-wrap').classList.contains('show')
+        ? commitVisitesPressoirs(dateIso)
+        : [];
+
+      const dateFr = formatDateFr(dateIso);
+      const subject = 'CRJ ' + dateFr + ' - Secteur' + (secteurs.length > 1 ? 's ' : ' ') + secteurs.join(', ') + ' - ' + user;
+
+      const lignes = [
+        'Compte-Rendu Journalier — ' + dateFr,
+        'Correspondant : ' + user,
+        'Secteur(s) : ' + secteurs.join(', '),
+        '',
+        'Visites réalisées le jour J (sous-secteur / communes) :',
+        visitesJour || '—',
+      ];
+
+      if (detailPressoirs.length > 0) {
+        lignes.push('');
+        lignes.push('Détail par pressoir :');
+        const groupesParCourtier = {};
+        detailPressoirs.forEach(function(d) {
+          d.courtiers.split('/').forEach(function(code) {
+            if (!groupesParCourtier[code]) groupesParCourtier[code] = [];
+            groupesParCourtier[code].push(d);
+          });
+        });
+        Object.keys(groupesParCourtier).sort().forEach(function(code) {
+          const infoCourtier = COURTIER_INFO[code];
+          lignes.push('');
+          lignes.push(code + (infoCourtier ? ' — ' + infoCourtier.nom : '') + ' :');
+          lignes.push(formatTableauTexte(
+            ['Pressoir', 'Commune', 'Courtier(s)', 'Visité', 'Compteur', 'Ouverture', 'Livraison FCDH', 'Bouteilles distr.'],
+            groupesParCourtier[code].map(function(d) {
+              return [d.nom, d.commune, d.courtiers, d.visite, d.compteur, d.ouverture, d.livraison, d.bouteilles];
+            })
+          ));
+        });
+      }
+
+      lignes.push(
+        '',
+        'Remarques qualitatives particulières :',
+        remarques || '—',
+        '',
+        'Problèmes rencontrés :',
+        problemes || '—',
+        '',
+        'Personnes rencontrées :',
+        '  Maisons de champagne : ' + (rencontreMaisons || '—'),
+        '  Courtiers : ' + (rencontreCourtiers || '—'),
+        '  Autres : ' + (rencontreAutres || '—'),
+        '',
+        'Visites prévues à J+1 (sous-secteur / communes) :',
+        visitesJ1 || '—'
+      );
+      const body = lignes.join('\n');
+      const toList = destinataires.map(function(d) { return d.email; });
+      const toDisplay = destinataires.map(function(d) { return d.nom + ' <' + d.email + '>'; }).join(', ');
+
+      document.getElementById('preview-to').textContent = toDisplay;
+      document.getElementById('preview-subject').textContent = subject;
+      document.getElementById('preview-body').value = body;
+
+      const mailto = 'mailto:' + toList.join(',') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+      document.getElementById('btn-ouvrir-mail').href = mailto;
+
+      document.getElementById('preview').classList.add('show');
+      document.getElementById('copy-feedback').textContent = '';
+      document.getElementById('preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('btn-copier').addEventListener('click', function() {
+      const to = document.getElementById('preview-to').textContent;
+      const subject = document.getElementById('preview-subject').textContent;
+      const body = document.getElementById('preview-body').value;
+      const texte = 'À : ' + to + '\nObjet : ' + subject + '\n\n' + body;
+      navigator.clipboard.writeText(texte).then(function() {
+        document.getElementById('copy-feedback').textContent = 'Texte copié ✓';
+      }).catch(function() {
+        document.getElementById('copy-feedback').textContent = "Impossible de copier automatiquement — sélectionnez le texte manuellement.";
+      });
+    });
+  </script>
+</body>
+</html>

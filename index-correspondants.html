@@ -50,6 +50,12 @@
         <div class="desc">Carte interactive des centres de pressurage en Champagne</div>
         <div class="badge">Accéder →</div>
       </a>
+      <a class="card" href="crj.html">
+        <div class="icon">📝</div>
+        <div class="name">CRJ</div>
+        <div class="desc">Compte-Rendu Journalier — génère un mail prêt à envoyer aux courtiers du secteur</div>
+        <div class="badge">Accéder →</div>
+      </a>
     </div>
   </main>
   <footer>FCDH Courtiers Associés · Campagne 2025/2026</footer>
@@ -58,6 +64,7 @@
     function logout() {
       sessionStorage.removeItem('fcdh_user');
       sessionStorage.removeItem('fcdh_role');
+      sessionStorage.removeItem('fcdh_secteurs');
       window.location.replace('index.html');
     }
 

@@ -94,6 +94,13 @@
     color:var(--chalk);
   }
 
+  .update-date{
+    font-size:0.68rem;
+    color:var(--gold-light);
+    opacity:0.75;
+    margin-top:4px;
+  }
+
   .header-badge{
     flex:0 0 auto;
     background:var(--gold);
@@ -459,6 +466,8 @@
     <a class="back-btn" href="index.html">← Tableau de bord</a>
     <div class="eyebrow">FCDH · Réseau des partenaires</div>
     <h1>Centres de pressurage en Champagne</h1>
+    <!-- Cette date est réécrite automatiquement par tools/pressoir_data/build_pressoir_data.py à chaque import. -->
+    <div class="update-date" id="update-date">Données importées le 08/08/2026 22:08</div>
   </div>
   <div class="header-badge">Marqueurs &amp; clustering</div>
 </header>
@@ -851,12 +860,7 @@
       pressoirs: [
         { nom: "LAHAYE - BERTHELOT", courtier1: "BO", courtier2: "MAA", secteur: "H" },
         { nom: "DESLOOVERE-PIENNE", courtier1: "ASM", secteur: "H" },
-        { nom: "HENRY BOURDELAT", courtier1: "EH", secteur: "H" }
-      ]
-    },
-    {
-      nom: "Brugny-Vaudancourt", lat: 48.9849, lng: 3.8603,
-      pressoirs: [
+        { nom: "HENRY BOURDELAT", courtier1: "EH", secteur: "H" },
         { nom: "ALAIN HUGO", courtier1: "BO", secteur: "H" }
       ]
     },
@@ -1992,12 +1996,7 @@
     {
       nom: "Vaudemange", lat: 49.0864, lng: 4.2417,
       pressoirs: [
-        { nom: "CHAUDRON", courtier1: "ASM", courtier2: "EC", secteur: "G" }
-      ]
-    },
-    {
-      nom: "Vaudemange", lat: 49.0864, lng: 4.2417,
-      pressoirs: [
+        { nom: "CHAUDRON", courtier1: "ASM", courtier2: "EC", secteur: "G" },
         { nom: "PHILIPPE HAUTEM", courtier1: "EH", secteur: "G" }
       ]
     },
