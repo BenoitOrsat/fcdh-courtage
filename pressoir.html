@@ -160,6 +160,23 @@
     overflow-y:auto;
   }
 
+  /* Bouton flottant : masque/affiche le panneau control-panel ci-dessus. */
+  .toggle-options-btn{
+    background:var(--vine);
+    color:var(--chalk);
+    border:1px solid var(--gold);
+    border-radius:8px;
+    width:36px;
+    height:32px;
+    font-size:1rem;
+    line-height:1;
+    cursor:pointer;
+    margin-bottom:8px;
+  }
+  .toggle-options-btn:hover{
+    background:var(--vine-dark);
+  }
+
   .panel-title{
     font-family:'Fraunces', serif;
     font-weight:600;
@@ -247,13 +264,8 @@
   }
 
   /* ---------- Recherche (pressoir ou commune) ---------- */
-  .search-panel{
-    background:var(--chalk);
-    border:1px solid var(--gold-light);
-    border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
-    padding:10px;
-    width:230px;
+  .search-box{
+    margin-bottom:14px;
   }
   .search-input{
     width:100%;
@@ -2456,171 +2468,9 @@
   // Contrôle : sélecteur de style + filtre courtier (haut gauche)
   // =========================================================================
   // Fond de carte + style des communes (haut gauche)
-  var BasemapStyleControl = L.Control.extend({
-    options: { position: 'topleft' },
-    onAdd: function(){
-      var container = L.DomUtil.create('div', 'control-panel');
-
-      container.innerHTML =
-        '<div class="basemap-box">' +
-          '<div class="panel-title">Fond de carte</div>' +
-          '<button class="style-btn active" data-basemap="osm">Standard (OSM)</button>' +
-          '<button class="style-btn" data-basemap="satellite">Satellite</button>' +
-          '<button class="style-btn" data-basemap="relief">Relief</button>' +
-          '<button class="style-btn" data-basemap="epure">Épuré</button>' +
-        '</div>' +
-        '<div class="style-box">' +
-          '<div class="panel-title">Style des communes</div>' +
-          '<button class="style-btn" data-style="dot">Point discret</button>' +
-          '<button class="style-btn active" data-style="pill">Pastille compacte</button>' +
-          '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
-        '</div>';
-
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-
-      // Boutons de fond de carte : un seul actif à la fois
-      var basemapBtns = container.querySelectorAll('[data-basemap]');
-      basemapBtns.forEach(function(btn){
-        btn.addEventListener('click', function(){
-          basemapBtns.forEach(function(b){ b.classList.remove('active'); });
-          btn.classList.add('active');
-          switchBasemap(btn.getAttribute('data-basemap'));
-        });
-      });
-
-      // Boutons de style : un seul actif à la fois
-      var styleBtns = container.querySelectorAll('[data-style]');
-      styleBtns.forEach(function(btn){
-        btn.addEventListener('click', function(){
-          styleBtns.forEach(function(b){ b.classList.remove('active'); });
-          btn.classList.add('active');
-          currentStyle = btn.getAttribute('data-style');
-          rebuildCommuneLayer();
-        });
-      });
-
-      return container;
-    }
-  });
-  new BasemapStyleControl().addTo(map);
-
-  // Filtres secteur + courtier (haut droite, au-dessus de la recherche —
-  // voir l'ordre d'ajout à la carte plus bas)
-  var FilterControl = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd: function(){
-      var container = L.DomUtil.create('div', 'control-panel');
-
-      var courtierChipsHtml = COURTIERS.map(function(k){
-        var bg = COURTIER_COLORS[k];
-        var fg = COURTIER_TEXT_COLORS[k];
-        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
-      }).join('');
-
-      var secteurChipsHtml = SECTEURS.map(function(s){
-        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
-      }).join('');
-
-      container.innerHTML =
-        '<div class="filter-box">' +
-          '<div class="panel-title">Filtrer par secteur</div>' +
-          '<div class="chips">' +
-            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
-            secteurChipsHtml +
-          '</div>' +
-        '</div>' +
-        '<div class="filter-box">' +
-          '<div class="panel-title">Filtrer par courtier</div>' +
-          '<div class="chips">' +
-            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
-            courtierChipsHtml +
-          '</div>' +
-        '</div>';
-
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-
-      // Chips courtier : sélection multiple, "Tous" réinitialise. Le libellé
-      // de chaque chip affiche le nombre de pressoirs où ce courtier est
-      // référent (courtier1) et secondaire (courtier2), recalculé selon le
-      // filtre secteur actif.
-      var courtierAllChip = container.querySelector('[data-courtier="__all"]');
-      var courtierChips = container.querySelectorAll('[data-courtier]:not([data-courtier="__all"])');
-
-      function refreshCourtierChipLabels(){
-        var counts = computeCourtierCounts();
-        courtierChips.forEach(function(chip){
-          var k = chip.getAttribute('data-courtier');
-          var c = counts[k] || { c1: 0, c2: 0 };
-          chip.innerHTML = k + ' <span class="chip-count">' + c.c1 + '+' + c.c2 + '</span>';
-        });
-      }
-      refreshCourtierChipLabels();
-      refreshCourtierChipLabelsRef = refreshCourtierChipLabels;
-
-      courtierAllChip.addEventListener('click', function(){
-        selectedCourtiers.clear();
-        courtierAllChip.classList.add('active');
-        courtierChips.forEach(function(c){ c.classList.remove('active'); });
-        rebuildCommuneLayer();
-        rebuildClusterGroup();
-      });
-
-      courtierChips.forEach(function(chip){
-        chip.addEventListener('click', function(){
-          var k = chip.getAttribute('data-courtier');
-          if(selectedCourtiers.has(k)){
-            selectedCourtiers.delete(k);
-            chip.classList.remove('active');
-          } else {
-            selectedCourtiers.add(k);
-            chip.classList.add('active');
-          }
-          courtierAllChip.classList.toggle('active', selectedCourtiers.size === 0);
-          rebuildCommuneLayer();
-          rebuildClusterGroup();
-        });
-      });
-
-      // Chips secteur : sélection multiple, "Tous" réinitialise. Change le
-      // périmètre pris en compte par les compteurs des chips courtier.
-      var secteurAllChip = container.querySelector('[data-secteur="__all"]');
-      var secteurChips = container.querySelectorAll('[data-secteur]:not([data-secteur="__all"])');
-
-      secteurAllChip.addEventListener('click', function(){
-        selectedSecteurs.clear();
-        secteurAllChip.classList.add('active');
-        secteurChips.forEach(function(c){ c.classList.remove('active'); });
-        rebuildCommuneLayer();
-        rebuildClusterGroup();
-        refreshCourtierChipLabels();
-      });
-
-      secteurChips.forEach(function(chip){
-        chip.addEventListener('click', function(){
-          var s = chip.getAttribute('data-secteur');
-          if(selectedSecteurs.has(s)){
-            selectedSecteurs.delete(s);
-            chip.classList.remove('active');
-          } else {
-            selectedSecteurs.add(s);
-            chip.classList.add('active');
-          }
-          secteurAllChip.classList.toggle('active', selectedSecteurs.size === 0);
-          rebuildCommuneLayer();
-          rebuildClusterGroup();
-          refreshCourtierChipLabels();
-        });
-      });
-
-      return container;
-    }
-  });
-  new FilterControl().addTo(map);
-
   // =========================================================================
-  // Contrôle : recherche par nom de pressoir ou de commune (haut droite)
+  // Recherche par nom de pressoir ou de commune — logique (le contrôle
+  // visuel est fusionné avec les filtres et le fond de carte, plus bas).
   // =========================================================================
   var SEARCH_RESULTS_LIMIT = 8;
 
@@ -2700,18 +2550,142 @@
     });
   }
 
-  var SearchControl = L.Control.extend({
+  // =========================================================================
+  // Contrôle unique (haut droite) : filtre secteur, filtre courtier,
+  // recherche, fond de carte, style des communes — dans cet ordre. Un
+  // bouton flottant séparé (ToggleControl, ajouté juste après pour
+  // apparaître au-dessus) permet de masquer/afficher tout ce bloc.
+  // =========================================================================
+  var mapOptionsContainerRef = null;
+
+  var MapOptionsControl = L.Control.extend({
     options: { position: 'topright' },
     onAdd: function(){
-      var container = L.DomUtil.create('div', 'search-panel');
+      var container = L.DomUtil.create('div', 'control-panel');
+      mapOptionsContainerRef = container;
+
+      var courtierChipsHtml = COURTIERS.map(function(k){
+        var bg = COURTIER_COLORS[k];
+        var fg = COURTIER_TEXT_COLORS[k];
+        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
+      }).join('');
+
+      var secteurChipsHtml = SECTEURS.map(function(s){
+        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
+      }).join('');
+
       container.innerHTML =
-        '<input type="text" class="search-input" placeholder="Rechercher un pressoir ou une commune…" />' +
-        '<div class="search-results"></div>';
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par secteur</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
+            secteurChipsHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par courtier</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
+            courtierChipsHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="search-box">' +
+          '<div class="panel-title">Rechercher un pressoir</div>' +
+          '<input type="text" class="search-input" placeholder="Nom de pressoir ou de commune…" />' +
+          '<div class="search-results"></div>' +
+        '</div>' +
+        '<div class="basemap-box">' +
+          '<div class="panel-title">Fond de carte</div>' +
+          '<button class="style-btn active" data-basemap="osm">Standard (OSM)</button>' +
+          '<button class="style-btn" data-basemap="satellite">Satellite</button>' +
+          '<button class="style-btn" data-basemap="relief">Relief</button>' +
+          '<button class="style-btn" data-basemap="epure">Épuré</button>' +
+        '</div>' +
+        '<div class="style-box">' +
+          '<div class="panel-title">Style des communes</div>' +
+          '<button class="style-btn" data-style="dot">Point discret</button>' +
+          '<button class="style-btn active" data-style="pill">Pastille compacte</button>' +
+          '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
+        '</div>';
 
       L.DomEvent.disableClickPropagation(container);
       L.DomEvent.disableScrollPropagation(container);
 
-      var input = container.querySelector('.search-input');
+      // --- Filtre courtier : sélection multiple, "Tous" réinitialise. Le
+      // libellé de chaque chip affiche le nombre de pressoirs où ce
+      // courtier est référent (courtier1) et secondaire (courtier2),
+      // recalculé selon le filtre secteur actif.
+      var courtierAllChip = container.querySelector('[data-courtier="__all"]');
+      var courtierChips = container.querySelectorAll('[data-courtier]:not([data-courtier="__all"])');
+
+      function refreshCourtierChipLabels(){
+        var counts = computeCourtierCounts();
+        courtierChips.forEach(function(chip){
+          var k = chip.getAttribute('data-courtier');
+          var c = counts[k] || { c1: 0, c2: 0 };
+          chip.innerHTML = k + ' <span class="chip-count">' + c.c1 + '+' + c.c2 + '</span>';
+        });
+      }
+      refreshCourtierChipLabels();
+      refreshCourtierChipLabelsRef = refreshCourtierChipLabels;
+
+      courtierAllChip.addEventListener('click', function(){
+        selectedCourtiers.clear();
+        courtierAllChip.classList.add('active');
+        courtierChips.forEach(function(c){ c.classList.remove('active'); });
+        rebuildCommuneLayer();
+        rebuildClusterGroup();
+      });
+
+      courtierChips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          var k = chip.getAttribute('data-courtier');
+          if(selectedCourtiers.has(k)){
+            selectedCourtiers.delete(k);
+            chip.classList.remove('active');
+          } else {
+            selectedCourtiers.add(k);
+            chip.classList.add('active');
+          }
+          courtierAllChip.classList.toggle('active', selectedCourtiers.size === 0);
+          rebuildCommuneLayer();
+          rebuildClusterGroup();
+        });
+      });
+
+      // --- Filtre secteur : sélection multiple, "Tous" réinitialise.
+      // Change le périmètre pris en compte par les compteurs courtier.
+      var secteurAllChip = container.querySelector('[data-secteur="__all"]');
+      var secteurChips = container.querySelectorAll('[data-secteur]:not([data-secteur="__all"])');
+
+      secteurAllChip.addEventListener('click', function(){
+        selectedSecteurs.clear();
+        secteurAllChip.classList.add('active');
+        secteurChips.forEach(function(c){ c.classList.remove('active'); });
+        rebuildCommuneLayer();
+        rebuildClusterGroup();
+        refreshCourtierChipLabels();
+      });
+
+      secteurChips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          var s = chip.getAttribute('data-secteur');
+          if(selectedSecteurs.has(s)){
+            selectedSecteurs.delete(s);
+            chip.classList.remove('active');
+          } else {
+            selectedSecteurs.add(s);
+            chip.classList.add('active');
+          }
+          secteurAllChip.classList.toggle('active', selectedSecteurs.size === 0);
+          rebuildCommuneLayer();
+          rebuildClusterGroup();
+          refreshCourtierChipLabels();
+        });
+      });
+
+      // --- Recherche par nom de pressoir ou de commune.
+      var searchInput = container.querySelector('.search-input');
       var resultsEl = container.querySelector('.search-results');
       var currentResults = [];
 
@@ -2742,15 +2716,15 @@
             } else {
               revealPressoir(r.commune, r.pressoir);
             }
-            input.value = '';
+            searchInput.value = '';
             resultsEl.classList.remove('visible');
             resultsEl.innerHTML = '';
           });
         });
       }
 
-      input.addEventListener('input', function(){
-        var q = input.value;
+      searchInput.addEventListener('input', function(){
+        var q = searchInput.value;
         if(!q.trim()){
           resultsEl.classList.remove('visible');
           resultsEl.innerHTML = '';
@@ -2760,10 +2734,53 @@
         renderResults();
       });
 
+      // --- Fond de carte : un seul actif à la fois.
+      var basemapBtns = container.querySelectorAll('[data-basemap]');
+      basemapBtns.forEach(function(btn){
+        btn.addEventListener('click', function(){
+          basemapBtns.forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          switchBasemap(btn.getAttribute('data-basemap'));
+        });
+      });
+
+      // --- Style des communes : un seul actif à la fois.
+      var styleBtns = container.querySelectorAll('[data-style]');
+      styleBtns.forEach(function(btn){
+        btn.addEventListener('click', function(){
+          styleBtns.forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          currentStyle = btn.getAttribute('data-style');
+          rebuildCommuneLayer();
+        });
+      });
+
       return container;
     }
   });
-  new SearchControl().addTo(map);
+
+  // Bouton flottant indépendant : masque/affiche tout le bloc ci-dessus.
+  // Défini ici mais ajouté à la carte AVANT MapOptionsControl (juste en
+  // dessous) pour s'empiler au-dessus de lui dans le coin haut-droit, et
+  // rester visible même quand le panneau est masqué.
+  var ToggleControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      var btn = L.DomUtil.create('button', 'toggle-options-btn');
+      btn.textContent = '☰';
+      btn.title = 'Afficher/masquer les options de la carte';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.disableScrollPropagation(btn);
+      btn.addEventListener('click', function(){
+        if(!mapOptionsContainerRef) return;
+        var hidden = mapOptionsContainerRef.style.display === 'none';
+        mapOptionsContainerRef.style.display = hidden ? '' : 'none';
+      });
+      return btn;
+    }
+  });
+  new ToggleControl().addTo(map);
+  new MapOptionsControl().addTo(map);
 
   // =========================================================================
   // Initialisation
