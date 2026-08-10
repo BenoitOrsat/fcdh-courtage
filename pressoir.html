@@ -53,8 +53,9 @@
     background:var(--vine);
     border-bottom:3px solid var(--gold);
     color:var(--chalk);
-    display:flex;
-    align-items:baseline;
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
     padding:8px 20px;
     gap:14px;
     z-index:1200;
@@ -70,29 +71,28 @@
     font-weight:600;
     opacity:0.8;
     transition:opacity 0.15s ease;
+    justify-self:start;
   }
   .back-btn:hover{
     opacity:1;
   }
 
-  .header-left{
-    display:flex;
-    align-items:baseline;
-    gap:14px;
-  }
-
-  .header-left h1{
+  .header-title{
     font-family:'Fraunces', serif;
     font-weight:600;
     font-size:1.15rem;
     margin:0;
     color:var(--chalk);
+    text-align:center;
+    white-space:nowrap;
   }
 
   .update-date{
     font-size:0.68rem;
     color:var(--gold-light);
     opacity:0.75;
+    justify-self:end;
+    text-align:right;
   }
 
   /* ---------- Zone carte ---------- */
@@ -456,12 +456,10 @@
 <body>
 
 <header>
-  <div class="header-left">
-    <a class="back-btn" href="index.html">← Tableau de bord</a>
-    <h1>Centre de pressurage FCDH</h1>
-    <!-- Cette date est réécrite automatiquement par tools/pressoir_data/build_pressoir_data.py à chaque import. -->
-    <div class="update-date" id="update-date">Données importées le 08/08/2026 22:08</div>
-  </div>
+  <a class="back-btn" href="index.html">← Tableau de bord</a>
+  <h1 class="header-title">Centre de pressurage FCDH</h1>
+  <!-- Cette date est réécrite automatiquement par tools/pressoir_data/build_pressoir_data.py à chaque import. -->
+  <div class="update-date" id="update-date">Données importées le 08/08/2026 22:08</div>
 </header>
 
 <div id="map-wrapper">
