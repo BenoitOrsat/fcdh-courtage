@@ -2427,7 +2427,16 @@
       marker = L.marker([commune.lat, commune.lng], { icon: picon });
     }
 
-    marker.on('click', function(){ zoomToCommune(commune); });
+    // Une commune réduite à un seul pressoir (après filtres) va directement
+    // à sa popup de détail plutôt que de zoomer sur un point isolé qu'il
+    // faudrait encore cliquer une deuxième fois.
+    marker.on('click', function(){
+      if(commune.pressoirs.length === 1){
+        revealPressoir(commune, commune.pressoirs[0]);
+      } else {
+        zoomToCommune(commune);
+      }
+    });
     return marker;
   }
 
