@@ -496,6 +496,46 @@
   // peut ne pas en avoir (secteur absent dans le fichier d'origine).
   var SECTEURS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "M", "S"];
 
+  // =========================================================================
+  // Données CRJ (Compte-Rendu Journalier) : nombre de passages, date
+  // d'ouverture, dernière visite, livraison FCDH — chargées en direct à
+  // chaque ouverture de la carte (pas de cache, pas d'import périodique),
+  // via la même API partagée (Google Apps Script) que l'outil crj.html.
+  // Ce chargement se fait en parallèle du reste : il ne retarde jamais
+  // l'affichage de la carte. Les popups vont chercher ces données "à la
+  // demande" (bindPopup avec une fonction, cf. buildPressoirMarker), donc
+  // elles restent correctes même si le chargement se termine après la
+  // création des marqueurs.
+  // =========================================================================
+  var CRJ_STORE_URL = 'https://script.google.com/macros/s/AKfycbzyGJXUqWURffOjPpBgMD-e14Gg6afQ3jQHvBMC0NtoUs2L6Ze9seBmHPBjRIKvCoHD/exec';
+  var crjDataById = {};
+
+  // Identifiant partagé avec crj.html : secteur|commune|nom du pressoir.
+  function crjId(pressoir, commune){
+    return pressoir.secteur + '|' + commune.nom + '|' + pressoir.nom;
+  }
+
+  // Ramène une date renvoyée par la Sheet (texte "AAAA-MM-JJ", ou datetime
+  // ISO si Sheets l'a malgré tout convertie) au format JJ/MM/AAAA ; renvoie
+  // null si absente/invalide (affiché comme "—" dans la popup).
+  function formatDateCrj(valeur){
+    if(!valeur) return null;
+    var m = String(valeur).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(!m) return null;
+    return m[3] + '/' + m[2] + '/' + m[1];
+  }
+
+  function chargerDonneesCrj(){
+    fetch(CRJ_STORE_URL + '?secteurs=' + encodeURIComponent(SECTEURS.join(',')))
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        (data.rows || []).forEach(function(r){ crjDataById[r.id] = r; });
+      })
+      .catch(function(){
+        // CRJ indisponible : les popups afficheront "—" pour ces champs.
+      });
+  }
+
   // Une couleur propre à chaque courtier (affichée sur les chips de filtre
   // et sur les marqueurs de pressoir/commune qui lui sont attribuables sans
   // ambiguïté). COURTIER_TEXT_COLORS ajuste le texte pour rester lisible
@@ -2389,14 +2429,26 @@
     var capaciteLine = pressoir.capacite != null
       ? '<p><strong>Capacité indicative :</strong> ' + pressoir.capacite.toLocaleString('fr-FR') + ' kg/marc</p>'
       : '';
-    var popupHtml =
-      '<div class="pressoir-popup">' +
+    // Contenu construit "à la demande" (fonction, pas une chaîne figée) :
+    // les données CRJ (crjDataById) se chargent de façon asynchrone et
+    // peuvent arriver après la création de ce marqueur — la popup lit
+    // toujours leur état le plus récent au moment où elle s'ouvre.
+    marker.bindPopup(function(){
+      var crj = crjDataById[crjId(pressoir, commune)] || {};
+      var passages = (crj.compteur != null && crj.compteur !== '') ? crj.compteur : '—';
+      var crjLines =
+        '<p><strong>Nombre de passages du correspondant :</strong> ' + passages + '</p>' +
+        '<p><strong>Date d\'ouverture :</strong> ' + (formatDateCrj(crj.ouverture) || '—') + '</p>' +
+        '<p><strong>Dernière visite :</strong> ' + (formatDateCrj(crj.derniereVisite) || '—') + '</p>' +
+        '<p><strong>Livraison FCDH :</strong> ' + (formatDateCrj(crj.livraison) || '—') + '</p>';
+      return '<div class="pressoir-popup">' +
         '<h3>' + pressoir.nom + '</h3>' +
         '<p class="commune-line">' + commune.nom + '</p>' +
         capaciteLine +
         courtierLines +
+        crjLines +
       '</div>';
-    marker.bindPopup(popupHtml);
+    });
     // Affichage au survol en plus du clic. Un clic "épingle" la popup : elle
     // reste ouverte même quand la souris s'en va ensuite, et ne se referme
     // au survol que si elle n'a pas été ouverte par un clic.
@@ -2766,6 +2818,7 @@
   rebuildCommuneLayer();
   rebuildClusterGroup();
   updateLayersForZoom();
+  chargerDonneesCrj();
 
 })();
 </script>
