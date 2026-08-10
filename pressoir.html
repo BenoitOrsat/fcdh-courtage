@@ -477,6 +477,27 @@
   "use strict";
 
   // =========================================================================
+  // Contrôle d'accès : ouvert aux courtiers ET aux correspondants (contrairement
+  // à crj.html, réservé aux correspondants). Un correspondant ne voit que les
+  // pressoirs de ses secteurs assignés (fcdh_secteurs) ; un courtier garde un
+  // accès complet, sans aucune restriction. Ce n'est qu'une restriction
+  // d'affichage côté client : le fichier étant statique et public (GitHub
+  // Pages, sans serveur), les données de tous les secteurs restent techniquement
+  // présentes dans le code de la page pour qui irait le consulter directement.
+  // =========================================================================
+  var fcdhUser = sessionStorage.getItem('fcdh_user');
+  var fcdhRole = sessionStorage.getItem('fcdh_role');
+  if(!fcdhUser || (fcdhRole !== 'correspondant' && fcdhRole !== 'courtier')){
+    window.location.replace('index.html');
+    return;
+  }
+  // Secteurs auxquels ce correspondant est limité ; tableau vide = pas de
+  // restriction (cas des courtiers, ou correspondant sans secteur assigné).
+  var secteursAutorises = fcdhRole === 'correspondant'
+    ? JSON.parse(sessionStorage.getItem('fcdh_secteurs') || '[]')
+    : [];
+
+  // =========================================================================
   // DONNÉES RÉELLES — importées depuis "V.2026 Répartion des pressoirs par
   // courtiers.xlsx" (197 communes, 658 pressoirs). Chaque commune a un nom,
   // des coordonnées géocodées (commune ou village-hameau le cas échéant) et
@@ -526,7 +547,8 @@
   }
 
   function chargerDonneesCrj(){
-    fetch(CRJ_STORE_URL + '?secteurs=' + encodeURIComponent(SECTEURS.join(',')))
+    var secteursDemandes = secteursAutorises.length ? secteursAutorises : SECTEURS;
+    fetch(CRJ_STORE_URL + '?secteurs=' + encodeURIComponent(secteursDemandes.join(',')))
       .then(function(res){ return res.json(); })
       .then(function(data){
         (data.rows || []).forEach(function(r){ crjDataById[r.id] = r; });
@@ -2312,7 +2334,16 @@
       (p.courtier2 && selectedCourtiers.has(p.courtier2));
   }
 
+  // secteursAutorises est une restriction "dure" (droits d'accès du
+  // correspondant connecté) : elle s'applique avant et en plus du filtre
+  // secteur optionnel choisi par l'utilisateur (selectedSecteurs).
+  function pressoirDansSecteursAutorises(p){
+    return secteursAutorises.length === 0 ||
+      (p.secteur != null && secteursAutorises.indexOf(p.secteur) !== -1);
+  }
+
   function pressoirMatchSecteur(p){
+    if(!pressoirDansSecteursAutorises(p)) return false;
     return selectedSecteurs.size === 0 || (p.secteur && selectedSecteurs.has(p.secteur));
   }
 
@@ -2512,16 +2543,21 @@
 
   // Recherche à la fois sur le nom de commune et sur le nom de chaque
   // pressoir (toutes communes confondues, indépendamment du filtre courtier
-  // actif, pour que la recherche trouve toujours ce qu'on lui demande).
+  // ou secteur optionnel actif, pour que la recherche trouve toujours ce
+  // qu'on lui demande). secteursAutorises reste en revanche une limite dure :
+  // un correspondant restreint ne doit jamais pouvoir retrouver par la
+  // recherche un pressoir hors de ses secteurs.
   function searchCommunesEtPressoirs(query){
     var q = normalizeSearchText(query.trim());
     if(!q) return [];
     var results = [];
     communes.forEach(function(c){
+      var pressoirsAutorises = c.pressoirs.filter(pressoirDansSecteursAutorises);
+      if(pressoirsAutorises.length === 0) return;
       if(normalizeSearchText(c.nom).indexOf(q) !== -1){
-        results.push({ type: 'commune', commune: c });
+        results.push({ type: 'commune', commune: { nom: c.nom, lat: c.lat, lng: c.lng, pressoirs: pressoirsAutorises } });
       }
-      c.pressoirs.forEach(function(p){
+      pressoirsAutorises.forEach(function(p){
         if(normalizeSearchText(p.nom).indexOf(q) !== -1){
           results.push({ type: 'pressoir', commune: c, pressoir: p });
         }
@@ -2600,7 +2636,10 @@
         return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
       }).join('');
 
-      var secteurChipsHtml = SECTEURS.map(function(s){
+      // Un correspondant restreint ne voit même pas les pastilles des
+      // secteurs qui ne sont pas les siens (masquage total, pas grisé).
+      var secteursVisibles = secteursAutorises.length ? secteursAutorises : SECTEURS;
+      var secteurChipsHtml = secteursVisibles.map(function(s){
         return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
       }).join('');
 
