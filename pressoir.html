@@ -54,10 +54,9 @@
     border-bottom:3px solid var(--gold);
     color:var(--chalk);
     display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:14px 28px;
-    gap:16px;
+    align-items:baseline;
+    padding:8px 20px;
+    gap:14px;
     z-index:1200;
   }
 
@@ -70,26 +69,22 @@
     font-size:0.72rem;
     font-weight:600;
     opacity:0.8;
-    margin-bottom:6px;
     transition:opacity 0.15s ease;
   }
   .back-btn:hover{
     opacity:1;
   }
 
-  .header-left .eyebrow{
-    color:var(--gold);
-    text-transform:uppercase;
-    letter-spacing:0.12em;
-    font-size:0.72rem;
-    font-weight:600;
-    margin-bottom:4px;
+  .header-left{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
   }
 
   .header-left h1{
     font-family:'Fraunces', serif;
     font-weight:600;
-    font-size:1.5rem;
+    font-size:1.15rem;
     margin:0;
     color:var(--chalk);
   }
@@ -98,19 +93,6 @@
     font-size:0.68rem;
     color:var(--gold-light);
     opacity:0.75;
-    margin-top:4px;
-  }
-
-  .header-badge{
-    flex:0 0 auto;
-    background:var(--gold);
-    color:var(--vine-dark);
-    font-weight:600;
-    padding:7px 16px;
-    border-radius:20px;
-    font-size:0.8rem;
-    white-space:nowrap;
-    letter-spacing:0.02em;
   }
 
   /* ---------- Zone carte ---------- */
@@ -476,12 +458,10 @@
 <header>
   <div class="header-left">
     <a class="back-btn" href="index.html">← Tableau de bord</a>
-    <div class="eyebrow">FCDH · Réseau des partenaires</div>
-    <h1>Centres de pressurage en Champagne</h1>
+    <h1>Centre de pressurage FCDH</h1>
     <!-- Cette date est réécrite automatiquement par tools/pressoir_data/build_pressoir_data.py à chaque import. -->
     <div class="update-date" id="update-date">Données importées le 08/08/2026 22:08</div>
   </div>
-  <div class="header-badge">Marqueurs &amp; clustering</div>
 </header>
 
 <div id="map-wrapper">
