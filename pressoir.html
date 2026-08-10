@@ -53,11 +53,11 @@
     background:var(--vine);
     border-bottom:3px solid var(--gold);
     color:var(--chalk);
-    display:flex;
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
     align-items:center;
-    justify-content:space-between;
-    padding:14px 28px;
-    gap:16px;
+    padding:8px 20px;
+    gap:14px;
     z-index:1200;
   }
 
@@ -70,47 +70,29 @@
     font-size:0.72rem;
     font-weight:600;
     opacity:0.8;
-    margin-bottom:6px;
     transition:opacity 0.15s ease;
+    justify-self:start;
   }
   .back-btn:hover{
     opacity:1;
   }
 
-  .header-left .eyebrow{
-    color:var(--gold);
-    text-transform:uppercase;
-    letter-spacing:0.12em;
-    font-size:0.72rem;
-    font-weight:600;
-    margin-bottom:4px;
-  }
-
-  .header-left h1{
+  .header-title{
     font-family:'Fraunces', serif;
     font-weight:600;
-    font-size:1.5rem;
+    font-size:1.15rem;
     margin:0;
     color:var(--chalk);
+    text-align:center;
+    white-space:nowrap;
   }
 
   .update-date{
     font-size:0.68rem;
     color:var(--gold-light);
     opacity:0.75;
-    margin-top:4px;
-  }
-
-  .header-badge{
-    flex:0 0 auto;
-    background:var(--gold);
-    color:var(--vine-dark);
-    font-weight:600;
-    padding:7px 16px;
-    border-radius:20px;
-    font-size:0.8rem;
-    white-space:nowrap;
-    letter-spacing:0.02em;
+    justify-self:end;
+    text-align:right;
   }
 
   /* ---------- Zone carte ---------- */
@@ -158,6 +140,23 @@
     font-size:0.8rem;
     max-height:calc(100vh - 110px);
     overflow-y:auto;
+  }
+
+  /* Bouton flottant : masque/affiche le panneau control-panel ci-dessus. */
+  .toggle-options-btn{
+    background:var(--vine);
+    color:var(--chalk);
+    border:1px solid var(--gold);
+    border-radius:8px;
+    width:36px;
+    height:32px;
+    font-size:1rem;
+    line-height:1;
+    cursor:pointer;
+    margin-bottom:8px;
+  }
+  .toggle-options-btn:hover{
+    background:var(--vine-dark);
   }
 
   .panel-title{
@@ -247,13 +246,8 @@
   }
 
   /* ---------- Recherche (pressoir ou commune) ---------- */
-  .search-panel{
-    background:var(--chalk);
-    border:1px solid var(--gold-light);
-    border-radius:10px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.18);
-    padding:10px;
-    width:230px;
+  .search-box{
+    margin-bottom:14px;
   }
   .search-input{
     width:100%;
@@ -462,14 +456,10 @@
 <body>
 
 <header>
-  <div class="header-left">
-    <a class="back-btn" href="index.html">← Tableau de bord</a>
-    <div class="eyebrow">FCDH · Réseau des partenaires</div>
-    <h1>Centres de pressurage en Champagne</h1>
-    <!-- Cette date est réécrite automatiquement par tools/pressoir_data/build_pressoir_data.py à chaque import. -->
-    <div class="update-date" id="update-date">Données importées le 08/08/2026 22:08</div>
-  </div>
-  <div class="header-badge">Marqueurs &amp; clustering</div>
+  <a class="back-btn" href="index.html">← Tableau de bord</a>
+  <h1 class="header-title">Centre de pressurage FCDH</h1>
+  <!-- Cette date est réécrite automatiquement par tools/pressoir_data/build_pressoir_data.py à chaque import. -->
+  <div class="update-date" id="update-date">Données importées le 08/08/2026 22:08</div>
 </header>
 
 <div id="map-wrapper">
@@ -505,6 +495,46 @@
   // Secteurs géographiques du fichier source (colonne "Sect") — un pressoir
   // peut ne pas en avoir (secteur absent dans le fichier d'origine).
   var SECTEURS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "M", "S"];
+
+  // =========================================================================
+  // Données CRJ (Compte-Rendu Journalier) : nombre de passages, date
+  // d'ouverture, dernière visite, livraison FCDH — chargées en direct à
+  // chaque ouverture de la carte (pas de cache, pas d'import périodique),
+  // via la même API partagée (Google Apps Script) que l'outil crj.html.
+  // Ce chargement se fait en parallèle du reste : il ne retarde jamais
+  // l'affichage de la carte. Les popups vont chercher ces données "à la
+  // demande" (bindPopup avec une fonction, cf. buildPressoirMarker), donc
+  // elles restent correctes même si le chargement se termine après la
+  // création des marqueurs.
+  // =========================================================================
+  var CRJ_STORE_URL = 'https://script.google.com/macros/s/AKfycbzyGJXUqWURffOjPpBgMD-e14Gg6afQ3jQHvBMC0NtoUs2L6Ze9seBmHPBjRIKvCoHD/exec';
+  var crjDataById = {};
+
+  // Identifiant partagé avec crj.html : secteur|commune|nom du pressoir.
+  function crjId(pressoir, commune){
+    return pressoir.secteur + '|' + commune.nom + '|' + pressoir.nom;
+  }
+
+  // Ramène une date renvoyée par la Sheet (texte "AAAA-MM-JJ", ou datetime
+  // ISO si Sheets l'a malgré tout convertie) au format JJ/MM/AAAA ; renvoie
+  // null si absente/invalide (affiché comme "—" dans la popup).
+  function formatDateCrj(valeur){
+    if(!valeur) return null;
+    var m = String(valeur).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(!m) return null;
+    return m[3] + '/' + m[2] + '/' + m[1];
+  }
+
+  function chargerDonneesCrj(){
+    fetch(CRJ_STORE_URL + '?secteurs=' + encodeURIComponent(SECTEURS.join(',')))
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        (data.rows || []).forEach(function(r){ crjDataById[r.id] = r; });
+      })
+      .catch(function(){
+        // CRJ indisponible : les popups afficheront "—" pour ces champs.
+      });
+  }
 
   // Une couleur propre à chaque courtier (affichée sur les chips de filtre
   // et sur les marqueurs de pressoir/commune qui lui sont attribuables sans
@@ -2399,14 +2429,34 @@
     var capaciteLine = pressoir.capacite != null
       ? '<p><strong>Capacité indicative :</strong> ' + pressoir.capacite.toLocaleString('fr-FR') + ' kg/marc</p>'
       : '';
-    var popupHtml =
-      '<div class="pressoir-popup">' +
+    // Contenu construit "à la demande" (fonction, pas une chaîne figée) :
+    // les données CRJ (crjDataById) se chargent de façon asynchrone et
+    // peuvent arriver après la création de ce marqueur — la popup lit
+    // toujours leur état le plus récent au moment où elle s'ouvre.
+    marker.bindPopup(function(){
+      var crj = crjDataById[crjId(pressoir, commune)] || {};
+      var passages = (crj.compteur != null && crj.compteur !== '') ? crj.compteur : '—';
+      var crjLines =
+        '<p><strong>Nombre de passages du correspondant :</strong> ' + passages + '</p>' +
+        '<p><strong>Date d\'ouverture :</strong> ' + (formatDateCrj(crj.ouverture) || '—') + '</p>' +
+        '<p><strong>Dernière visite :</strong> ' + (formatDateCrj(crj.derniereVisite) || '—') + '</p>' +
+        '<p><strong>Livraison FCDH :</strong> ' + (formatDateCrj(crj.livraison) || '—') + '</p>';
+      return '<div class="pressoir-popup">' +
         '<h3>' + pressoir.nom + '</h3>' +
         '<p class="commune-line">' + commune.nom + '</p>' +
         capaciteLine +
         courtierLines +
+        crjLines +
       '</div>';
-    marker.bindPopup(popupHtml);
+    });
+    // Affichage au survol en plus du clic. Un clic "épingle" la popup : elle
+    // reste ouverte même quand la souris s'en va ensuite, et ne se referme
+    // au survol que si elle n'a pas été ouverte par un clic.
+    var pinnedByClick = false;
+    marker.on('click', function(){ pinnedByClick = true; });
+    marker.on('mouseover', function(){ marker.openPopup(); });
+    marker.on('mouseout', function(){ if(!pinnedByClick) marker.closePopup(); });
+    marker.on('popupclose', function(){ pinnedByClick = false; });
     return marker;
   }
 
@@ -2448,171 +2498,9 @@
   // Contrôle : sélecteur de style + filtre courtier (haut gauche)
   // =========================================================================
   // Fond de carte + style des communes (haut gauche)
-  var BasemapStyleControl = L.Control.extend({
-    options: { position: 'topleft' },
-    onAdd: function(){
-      var container = L.DomUtil.create('div', 'control-panel');
-
-      container.innerHTML =
-        '<div class="basemap-box">' +
-          '<div class="panel-title">Fond de carte</div>' +
-          '<button class="style-btn active" data-basemap="osm">Standard (OSM)</button>' +
-          '<button class="style-btn" data-basemap="satellite">Satellite</button>' +
-          '<button class="style-btn" data-basemap="relief">Relief</button>' +
-          '<button class="style-btn" data-basemap="epure">Épuré</button>' +
-        '</div>' +
-        '<div class="style-box">' +
-          '<div class="panel-title">Style des communes</div>' +
-          '<button class="style-btn" data-style="dot">Point discret</button>' +
-          '<button class="style-btn active" data-style="pill">Pastille compacte</button>' +
-          '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
-        '</div>';
-
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-
-      // Boutons de fond de carte : un seul actif à la fois
-      var basemapBtns = container.querySelectorAll('[data-basemap]');
-      basemapBtns.forEach(function(btn){
-        btn.addEventListener('click', function(){
-          basemapBtns.forEach(function(b){ b.classList.remove('active'); });
-          btn.classList.add('active');
-          switchBasemap(btn.getAttribute('data-basemap'));
-        });
-      });
-
-      // Boutons de style : un seul actif à la fois
-      var styleBtns = container.querySelectorAll('[data-style]');
-      styleBtns.forEach(function(btn){
-        btn.addEventListener('click', function(){
-          styleBtns.forEach(function(b){ b.classList.remove('active'); });
-          btn.classList.add('active');
-          currentStyle = btn.getAttribute('data-style');
-          rebuildCommuneLayer();
-        });
-      });
-
-      return container;
-    }
-  });
-  new BasemapStyleControl().addTo(map);
-
-  // Filtres secteur + courtier (haut droite, au-dessus de la recherche —
-  // voir l'ordre d'ajout à la carte plus bas)
-  var FilterControl = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd: function(){
-      var container = L.DomUtil.create('div', 'control-panel');
-
-      var courtierChipsHtml = COURTIERS.map(function(k){
-        var bg = COURTIER_COLORS[k];
-        var fg = COURTIER_TEXT_COLORS[k];
-        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
-      }).join('');
-
-      var secteurChipsHtml = SECTEURS.map(function(s){
-        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
-      }).join('');
-
-      container.innerHTML =
-        '<div class="filter-box">' +
-          '<div class="panel-title">Filtrer par secteur</div>' +
-          '<div class="chips">' +
-            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
-            secteurChipsHtml +
-          '</div>' +
-        '</div>' +
-        '<div class="filter-box">' +
-          '<div class="panel-title">Filtrer par courtier</div>' +
-          '<div class="chips">' +
-            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
-            courtierChipsHtml +
-          '</div>' +
-        '</div>';
-
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-
-      // Chips courtier : sélection multiple, "Tous" réinitialise. Le libellé
-      // de chaque chip affiche le nombre de pressoirs où ce courtier est
-      // référent (courtier1) et secondaire (courtier2), recalculé selon le
-      // filtre secteur actif.
-      var courtierAllChip = container.querySelector('[data-courtier="__all"]');
-      var courtierChips = container.querySelectorAll('[data-courtier]:not([data-courtier="__all"])');
-
-      function refreshCourtierChipLabels(){
-        var counts = computeCourtierCounts();
-        courtierChips.forEach(function(chip){
-          var k = chip.getAttribute('data-courtier');
-          var c = counts[k] || { c1: 0, c2: 0 };
-          chip.innerHTML = k + ' <span class="chip-count">' + c.c1 + '+' + c.c2 + '</span>';
-        });
-      }
-      refreshCourtierChipLabels();
-      refreshCourtierChipLabelsRef = refreshCourtierChipLabels;
-
-      courtierAllChip.addEventListener('click', function(){
-        selectedCourtiers.clear();
-        courtierAllChip.classList.add('active');
-        courtierChips.forEach(function(c){ c.classList.remove('active'); });
-        rebuildCommuneLayer();
-        rebuildClusterGroup();
-      });
-
-      courtierChips.forEach(function(chip){
-        chip.addEventListener('click', function(){
-          var k = chip.getAttribute('data-courtier');
-          if(selectedCourtiers.has(k)){
-            selectedCourtiers.delete(k);
-            chip.classList.remove('active');
-          } else {
-            selectedCourtiers.add(k);
-            chip.classList.add('active');
-          }
-          courtierAllChip.classList.toggle('active', selectedCourtiers.size === 0);
-          rebuildCommuneLayer();
-          rebuildClusterGroup();
-        });
-      });
-
-      // Chips secteur : sélection multiple, "Tous" réinitialise. Change le
-      // périmètre pris en compte par les compteurs des chips courtier.
-      var secteurAllChip = container.querySelector('[data-secteur="__all"]');
-      var secteurChips = container.querySelectorAll('[data-secteur]:not([data-secteur="__all"])');
-
-      secteurAllChip.addEventListener('click', function(){
-        selectedSecteurs.clear();
-        secteurAllChip.classList.add('active');
-        secteurChips.forEach(function(c){ c.classList.remove('active'); });
-        rebuildCommuneLayer();
-        rebuildClusterGroup();
-        refreshCourtierChipLabels();
-      });
-
-      secteurChips.forEach(function(chip){
-        chip.addEventListener('click', function(){
-          var s = chip.getAttribute('data-secteur');
-          if(selectedSecteurs.has(s)){
-            selectedSecteurs.delete(s);
-            chip.classList.remove('active');
-          } else {
-            selectedSecteurs.add(s);
-            chip.classList.add('active');
-          }
-          secteurAllChip.classList.toggle('active', selectedSecteurs.size === 0);
-          rebuildCommuneLayer();
-          rebuildClusterGroup();
-          refreshCourtierChipLabels();
-        });
-      });
-
-      return container;
-    }
-  });
-  new FilterControl().addTo(map);
-
   // =========================================================================
-  // Contrôle : recherche par nom de pressoir ou de commune (haut droite)
+  // Recherche par nom de pressoir ou de commune — logique (le contrôle
+  // visuel est fusionné avec les filtres et le fond de carte, plus bas).
   // =========================================================================
   var SEARCH_RESULTS_LIMIT = 8;
 
@@ -2692,18 +2580,142 @@
     });
   }
 
-  var SearchControl = L.Control.extend({
+  // =========================================================================
+  // Contrôle unique (haut droite) : filtre secteur, filtre courtier,
+  // recherche, fond de carte, style des communes — dans cet ordre. Un
+  // bouton flottant séparé (ToggleControl, ajouté juste après pour
+  // apparaître au-dessus) permet de masquer/afficher tout ce bloc.
+  // =========================================================================
+  var mapOptionsContainerRef = null;
+
+  var MapOptionsControl = L.Control.extend({
     options: { position: 'topright' },
     onAdd: function(){
-      var container = L.DomUtil.create('div', 'search-panel');
+      var container = L.DomUtil.create('div', 'control-panel');
+      mapOptionsContainerRef = container;
+
+      var courtierChipsHtml = COURTIERS.map(function(k){
+        var bg = COURTIER_COLORS[k];
+        var fg = COURTIER_TEXT_COLORS[k];
+        return '<button class="chip" data-courtier="' + k + '" style="background:' + bg + ';color:' + fg + ';">' + k + '</button>';
+      }).join('');
+
+      var secteurChipsHtml = SECTEURS.map(function(s){
+        return '<button class="chip chip-secteur" data-secteur="' + s + '">' + s + '</button>';
+      }).join('');
+
       container.innerHTML =
-        '<input type="text" class="search-input" placeholder="Rechercher un pressoir ou une commune…" />' +
-        '<div class="search-results"></div>';
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par secteur</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all chip-secteur active" data-secteur="__all">Tous</button>' +
+            secteurChipsHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="filter-box">' +
+          '<div class="panel-title">Filtrer par courtier</div>' +
+          '<div class="chips">' +
+            '<button class="chip chip-all active" data-courtier="__all">Tous</button>' +
+            courtierChipsHtml +
+          '</div>' +
+        '</div>' +
+        '<div class="search-box">' +
+          '<div class="panel-title">Rechercher un pressoir</div>' +
+          '<input type="text" class="search-input" placeholder="Nom de pressoir ou de commune…" />' +
+          '<div class="search-results"></div>' +
+        '</div>' +
+        '<div class="basemap-box">' +
+          '<div class="panel-title">Fond de carte</div>' +
+          '<button class="style-btn active" data-basemap="osm">Standard (OSM)</button>' +
+          '<button class="style-btn" data-basemap="satellite">Satellite</button>' +
+          '<button class="style-btn" data-basemap="relief">Relief</button>' +
+          '<button class="style-btn" data-basemap="epure">Épuré</button>' +
+        '</div>' +
+        '<div class="style-box">' +
+          '<div class="panel-title">Style des communes</div>' +
+          '<button class="style-btn" data-style="dot">Point discret</button>' +
+          '<button class="style-btn active" data-style="pill">Pastille compacte</button>' +
+          '<button class="style-btn" data-style="figure">Chiffre seul</button>' +
+        '</div>';
 
       L.DomEvent.disableClickPropagation(container);
       L.DomEvent.disableScrollPropagation(container);
 
-      var input = container.querySelector('.search-input');
+      // --- Filtre courtier : sélection multiple, "Tous" réinitialise. Le
+      // libellé de chaque chip affiche le nombre de pressoirs où ce
+      // courtier est référent (courtier1) et secondaire (courtier2),
+      // recalculé selon le filtre secteur actif.
+      var courtierAllChip = container.querySelector('[data-courtier="__all"]');
+      var courtierChips = container.querySelectorAll('[data-courtier]:not([data-courtier="__all"])');
+
+      function refreshCourtierChipLabels(){
+        var counts = computeCourtierCounts();
+        courtierChips.forEach(function(chip){
+          var k = chip.getAttribute('data-courtier');
+          var c = counts[k] || { c1: 0, c2: 0 };
+          chip.innerHTML = k + ' <span class="chip-count">' + c.c1 + '+' + c.c2 + '</span>';
+        });
+      }
+      refreshCourtierChipLabels();
+      refreshCourtierChipLabelsRef = refreshCourtierChipLabels;
+
+      courtierAllChip.addEventListener('click', function(){
+        selectedCourtiers.clear();
+        courtierAllChip.classList.add('active');
+        courtierChips.forEach(function(c){ c.classList.remove('active'); });
+        rebuildCommuneLayer();
+        rebuildClusterGroup();
+      });
+
+      courtierChips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          var k = chip.getAttribute('data-courtier');
+          if(selectedCourtiers.has(k)){
+            selectedCourtiers.delete(k);
+            chip.classList.remove('active');
+          } else {
+            selectedCourtiers.add(k);
+            chip.classList.add('active');
+          }
+          courtierAllChip.classList.toggle('active', selectedCourtiers.size === 0);
+          rebuildCommuneLayer();
+          rebuildClusterGroup();
+        });
+      });
+
+      // --- Filtre secteur : sélection multiple, "Tous" réinitialise.
+      // Change le périmètre pris en compte par les compteurs courtier.
+      var secteurAllChip = container.querySelector('[data-secteur="__all"]');
+      var secteurChips = container.querySelectorAll('[data-secteur]:not([data-secteur="__all"])');
+
+      secteurAllChip.addEventListener('click', function(){
+        selectedSecteurs.clear();
+        secteurAllChip.classList.add('active');
+        secteurChips.forEach(function(c){ c.classList.remove('active'); });
+        rebuildCommuneLayer();
+        rebuildClusterGroup();
+        refreshCourtierChipLabels();
+      });
+
+      secteurChips.forEach(function(chip){
+        chip.addEventListener('click', function(){
+          var s = chip.getAttribute('data-secteur');
+          if(selectedSecteurs.has(s)){
+            selectedSecteurs.delete(s);
+            chip.classList.remove('active');
+          } else {
+            selectedSecteurs.add(s);
+            chip.classList.add('active');
+          }
+          secteurAllChip.classList.toggle('active', selectedSecteurs.size === 0);
+          rebuildCommuneLayer();
+          rebuildClusterGroup();
+          refreshCourtierChipLabels();
+        });
+      });
+
+      // --- Recherche par nom de pressoir ou de commune.
+      var searchInput = container.querySelector('.search-input');
       var resultsEl = container.querySelector('.search-results');
       var currentResults = [];
 
@@ -2734,15 +2746,15 @@
             } else {
               revealPressoir(r.commune, r.pressoir);
             }
-            input.value = '';
+            searchInput.value = '';
             resultsEl.classList.remove('visible');
             resultsEl.innerHTML = '';
           });
         });
       }
 
-      input.addEventListener('input', function(){
-        var q = input.value;
+      searchInput.addEventListener('input', function(){
+        var q = searchInput.value;
         if(!q.trim()){
           resultsEl.classList.remove('visible');
           resultsEl.innerHTML = '';
@@ -2752,10 +2764,53 @@
         renderResults();
       });
 
+      // --- Fond de carte : un seul actif à la fois.
+      var basemapBtns = container.querySelectorAll('[data-basemap]');
+      basemapBtns.forEach(function(btn){
+        btn.addEventListener('click', function(){
+          basemapBtns.forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          switchBasemap(btn.getAttribute('data-basemap'));
+        });
+      });
+
+      // --- Style des communes : un seul actif à la fois.
+      var styleBtns = container.querySelectorAll('[data-style]');
+      styleBtns.forEach(function(btn){
+        btn.addEventListener('click', function(){
+          styleBtns.forEach(function(b){ b.classList.remove('active'); });
+          btn.classList.add('active');
+          currentStyle = btn.getAttribute('data-style');
+          rebuildCommuneLayer();
+        });
+      });
+
       return container;
     }
   });
-  new SearchControl().addTo(map);
+
+  // Bouton flottant indépendant : masque/affiche tout le bloc ci-dessus.
+  // Défini ici mais ajouté à la carte AVANT MapOptionsControl (juste en
+  // dessous) pour s'empiler au-dessus de lui dans le coin haut-droit, et
+  // rester visible même quand le panneau est masqué.
+  var ToggleControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(){
+      var btn = L.DomUtil.create('button', 'toggle-options-btn');
+      btn.textContent = '☰';
+      btn.title = 'Afficher/masquer les options de la carte';
+      L.DomEvent.disableClickPropagation(btn);
+      L.DomEvent.disableScrollPropagation(btn);
+      btn.addEventListener('click', function(){
+        if(!mapOptionsContainerRef) return;
+        var hidden = mapOptionsContainerRef.style.display === 'none';
+        mapOptionsContainerRef.style.display = hidden ? '' : 'none';
+      });
+      return btn;
+    }
+  });
+  new ToggleControl().addTo(map);
+  new MapOptionsControl().addTo(map);
 
   // =========================================================================
   // Initialisation
@@ -2763,6 +2818,7 @@
   rebuildCommuneLayer();
   rebuildClusterGroup();
   updateLayersForZoom();
+  chargerDonneesCrj();
 
 })();
 </script>
