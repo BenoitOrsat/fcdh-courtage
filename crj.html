@@ -36,6 +36,15 @@
       border: 1.5px solid #dde1eb; font-size: 13px; font-weight: 700; color: #0d1b3e; background: #f8f9fb; transition: all 0.15s;
     }
     .secteur-chip input:checked + span { background: #0d1b3e; border-color: #0d1b3e; color: #C9A84C; }
+    .jauge-row { display: flex; align-items: center; gap: 14px; }
+    .jauge-track { display: flex; gap: 4px; flex: 1; }
+    .jauge-seg { flex: 1; height: 16px; border-radius: 4px; border: 1px solid #dde1eb; background: #eef0f5; cursor: pointer; transition: background 0.1s, border-color 0.1s; }
+    .jauge-seg.filled { background: #0d1b3e; border-color: #0d1b3e; }
+    .jauge-seg.figee { cursor: not-allowed; }
+    .jauge-seg.figee.filled { background: #b3b8c4; border-color: #b3b8c4; }
+    .jauge-out { min-width: 48px; text-align: center; font-size: 13px; font-weight: 700; color: #0d1b3e; background: #f8f9fb; border: 1px solid #dde1eb; border-radius: 8px; padding: 6px 10px; }
+    .jauge-hint { font-size: 11px; color: #8a94aa; margin-top: 8px; }
+
     .sub-field { margin-bottom: 14px; }
     .sub-field label { display: block; font-size: 12px; font-weight: 600; color: #4a5468; margin-bottom: 5px; }
     .sub-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
@@ -99,6 +108,15 @@
       <div class="field">
         <label class="main">Secteur(s) concerné(s)</label>
         <fieldset id="secteur-chips" class="secteur-chips"></fieldset>
+      </div>
+
+      <div class="field">
+        <label class="main">Avancement livraison des doses et consignes de pressurage</label>
+        <div class="jauge-row">
+          <div class="jauge-track" id="jauge-track"></div>
+          <div class="jauge-out" id="jauge-out">0%</div>
+        </div>
+        <div class="jauge-hint" id="jauge-hint"></div>
       </div>
 
       <div class="field">
@@ -332,6 +350,82 @@
       }
     }
 
+    // ---- Avancement livraison des doses / consignes de pressurage : jauge par correspondant ----
+    // Persistée dans le même Google Sheet que les pressoirs (feuille "Avancement" côté Apps Script).
+    // Une fois à 100 %, elle se fige dès le jour suivant (comparaison de dates en YYYY-MM-DD) et la
+    // ligne correspondante disparaît alors du mail généré.
+    let jaugeValeur = 0;
+    let jaugeDateMaj = '';
+    let jaugeErreur = false;
+
+    function calculerJaugeFigee(dateIso) {
+      return jaugeValeur >= 100 && !!jaugeDateMaj && dateIso > jaugeDateMaj;
+    }
+
+    function renderJauge() {
+      const dateIso = document.getElementById('inp-date').value;
+      const figee = calculerJaugeFigee(dateIso);
+      const track = document.getElementById('jauge-track');
+      track.innerHTML = '';
+      for (let i = 1; i <= 10; i++) {
+        const seg = document.createElement('div');
+        const filled = i * 10 <= jaugeValeur;
+        seg.className = 'jauge-seg' + (filled ? ' filled' : '') + (figee ? ' figee' : '');
+        if (!figee) {
+          seg.addEventListener('click', function() {
+            jaugeValeur = i * 10;
+            renderJauge();
+          });
+        }
+        track.appendChild(seg);
+      }
+      document.getElementById('jauge-out').textContent = jaugeValeur + '%';
+      const hint = document.getElementById('jauge-hint');
+      if (jaugeErreur) {
+        hint.textContent = "⚠️ Stockage partagé indisponible — l'avancement ne sera pas enregistré cette fois-ci.";
+      } else if (figee) {
+        hint.textContent = 'Figé à 100 % depuis le ' + formatDateFr(jaugeDateMaj) + ' — non mentionné dans le mail à partir du lendemain.';
+      } else {
+        hint.textContent = '';
+      }
+    }
+
+    async function chargerAvancement() {
+      document.getElementById('jauge-hint').textContent = 'Chargement…';
+      jaugeErreur = false;
+      if (!pressoirStoreConfigure()) { jaugeErreur = true; renderJauge(); return; }
+      try {
+        const res = await fetch(PRESSOIR_STORE_URL + '?type=avancement&correspondant=' + encodeURIComponent(user));
+        const data = await res.json();
+        const row = (data.rows || [])[0];
+        if (row) {
+          jaugeValeur = parseInt(row.valeur, 10) || 0;
+          jaugeDateMaj = row.dateMaj || '';
+        }
+      } catch (e) {
+        jaugeErreur = true;
+      }
+      renderJauge();
+    }
+
+    async function sauvegarderAvancement(dateIso) {
+      if (!pressoirStoreConfigure()) return false;
+      try {
+        await fetch(PRESSOIR_STORE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ type: 'avancement', updates: [{ correspondant: user, valeur: jaugeValeur, dateMaj: dateIso }] }),
+        });
+        jaugeDateMaj = dateIso;
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    chargerAvancement();
+    document.getElementById('inp-date').addEventListener('change', renderJauge);
+
     function renderTablePressoirs() {
       const secteurs = getSelectedSecteurs();
       const tbody = document.getElementById('table-pressoirs-body');
@@ -495,8 +589,16 @@
         if (resultat.updates.length > 0) {
           const sauvegarde = await sauvegarderEtatPressoirs(resultat.updates);
           if (!sauvegarde) {
-            errorEl.textContent = "⚠️ Mail généré, mais le compteur/dates n'ont pas pu être enregistrés dans le stockage partagé (indisponible).";
+            errorEl.textContent = (errorEl.textContent ? errorEl.textContent + ' ' : '') + "⚠️ Mail généré, mais le compteur/dates n'ont pas pu être enregistrés dans le stockage partagé (indisponible).";
           }
+        }
+      }
+
+      const jaugeFigee = calculerJaugeFigee(dateIso);
+      if (!jaugeFigee) {
+        const jaugeSauvegarde = await sauvegarderAvancement(dateIso);
+        if (!jaugeSauvegarde) {
+          errorEl.textContent = (errorEl.textContent ? errorEl.textContent + ' ' : '') + "⚠️ Mail généré, mais l'avancement n'a pas pu être enregistré dans le stockage partagé (indisponible).";
         }
       }
 
@@ -507,10 +609,15 @@
         'Compte-Rendu Journalier — ' + dateFr,
         'Correspondant : ' + user,
         'Secteur(s) : ' + secteurs.join(', '),
+      ];
+      if (!jaugeFigee) {
+        lignes.push('Avancement livraison des doses et consignes de pressurage : ' + jaugeValeur + '%');
+      }
+      lignes.push(
         '',
         'Visites réalisées le jour J (sous-secteur / communes) :',
-        visitesJour || '—',
-      ];
+        visitesJour || '—'
+      );
 
       if (detailPressoirs.length > 0) {
         lignes.push('');
