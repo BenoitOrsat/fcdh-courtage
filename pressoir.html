@@ -2680,8 +2680,8 @@
       var passages = (crj.compteur != null && crj.compteur !== '') ? crj.compteur : '—';
       var crjLines =
         '<p><strong>Nombre de passages du correspondant :</strong> ' + passages + '</p>' +
-        '<p><strong>Date d\'ouverture :</strong> ' + (formatDateCrj(crj.ouverture) || '—') + '</p>' +
         '<p><strong>Dernière visite :</strong> ' + (formatDateCrj(crj.derniereVisite) || '—') + '</p>' +
+        '<p><strong>Date d\'ouverture :</strong> ' + (formatDateCrj(crj.ouverture) || '—') + '</p>' +
         '<p><strong>Livraison FCDH :</strong> ' + (formatDateCrj(crj.livraison) || '—') + '</p>';
       var titreLigne = fcdhRole === 'courtier'
         ? '<div class="pressoir-popup-title-row"><h3>' + pressoir.nom + '</h3>' +
