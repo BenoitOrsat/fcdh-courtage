@@ -88,7 +88,9 @@
     .s2 { position: sticky; left: 48px;  z-index: 2; background: inherit; }
     .s3 { position: sticky; left: 168px; z-index: 2; background: inherit; }
     .s4 { position: sticky; left: 368px; z-index: 2; background: inherit; box-shadow: 2px 0 6px rgba(0,0,0,.06); }
-    thead .s1, thead .s2, thead .s3, thead .s4 { z-index: 7 !important; }
+    .s4.no-sep { box-shadow: none; }
+    .s5 { position: sticky; left: 438px; z-index: 2; background: inherit; box-shadow: 2px 0 6px rgba(0,0,0,.06); min-width: 90px; }
+    thead .s1, thead .s2, thead .s3, thead .s4, thead .s5 { z-index: 7 !important; }
 
     /* Data rows */
     tbody tr { background: white; }
@@ -101,24 +103,32 @@
     td.text-left { text-align: left; }
     td.pressoir-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
     tbody tr:nth-child(even) .s1,tbody tr:nth-child(even) .s2,
-    tbody tr:nth-child(even) .s3,tbody tr:nth-child(even) .s4 { background: #f9fafb; }
+    tbody tr:nth-child(even) .s3,tbody tr:nth-child(even) .s4,
+    tbody tr:nth-child(even) .s5 { background: #f9fafb; }
     tbody tr:nth-child(odd) .s1,tbody tr:nth-child(odd) .s2,
-    tbody tr:nth-child(odd) .s3,tbody tr:nth-child(odd) .s4 { background: white; }
+    tbody tr:nth-child(odd) .s3,tbody tr:nth-child(odd) .s4,
+    tbody tr:nth-child(odd) .s5 { background: white; }
 
     /* Counter cells */
     .ctr { display: inline-flex; align-items: center; gap: 2px; }
     .cbtn { width: 20px; height: 20px; border-radius: 4px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: transform .1s; line-height: 1; }
     .cbtn:active { transform: scale(.88); }
-    .cbtn.dec { background: #fef2f2; color: #ef4444; }
-    .cbtn.dec:hover { background: #fee2e2; }
     .cbtn.inc { background: #f0fdf4; color: #16a34a; }
     .cbtn.inc:hover { background: #dcfce7; }
-    .cval { min-width: 24px; text-align: center; font-weight: 700; font-size: 12px; color: #0d1b3e; }
-    .cval.zero { color: #d1d5db; font-weight: 400; }
+    .cval-input { width: 36px; text-align: center; border: none; background: transparent; font-weight: 700; font-size: 12px; color: #0d1b3e; cursor: text; padding: 0; -moz-appearance: textfield; }
+    .cval-input::-webkit-outer-spin-button, .cval-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .cval-input:focus { outline: 1px solid #C9A84C; border-radius: 3px; background: white; }
+    .cval-input.zero { color: #d1d5db; font-weight: 400; }
 
     /* Total cell */
     .total-td { font-weight: 800; color: #0d1b3e; background: #f0fdf4 !important; font-size: 13px; min-width: 44px; }
     tbody tr:hover .total-td { background: #dcfce7 !important; }
+
+    /* Bottle toggle cells */
+    .bt-cell { cursor: pointer; text-align: center; font-size: 14px; font-weight: 700; min-width: 80px; user-select: none; }
+    tbody tr:hover .bt-cell { background: #f0fdf4 !important; }
+    .bt-given { background: #dcfce7 !important; color: #16a34a; }
+    tbody tr:hover .bt-given { background: #bbf7d0 !important; }
 
     /* Gift column header with remove button */
     .gift-th { display: flex; align-items: center; justify-content: center; gap: 4px; }
@@ -404,6 +414,11 @@ function doPost(e){
       const c=h.indexOf(p.col);
       if(c>=0&&p.rowIdx>=0){const cell=s.getRange(p.rowIdx+2,c+1);cell.setValue(Math.max(0,(Number(cell.getValue())||0)+p.delta));}
     }
+    else if(p.action==='setValue'){
+      const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
+      const c=h.indexOf(p.col);
+      if(c>=0&&p.rowIdx>=0){s.getRange(p.rowIdx+2,c+1).setValue(Math.max(0,Number(p.val)||0));}
+    }
     else if(p.action==='addRow'){
       const h=s.getRange(1,1,1,s.getLastColumn()).getValues()[0];
       const vCols=p.visitCols||VISITS;
@@ -488,6 +503,8 @@ function plainsKey()  { return 'fcdh_plain_'   + activeTab; }
 // Colonnes de visites (compteurs) et colonnes texte brut de l'onglet actif
 function visitCols()  { return tabState[activeTab].visits; }
 function plainCols()  { return tabState[activeTab].plain  || []; }
+function textCols()   { return plainCols().filter(h => h !== 'Courtier2' && !h.startsWith('Bt ')); }
+function bottleCols() { return plainCols().filter(h => h.startsWith('Bt ')); }
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
@@ -707,32 +724,40 @@ function applyFilters() {
 function renderTable() {
   if (!rows.length) return;
   const gc = giftCols();
-  const pc = plainCols();
-  renderHead(gc, pc);
-  renderBody(gc, pc);
+  const tc = textCols();
+  const bc = bottleCols();
+  const h2 = plainCols().includes('Courtier2');
+  renderHead(gc, tc, bc, h2);
+  renderBody(gc, tc, bc, h2);
 }
 
-function renderHead(gc, pc) {
-  const vc = visitCols();
+function renderHead(gc, tc, bc, h2) {
+  const vc        = visitCols();
+  const locSpan   = h2 ? 5 : 4;
   const visitSpan = vc.length;
-  const plainSpan = pc.length;
+  const textSpan  = tc.length;
+  const btSpan    = bc.length;
   const giftSpan  = gc.length;
+  const s4Class   = h2 ? 's4 no-sep' : 's4';
   document.getElementById('tableHead').innerHTML = `
     <tr class="g-row">
-      <th colspan="4" style="position:sticky;left:0;z-index:7;text-align:left;padding-left:10px;background:#1a2f5a">Localisation</th>
+      <th colspan="${locSpan}" style="position:sticky;left:0;z-index:7;text-align:left;padding-left:10px;background:#1a2f5a">Localisation</th>
       <th colspan="${visitSpan}" style="border-left:2px solid #C9A84C88">Visites par courtier</th>
       <th style="border-left:1px solid #0d1b3e">Total</th>
-      ${plainSpan ? `<th colspan="${plainSpan}" style="border-left:2px solid #6b728088">Infos Excel</th>` : ''}
-      ${giftSpan  ? `<th colspan="${giftSpan}"  style="border-left:2px solid #C9A84C">Cadeaux</th>` : ''}
+      ${textSpan ? `<th colspan="${textSpan}" style="border-left:2px solid #6b728088">Infos Excel</th>` : ''}
+      ${btSpan   ? `<th colspan="${btSpan}" style="border-left:2px solid #86efac88;color:#16a34a">Bouteilles</th>` : ''}
+      ${giftSpan ? `<th colspan="${giftSpan}" style="border-left:2px solid #C9A84C">Cadeaux</th>` : ''}
     </tr>
     <tr class="h-row">
       <th class="s1" style="min-width:48px">Sec.</th>
       <th class="s2" style="min-width:120px;text-align:left">Commune</th>
       <th class="s3" style="min-width:200px;text-align:left">Pressoir</th>
-      <th class="s4" style="min-width:70px">Crt. Réf.</th>
+      <th class="${s4Class}" style="min-width:70px">Crt. Réf.</th>
+      ${h2 ? `<th class="s5" style="text-align:left">Courtier 2</th>` : ''}
       ${vc.map((v, i) => `<th style="min-width:82px;border-left:${i===0?'2px solid #C9A84C88':'1px solid #1a2f5a'}">${v}</th>`).join('')}
       <th style="min-width:50px;border-left:1px solid #1a2f5a;color:#6ee7b7">TOTAL</th>
-      ${pc.map((p, i) => `<th style="min-width:110px;text-align:left;border-left:${i===0?'2px solid #6b728088':'1px solid #1a2f5a'};color:#9ca3af">${esc(p)}</th>`).join('')}
+      ${tc.map((p, i) => `<th style="min-width:110px;text-align:left;border-left:${i===0?'2px solid #6b728088':'1px solid #1a2f5a'};color:#9ca3af">${esc(p)}</th>`).join('')}
+      ${bc.map((b, i) => `<th style="min-width:80px;border-left:${i===0?'2px solid #86efac88':'1px solid #1a2f5a'};color:#16a34a">${esc(b)}</th>`).join('')}
       ${gc.map(g => `
         <th style="min-width:90px;border-left:${g===gc[0]?'2px solid #C9A84C':'1px solid #1a2f5a'}">
           <div class="gift-th">${esc(g)}<button class="rm-col" data-col="${esc(g)}" title="Supprimer cette colonne">✕</button></div>
@@ -740,8 +765,9 @@ function renderHead(gc, pc) {
     </tr>`;
 }
 
-function renderBody(gc, pc) {
-  const sIdx=ci('Secteur'), coIdx=ci('Commune'), prIdx=ci('Pressoir'), crIdx=ci('Courtier');
+function renderBody(gc, tc, bc, h2) {
+  const sIdx=ci('Secteur'), coIdx=ci('Commune'), prIdx=ci('Pressoir'), crIdx=ci('Courtier'), c2Idx=ci('Courtier2');
+  const s4Class = h2 ? 's4 no-sep' : 's4';
   let html = '';
   for (const i of filteredRows) {
     const r = rows[i];
@@ -751,10 +777,12 @@ function renderBody(gc, pc) {
       <td class="s1">${esc(r[sIdx])}</td>
       <td class="s2 text-left">${esc(r[coIdx])}</td>
       <td class="s3 text-left pressoir-cell" title="${esc(r[prIdx])}">${esc(r[prIdx])}</td>
-      <td class="s4">${esc(r[crIdx])}</td>
+      <td class="${s4Class}">${esc(r[crIdx])}</td>
+      ${h2 ? `<td class="s5 text-left">${esc(String(r[c2Idx] ?? ''))}</td>` : ''}
       ${vc.map(v => counterCell(i, v, Number(r[ci(v)])||0)).join('')}
       <td class="total-td">${total || ''}</td>
-      ${pc.map((p, idx) => `<td class="text-left" style="border-left:${idx===0?'2px solid #6b728044':'1px solid #edf0f5'};color:#6b7280">${esc(String(r[ci(p)] ?? ''))}</td>`).join('')}
+      ${tc.map((p, idx) => `<td class="text-left" style="border-left:${idx===0?'2px solid #6b728044':'1px solid #edf0f5'};color:#6b7280">${esc(String(r[ci(p)] ?? ''))}</td>`).join('')}
+      ${bc.map((b, idx) => bottleCell(i, b, Number(r[ci(b)])||0, idx)).join('')}
       ${gc.map(g => counterCell(i, g, Number(r[ci(g)])||0)).join('')}
     </tr>`;
   }
@@ -764,23 +792,44 @@ function renderBody(gc, pc) {
 function counterCell(rowIdx, col, val) {
   return `<td data-row="${rowIdx}" data-col="${col}">
     <div class="ctr">
-      <button class="cbtn dec" title="-1">−</button>
-      <span class="cval${val === 0 ? ' zero' : ''}">${val || 0}</span>
+      <input class="cval-input${val === 0 ? ' zero' : ''}" type="number" min="0" value="${val || 0}" data-row="${rowIdx}" data-col="${col}">
       <button class="cbtn inc" title="+1">+</button>
     </div>
   </td>`;
 }
 
-// Event delegation for counter buttons
+function bottleCell(rowIdx, col, val, idx) {
+  return `<td class="bt-cell${val ? ' bt-given' : ''}" data-row="${rowIdx}" data-col="${col}" style="border-left:${idx===0?'2px solid #86efac88':'1px solid #edf0f5'}">${val ? '✓' : ''}</td>`;
+}
+
+// Event delegation for counter +1 button and bottle toggle
 document.addEventListener('click', e => {
-  const btn = e.target.closest('.cbtn');
+  // Bottle toggle cell
+  const btTd = e.target.closest('td.bt-cell');
+  if (btTd && btTd.dataset.col) { toggleBottle(parseInt(btTd.dataset.row), btTd.dataset.col); return; }
+  // Counter +1
+  const btn = e.target.closest('.cbtn.inc');
   if (!btn) return;
   const td  = btn.closest('td');
   if (!td || !td.dataset.col) return;
-  const rowIdx = parseInt(td.dataset.row);
-  const col    = td.dataset.col;
-  const delta  = btn.classList.contains('inc') ? 1 : -1;
-  increment(rowIdx, col, delta);
+  increment(parseInt(td.dataset.row), td.dataset.col, 1);
+});
+
+// Manual counter input — save on blur or Enter
+document.addEventListener('focusout', e => {
+  const inp = e.target.closest('.cval-input');
+  if (!inp || !inp.dataset.col) return;
+  const rowIdx = parseInt(inp.dataset.row);
+  const col    = inp.dataset.col;
+  const colI   = ci(col);
+  const newVal = Math.max(0, parseInt(inp.value) || 0);
+  inp.value = newVal;
+  if (colI >= 0 && newVal !== (Number(rows[rowIdx][colI]) || 0)) {
+    setCounterValue(rowIdx, col, newVal);
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const inp = e.target.closest('.cval-input'); if (inp) inp.blur(); }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -813,12 +862,69 @@ async function increment(rowIdx, col, delta) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  SET COUNTER VALUE (saisie manuelle)
+// ═══════════════════════════════════════════════════════════════
+async function setCounterValue(rowIdx, col, newVal) {
+  const tab = activeTab;
+  pauseUntil = Date.now() + 3000;
+  const colI = ci(col);
+  if (colI < 0) return;
+  rows[rowIdx][colI] = Math.max(0, newVal);
+  tabState[activeTab].rows = rows;
+  renderStats();
+  try {
+    setSyncLabel('Sauvegarde…', 'spin');
+    const result = await apiPost({ action: 'setValue', rowIdx, col, val: Math.max(0, newVal) });
+    if (activeTab !== tab) return;
+    if (result.headers && result.rows) applyData(result);
+    else applyFilters();
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    if (activeTab !== tab) return;
+    setSyncLabel('Erreur — rechargement…', 'error');
+    await loadData(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TOGGLE BOUTEILLE
+// ═══════════════════════════════════════════════════════════════
+async function toggleBottle(rowIdx, col) {
+  const tab = activeTab;
+  pauseUntil = Date.now() + 3000;
+  const colI = ci(col);
+  if (colI < 0) return;
+  const current = Number(rows[rowIdx][colI]) || 0;
+  const newVal  = current ? 0 : 1;
+  rows[rowIdx][colI] = newVal;
+  tabState[activeTab].rows = rows;
+  renderTable();
+  renderStats();
+  try {
+    setSyncLabel('Sauvegarde…', 'spin');
+    const result = await apiPost({ action: 'setValue', rowIdx, col, val: newVal });
+    if (activeTab !== tab) return;
+    if (result.headers && result.rows) applyData(result);
+    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
+  } catch (err) {
+    if (activeTab !== tab) return;
+    rows[rowIdx][colI] = current;
+    tabState[activeTab].rows = rows;
+    renderTable(); renderStats();
+    setSyncLabel('Erreur — rechargement…', 'error');
+    await loadData(false);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  STATS
 // ═══════════════════════════════════════════════════════════════
 function renderStats() {
   const gc = giftCols();
   const vc = visitCols();
+  const bc = bottleCols();
   const total = rows.reduce((s, r) => s + vc.reduce((a, v) => a + (Number(r[ci(v)]) || 0), 0), 0);
+  const btTotal = bc.reduce((s, b) => s + rows.reduce((a, r) => a + (Number(r[ci(b)]) || 0), 0), 0);
   document.getElementById('sPressoirs').textContent = rows.length;
   document.getElementById('sTotal').textContent     = total;
 
@@ -827,10 +933,12 @@ function renderStats() {
     return `<div class="stat"><div class="stat-v">${n}</div><div class="stat-l">${v}</div></div>`;
   }).join('');
 
-  document.getElementById('statsGifts').innerHTML = gc.map(g => {
-    const n = rows.reduce((s, r) => s + (Number(r[ci(g)]) || 0), 0);
-    return `<div class="stat"><div class="stat-v" style="color:#fb923c">${n}</div><div class="stat-l">${esc(g)}</div></div>`;
-  }).join('');
+  document.getElementById('statsGifts').innerHTML =
+    (bc.length ? `<div class="stat"><div class="stat-v" style="color:#16a34a">${btTotal}</div><div class="stat-l">Bt. distribuées</div></div>` : '') +
+    gc.map(g => {
+      const n = rows.reduce((s, r) => s + (Number(r[ci(g)]) || 0), 0);
+      return `<div class="stat"><div class="stat-v" style="color:#fb923c">${n}</div><div class="stat-l">${esc(g)}</div></div>`;
+    }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
