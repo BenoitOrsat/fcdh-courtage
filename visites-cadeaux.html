@@ -125,10 +125,14 @@
     tbody tr:hover .total-td { background: #dcfce7 !important; }
 
     /* Bottle toggle cells */
-    .bt-cell { cursor: pointer; text-align: center; font-size: 14px; font-weight: 700; min-width: 80px; user-select: none; }
+    .bt-cell { cursor: pointer; text-align: center; min-width: 80px; user-select: none; }
     tbody tr:hover .bt-cell { background: #f0fdf4 !important; }
-    .bt-given { background: #dcfce7 !important; color: #16a34a; }
+    .bt-given { background: #dcfce7 !important; }
     tbody tr:hover .bt-given { background: #bbf7d0 !important; }
+    .bt-count { font-weight: 700; font-size: 12px; color: #0d1b3e; }
+    .bt-count.zero { color: #d1d5db; font-weight: 400; }
+    .bt-given .bt-count { color: #16a34a; }
+    .bt-check { margin-left: 4px; font-size: 12px; color: #16a34a; font-weight: 900; }
 
     /* Gift column header with remove button */
     .gift-th { display: flex; align-items: center; justify-content: center; gap: 4px; }
@@ -483,22 +487,25 @@ const tabState = {
   vendanges: {
     headers: [], rows: [],
     deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_vendanges') || '[]')),
-    visits: JSON.parse(localStorage.getItem('fcdh_visits_vendanges') || 'null') || DEFAULT_VISITS,
-    plain:  JSON.parse(localStorage.getItem('fcdh_plain_vendanges')  || '[]')
+    visits:   JSON.parse(localStorage.getItem('fcdh_visits_vendanges')  || 'null') || DEFAULT_VISITS,
+    plain:    JSON.parse(localStorage.getItem('fcdh_plain_vendanges')   || '[]'),
+    btChecks: JSON.parse(localStorage.getItem('fcdh_btcheck_vendanges') || '{}')
   },
   voeux: {
     headers: [], rows: [],
     deletedCols: new Set(JSON.parse(localStorage.getItem('fcdh_deleted_voeux') || '[]')),
-    visits: JSON.parse(localStorage.getItem('fcdh_visits_voeux') || 'null') || DEFAULT_VISITS,
-    plain:  JSON.parse(localStorage.getItem('fcdh_plain_voeux')  || '[]')
+    visits:   JSON.parse(localStorage.getItem('fcdh_visits_voeux')  || 'null') || DEFAULT_VISITS,
+    plain:    JSON.parse(localStorage.getItem('fcdh_plain_voeux')   || '[]'),
+    btChecks: JSON.parse(localStorage.getItem('fcdh_btcheck_voeux') || '{}')
   }
 };
 
 // Per-tab localStorage key helpers
-function cacheKey()   { return 'fcdh_cache_'   + activeTab; }
-function deletedKey() { return 'fcdh_deleted_' + activeTab; }
-function visitsKey()  { return 'fcdh_visits_'  + activeTab; }
-function plainsKey()  { return 'fcdh_plain_'   + activeTab; }
+function cacheKey()     { return 'fcdh_cache_'   + activeTab; }
+function deletedKey()   { return 'fcdh_deleted_' + activeTab; }
+function visitsKey()    { return 'fcdh_visits_'  + activeTab; }
+function plainsKey()    { return 'fcdh_plain_'   + activeTab; }
+function btChecksKey()  { return 'fcdh_btcheck_' + activeTab; }
 
 // Colonnes de visites (compteurs) et colonnes texte brut de l'onglet actif
 function visitCols()  { return tabState[activeTab].visits; }
@@ -799,7 +806,12 @@ function counterCell(rowIdx, col, val) {
 }
 
 function bottleCell(rowIdx, col, val, idx) {
-  return `<td class="bt-cell${val ? ' bt-given' : ''}" data-row="${rowIdx}" data-col="${col}" style="border-left:${idx===0?'2px solid #86efac88':'1px solid #edf0f5'}">${val ? '✓' : ''}</td>`;
+  const pressoir = String(rows[rowIdx][ci('Pressoir')] || '');
+  const checks   = tabState[activeTab].btChecks;
+  const checked  = !!(checks[pressoir] && checks[pressoir][col]);
+  return `<td class="bt-cell${checked ? ' bt-given' : ''}" data-row="${rowIdx}" data-col="${col}" style="border-left:${idx===0?'2px solid #86efac88':'1px solid #edf0f5'}">
+    <span class="bt-count${val === 0 ? ' zero' : ''}">${val || 0}</span>${checked ? '<span class="bt-check">✓</span>' : ''}
+  </td>`;
 }
 
 // Event delegation for counter +1 button and bottle toggle
@@ -865,55 +877,44 @@ async function increment(rowIdx, col, delta) {
 //  SET COUNTER VALUE (saisie manuelle)
 // ═══════════════════════════════════════════════════════════════
 async function setCounterValue(rowIdx, col, newVal) {
-  const tab = activeTab;
+  const tab    = activeTab;
+  const clamped = Math.max(0, newVal);
   pauseUntil = Date.now() + 3000;
   const colI = ci(col);
   if (colI < 0) return;
-  rows[rowIdx][colI] = Math.max(0, newVal);
-  tabState[activeTab].rows = rows;
-  renderStats();
-  try {
-    setSyncLabel('Sauvegarde…', 'spin');
-    const result = await apiPost({ action: 'setValue', rowIdx, col, val: Math.max(0, newVal) });
-    if (activeTab !== tab) return;
-    if (result.headers && result.rows) applyData(result);
-    else applyFilters();
-    setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
-  } catch (err) {
-    if (activeTab !== tab) return;
-    setSyncLabel('Erreur — rechargement…', 'error');
-    await loadData(false);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  TOGGLE BOUTEILLE
-// ═══════════════════════════════════════════════════════════════
-async function toggleBottle(rowIdx, col) {
-  const tab = activeTab;
-  pauseUntil = Date.now() + 3000;
-  const colI = ci(col);
-  if (colI < 0) return;
-  const current = Number(rows[rowIdx][colI]) || 0;
-  const newVal  = current ? 0 : 1;
-  rows[rowIdx][colI] = newVal;
+  rows[rowIdx][colI] = clamped;
   tabState[activeTab].rows = rows;
   renderTable();
   renderStats();
   try {
     setSyncLabel('Sauvegarde…', 'spin');
-    const result = await apiPost({ action: 'setValue', rowIdx, col, val: newVal });
+    const result = await apiPost({ action: 'setValue', rowIdx, col, val: clamped });
     if (activeTab !== tab) return;
-    if (result.headers && result.rows) applyData(result);
+    // Ne pas écraser la valeur optimiste si le serveur retourne les anciennes données
+    // (cas où le script n'est pas encore re-déployé avec l'action setValue)
+    if (result.headers && result.rows) {
+      const serverVal = result.rows[rowIdx] && result.rows[rowIdx][result.headers.indexOf(col)];
+      if (Number(serverVal) === clamped) applyData(result);
+    }
     setSyncLabel('Synchronisé · ' + nowStr(), 'ok');
   } catch (err) {
     if (activeTab !== tab) return;
-    rows[rowIdx][colI] = current;
-    tabState[activeTab].rows = rows;
-    renderTable(); renderStats();
-    setSyncLabel('Erreur — rechargement…', 'error');
-    await loadData(false);
+    setSyncLabel('Erreur de sauvegarde', 'error');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TOGGLE BOUTEILLE — état local uniquement (localStorage)
+// ═══════════════════════════════════════════════════════════════
+function toggleBottle(rowIdx, col) {
+  const pressoir = String(rows[rowIdx][ci('Pressoir')] || '');
+  if (!pressoir) return;
+  const checks = tabState[activeTab].btChecks;
+  if (!checks[pressoir]) checks[pressoir] = {};
+  checks[pressoir][col] = !checks[pressoir][col];
+  localStorage.setItem(btChecksKey(), JSON.stringify(checks));
+  renderTable();
+  renderStats();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -924,7 +925,11 @@ function renderStats() {
   const vc = visitCols();
   const bc = bottleCols();
   const total = rows.reduce((s, r) => s + vc.reduce((a, v) => a + (Number(r[ci(v)]) || 0), 0), 0);
-  const btTotal = bc.reduce((s, b) => s + rows.reduce((a, r) => a + (Number(r[ci(b)]) || 0), 0), 0);
+  const checks  = tabState[activeTab].btChecks;
+  const btTotal = bc.reduce((s, b) => s + rows.reduce((a, r) => {
+    const pressoir = String(r[ci('Pressoir')] || '');
+    return a + ((checks[pressoir] && checks[pressoir][b]) ? (Number(r[ci(b)]) || 0) : 0);
+  }, 0), 0);
   document.getElementById('sPressoirs').textContent = rows.length;
   document.getElementById('sTotal').textContent     = total;
 
