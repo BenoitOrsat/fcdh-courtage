@@ -429,6 +429,108 @@
     font-size:0.82rem;
   }
 
+  /* Icône crayon dans le titre de la popup, réservée au rôle "courtier". */
+  .pressoir-popup-title-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .edit-pressoir-btn{
+    flex:0 0 auto;
+    background:none;
+    border:1px solid var(--gold);
+    color:var(--gold);
+    border-radius:4px;
+    width:22px;
+    height:22px;
+    line-height:1;
+    font-size:0.8rem;
+    cursor:pointer;
+  }
+  .edit-pressoir-btn:hover{
+    background:var(--gold-light);
+  }
+
+  /* ---------- Modale de modification (courtier) ---------- */
+  .edit-modal-overlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(26,26,22,0.5);
+    z-index:2000;
+    align-items:center;
+    justify-content:center;
+  }
+  .edit-modal-overlay.visible{
+    display:flex;
+  }
+  .edit-modal{
+    background:var(--chalk);
+    border-top:4px solid var(--gold);
+    border-radius:8px;
+    padding:18px 20px;
+    width:260px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  }
+  .edit-modal-title{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:1rem;
+    color:var(--vine);
+    margin:0 0 14px;
+  }
+  .edit-modal-label{
+    display:block;
+    font-size:0.72rem;
+    color:var(--ink);
+    margin-bottom:3px;
+  }
+  .edit-modal-input{
+    width:100%;
+    box-sizing:border-box;
+    border:1px solid var(--gold-light);
+    border-radius:6px;
+    padding:6px 8px;
+    font-family:'Inter', sans-serif;
+    font-size:0.8rem;
+    color:var(--ink);
+    background:var(--ivory);
+    margin-bottom:12px;
+  }
+  .edit-modal-error{
+    font-size:0.72rem;
+    color:var(--burgundy);
+    min-height:1em;
+    margin-bottom:6px;
+  }
+  .edit-modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .edit-modal-btn{
+    border:none;
+    border-radius:6px;
+    padding:6px 14px;
+    font-size:0.78rem;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+  }
+  .edit-modal-cancel{
+    background:var(--ivory);
+    color:var(--ink);
+  }
+  .edit-modal-save{
+    background:var(--vine);
+    color:var(--chalk);
+  }
+  .edit-modal-save:disabled{
+    opacity:0.6;
+    cursor:default;
+  }
+
   /* ---------- Clusters : intégration à la palette ---------- */
   .marker-cluster-small{
     background-color:rgba(201,166,107,0.55);
@@ -555,6 +657,106 @@
       })
       .catch(function(){
         // CRJ indisponible : les popups afficheront "—" pour ces champs.
+      });
+  }
+
+  // =========================================================================
+  // Modification des données CRJ par un courtier : date d'ouverture et
+  // livraison FCDH. Réservé au rôle "courtier" (icône crayon non affichée
+  // pour un correspondant). Écrit sur la même API partagée (Google Apps
+  // Script) que crj.html, en conservant le compteur/dernière visite déjà
+  // enregistrés pour ce pressoir (on ne réécrit que ouverture/livraison).
+  // =========================================================================
+  var editModalEl = null;
+  var editModalContext = null; // { commune, pressoir }
+
+  function getEditModal(){
+    if(editModalEl) return editModalEl;
+    var overlay = document.createElement('div');
+    overlay.className = 'edit-modal-overlay';
+    overlay.innerHTML =
+      '<div class="edit-modal">' +
+        '<h3 class="edit-modal-title"></h3>' +
+        '<label class="edit-modal-label">Date d\'ouverture</label>' +
+        '<input type="date" class="edit-modal-input" id="edit-modal-ouverture" />' +
+        '<label class="edit-modal-label">Livraison FCDH</label>' +
+        '<input type="date" class="edit-modal-input" id="edit-modal-livraison" />' +
+        '<div class="edit-modal-error" id="edit-modal-error"></div>' +
+        '<div class="edit-modal-actions">' +
+          '<button type="button" class="edit-modal-btn edit-modal-cancel">Annuler</button>' +
+          '<button type="button" class="edit-modal-btn edit-modal-save">Enregistrer</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) closeEditModal();
+    });
+    overlay.querySelector('.edit-modal-cancel').addEventListener('click', closeEditModal);
+    overlay.querySelector('.edit-modal-save').addEventListener('click', enregistrerEditModal);
+
+    editModalEl = overlay;
+    return overlay;
+  }
+
+  function openEditModal(commune, pressoir){
+    editModalContext = { commune: commune, pressoir: pressoir };
+    var overlay = getEditModal();
+    var crj = crjDataById[crjId(pressoir, commune)] || {};
+    overlay.querySelector('.edit-modal-title').textContent = pressoir.nom;
+    overlay.querySelector('#edit-modal-ouverture').value = crj.ouverture || '';
+    overlay.querySelector('#edit-modal-livraison').value = crj.livraison || '';
+    overlay.querySelector('#edit-modal-error').textContent = '';
+    overlay.classList.add('visible');
+  }
+
+  function closeEditModal(){
+    if(editModalEl) editModalEl.classList.remove('visible');
+    editModalContext = null;
+  }
+
+  function enregistrerEditModal(){
+    if(!editModalContext) return;
+    var commune = editModalContext.commune;
+    var pressoir = editModalContext.pressoir;
+    var overlay = editModalEl;
+    var id = crjId(pressoir, commune);
+    var existant = crjDataById[id] || {};
+    var ouverture = overlay.querySelector('#edit-modal-ouverture').value;
+    var livraison = overlay.querySelector('#edit-modal-livraison').value;
+    var saveBtn = overlay.querySelector('.edit-modal-save');
+    var errorEl = overlay.querySelector('#edit-modal-error');
+
+    var update = {
+      id: id,
+      secteur: pressoir.secteur,
+      commune: commune.nom,
+      pressoir: pressoir.nom,
+      compteur: existant.compteur || 0,
+      derniereVisite: existant.derniereVisite || '',
+      ouverture: ouverture,
+      livraison: livraison
+    };
+
+    errorEl.textContent = '';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Enregistrement…';
+
+    fetch(CRJ_STORE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ updates: [update] })
+    })
+      .then(function(){
+        crjDataById[id] = update;
+        closeEditModal();
+      })
+      .catch(function(){
+        errorEl.textContent = 'Échec de l\'enregistrement — réessayez.';
+      })
+      .then(function(){
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Enregistrer';
       });
   }
 
@@ -2481,13 +2683,29 @@
         '<p><strong>Date d\'ouverture :</strong> ' + (formatDateCrj(crj.ouverture) || '—') + '</p>' +
         '<p><strong>Dernière visite :</strong> ' + (formatDateCrj(crj.derniereVisite) || '—') + '</p>' +
         '<p><strong>Livraison FCDH :</strong> ' + (formatDateCrj(crj.livraison) || '—') + '</p>';
+      var titreLigne = fcdhRole === 'courtier'
+        ? '<div class="pressoir-popup-title-row"><h3>' + pressoir.nom + '</h3>' +
+            '<button type="button" class="edit-pressoir-btn" title="Modifier ouverture / livraison FCDH">✎</button></div>'
+        : '<h3>' + pressoir.nom + '</h3>';
       return '<div class="pressoir-popup">' +
-        '<h3>' + pressoir.nom + '</h3>' +
+        titreLigne +
         '<p class="commune-line">' + commune.nom + '</p>' +
         capaciteLine +
         courtierLines +
         crjLines +
       '</div>';
+    });
+    // L'icône crayon n'existe que dans le HTML généré à l'ouverture de la
+    // popup (fonction ci-dessus, réservée au rôle "courtier") : on y
+    // accroche le clic à chaque ouverture plutôt qu'une seule fois.
+    marker.on('popupopen', function(){
+      var popupEl = marker.getPopup().getElement();
+      var btn = popupEl && popupEl.querySelector('.edit-pressoir-btn');
+      if(btn){
+        btn.addEventListener('click', function(){
+          openEditModal(commune, pressoir);
+        });
+      }
     });
     // Affichage au survol en plus du clic. Un clic "épingle" la popup : elle
     // reste ouverte même quand la souris s'en va ensuite, et ne se referme
