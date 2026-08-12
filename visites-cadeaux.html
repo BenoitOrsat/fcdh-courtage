@@ -510,8 +510,9 @@ function btChecksKey()  { return 'fcdh_btcheck_' + activeTab; }
 // Colonnes de visites (compteurs) et colonnes texte brut de l'onglet actif
 function visitCols()  { return tabState[activeTab].visits; }
 function plainCols()  { return tabState[activeTab].plain  || []; }
-function textCols()   { return plainCols().filter(h => h !== 'Courtier2' && !h.startsWith('Bt ')); }
-function bottleCols() { return plainCols().filter(h => h.startsWith('Bt ')); }
+function courtier2Col() { return plainCols().find(h => /^Courtier\s*2$/i.test(h)) || null; }
+function textCols()    { const c2 = courtier2Col(); return plainCols().filter(h => h !== c2 && !h.startsWith('Bt ')); }
+function bottleCols()  { return plainCols().filter(h => h.startsWith('Bt ')); }
 
 // ═══════════════════════════════════════════════════════════════
 //  INIT
@@ -733,7 +734,7 @@ function renderTable() {
   const gc = giftCols();
   const tc = textCols();
   const bc = bottleCols();
-  const h2 = plainCols().includes('Courtier2');
+  const h2 = !!courtier2Col();
   renderHead(gc, tc, bc, h2);
   renderBody(gc, tc, bc, h2);
 }
@@ -773,7 +774,8 @@ function renderHead(gc, tc, bc, h2) {
 }
 
 function renderBody(gc, tc, bc, h2) {
-  const sIdx=ci('Secteur'), coIdx=ci('Commune'), prIdx=ci('Pressoir'), crIdx=ci('Courtier'), c2Idx=ci('Courtier2');
+  const sIdx=ci('Secteur'), coIdx=ci('Commune'), prIdx=ci('Pressoir'), crIdx=ci('Courtier');
+  const c2Name=courtier2Col(), c2Idx=c2Name?ci(c2Name):-1;
   const s4Class = h2 ? 's4 no-sep' : 's4';
   let html = '';
   for (const i of filteredRows) {
