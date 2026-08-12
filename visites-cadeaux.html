@@ -917,19 +917,17 @@ async function increment(rowIdx, col, delta) {
 async function setCounterValue(rowIdx, col, newVal) {
   const tab    = activeTab;
   const clamped = Math.max(0, newVal);
-  pauseUntil = Date.now() + 3000;
   const colI = ci(col);
   if (colI < 0) return;
   rows[rowIdx][colI] = clamped;
   tabState[activeTab].rows = rows;
   renderTable();
   renderStats();
+  pauseUntil = Infinity;
   try {
     setSyncLabel('Sauvegarde…', 'spin');
     const result = await apiPost({ action: 'setValue', rowIdx, col, val: clamped });
     if (activeTab !== tab) return;
-    // Ne pas écraser la valeur optimiste si le serveur retourne les anciennes données
-    // (cas où le script n'est pas encore re-déployé avec l'action setValue)
     if (result.headers && result.rows) {
       const serverVal = result.rows[rowIdx] && result.rows[rowIdx][result.headers.indexOf(col)];
       if (Number(serverVal) === clamped) applyData(result);
@@ -938,6 +936,8 @@ async function setCounterValue(rowIdx, col, newVal) {
   } catch (err) {
     if (activeTab !== tab) return;
     setSyncLabel('Erreur de sauvegarde', 'error');
+  } finally {
+    if (activeTab === tab) pauseUntil = Date.now() + 2000;
   }
 }
 
@@ -947,13 +947,13 @@ async function setCounterValue(rowIdx, col, newVal) {
 async function setBottleValue(rowIdx, col, newVal) {
   const tab     = activeTab;
   const clamped = Math.max(0, newVal);
-  pauseUntil = Date.now() + 3000;
   const colI = ci(col);
   if (colI < 0) return;
   rows[rowIdx][colI] = clamped;
   tabState[activeTab].rows = rows;
   renderTable();
   renderStats();
+  pauseUntil = Infinity;
   try {
     setSyncLabel('Sauvegarde…', 'spin');
     const result = await apiPost({ action: 'setValue', rowIdx, col, val: clamped });
@@ -966,6 +966,8 @@ async function setBottleValue(rowIdx, col, newVal) {
   } catch (err) {
     if (activeTab !== tab) return;
     setSyncLabel('Erreur de sauvegarde', 'error');
+  } finally {
+    if (activeTab === tab) pauseUntil = Date.now() + 2000;
   }
 }
 
