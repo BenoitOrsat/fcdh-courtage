@@ -829,8 +829,9 @@ function bottleCell(rowIdx, col, val, idx) {
   const checks    = tabState[activeTab].btChecks;
   const originals = tabState[activeTab].btOriginals;
   const checked   = !!(checks[pressoir] && checks[pressoir][col]);
-  const origVal   = originals[pressoir] != null && originals[pressoir][col] != null ? originals[pressoir][col] : null;
-  const modified  = origVal !== null && val !== origVal;
+  const prKey     = pressoir.trim();
+  const origVal   = originals[prKey] != null && originals[prKey][col] != null ? originals[prKey][col] : null;
+  const modified  = origVal !== null && Number(val) !== Number(origVal);
   let cls = 'bt-cell';
   if (modified) cls += ' bt-modified';
   if (checked)  cls += ' bt-given';
@@ -1080,24 +1081,28 @@ function importXlsx(file) {
     localStorage.setItem(visitsKey(), JSON.stringify(effectiveVisits));
     localStorage.setItem(plainsKey(), JSON.stringify(effectivePlains));
 
-    // Mémoriser les valeurs originales des colonnes bouteilles
-    const btCols = effectivePlains.filter(c => c.startsWith('Bt '));
-    if (btCols.length) {
-      const originals = {};
-      imported.forEach(row => {
-        const pr = String(row.pressoir || '').trim();
-        if (!pr) return;
-        originals[pr] = {};
-        btCols.forEach(col => { originals[pr][col] = Number(row.plain[col]) || 0; });
-      });
-      tabState[activeTab].btOriginals = originals;
-      localStorage.setItem(btOriginalsKey(), JSON.stringify(originals));
-    }
-
     try {
       setSyncLabel('Import en cours…', 'spin');
       const result = await apiPost({ action: 'importData', rows: imported, visitCols: effectiveVisits, plainCols: effectivePlains });
       if (result.headers && result.rows) { headers = result.headers; rows = result.rows; }
+
+      // Mémoriser les originals depuis la réponse serveur (même format exact que val lors du rendu)
+      const btCols = effectivePlains.filter(c => c.startsWith('Bt '));
+      if (btCols.length && headers.length) {
+        const originals = {};
+        rows.forEach(row => {
+          const pr = String(row[headers.indexOf('Pressoir')] || '').trim();
+          if (!pr) return;
+          originals[pr] = {};
+          btCols.forEach(col => {
+            const colI = headers.indexOf(col);
+            if (colI >= 0) originals[pr][col] = row[colI];
+          });
+        });
+        tabState[activeTab].btOriginals = originals;
+        localStorage.setItem(btOriginalsKey(), JSON.stringify(originals));
+      }
+
       applyData({ headers, rows });
       setSyncLabel('Importé · ' + nowStr(), 'ok');
     } catch (err) {
