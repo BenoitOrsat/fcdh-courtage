@@ -54,8 +54,11 @@
     #btn-generer:hover { opacity: 0.88; }
     #form-error { font-size: 12.5px; color: #e05050; font-weight: 600; margin-top: 12px; min-height: 16px; text-align: center; }
 
-    .btn-secondary { margin-top: 10px; background: #fff; color: #0d1b3e; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 10px 16px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; transition: border-color 0.15s; }
+    .btn-secondary { margin-top: 10px; background: #fff; color: #0d1b3e; border: 1.5px solid #dde1eb; border-radius: 10px; padding: 10px 16px; font-size: 12.5px; font-weight: 700; font-family: inherit; cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s; }
     .btn-secondary:hover { border-color: #C9A84C; }
+    @keyframes pulse-alert { 0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,.55); } 50% { box-shadow: 0 0 0 7px rgba(201,168,76,0); } }
+    .btn-detail-alert { background: #fdf3e2; border-color: #C9A84C; color: #b3762b; animation: pulse-alert 1.6s ease-in-out infinite; }
+    .btn-detail-alert:hover { border-color: #C9A84C; }
 
     .detail-wrap { margin-top: 16px; display: none; }
     .detail-wrap.show { display: block; }
@@ -463,10 +466,26 @@
       });
     }
 
+    let detailPressoirsOuvert = false;
+
+    function renderBtnDetailPressoirs() {
+      const btn = document.getElementById('btn-detail-pressoirs');
+      if (detailPressoirsOuvert) {
+        btn.classList.remove('btn-detail-alert');
+        btn.textContent = 'Détail par pressoir';
+      } else {
+        btn.classList.add('btn-detail-alert');
+        btn.textContent = '⚠️ Détail par pressoir (obligatoire)';
+      }
+    }
+    renderBtnDetailPressoirs();
+
     document.getElementById('btn-detail-pressoirs').addEventListener('click', async function() {
       const wrap = document.getElementById('detail-wrap');
       const opening = !wrap.classList.contains('show');
       wrap.classList.toggle('show');
+      detailPressoirsOuvert = true;
+      renderBtnDetailPressoirs();
       if (opening) {
         document.getElementById('table-pressoirs-body').innerHTML = '<tr><td colspan="8" style="padding:12px; color:#8a94aa; text-align:center;">Chargement des pressoirs depuis pressoir.html…</td></tr>';
         await pressoirsPromise;
@@ -571,6 +590,10 @@
 
       if (!dateIso) { errorEl.textContent = 'Merci de renseigner la date.'; return; }
       if (secteurs.length === 0) { errorEl.textContent = 'Merci de sélectionner au moins un secteur.'; return; }
+      if (!detailPressoirsOuvert) {
+        errorEl.textContent = 'Merci de cliquer sur « Détail par pressoir » avant de générer le mail.';
+        return;
+      }
       if (!visitesJour && !remarques && !problemes && !rencontreMaisons && !rencontreCourtiers && !rencontreAutres && !visitesJ1) {
         errorEl.textContent = 'Merci de renseigner au moins une information avant de générer le mail.';
         return;
