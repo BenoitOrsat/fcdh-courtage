@@ -480,7 +480,8 @@ function doPost(e){
 // ═══════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════
-let scriptUrl    = localStorage.getItem(URL_KEY) || '';
+const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbw_DVCJ3bP2DaDAwgUauHCGcXy22tvzK1VH8kQGUByuQQO89wgF7gSA5iZ4Px5rTdmG/exec';
+let scriptUrl    = localStorage.getItem(URL_KEY) || DEFAULT_URL;
 let activeTab    = localStorage.getItem('fcdh_active_tab') || 'vendanges';
 let headers      = [];
 let rows         = [];
