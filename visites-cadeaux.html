@@ -679,6 +679,16 @@ function applyData(data) {
   tabState[activeTab].headers = headers;
   tabState[activeTab].rows    = rows;
 
+  // Auto-dériver la classification des colonnes si non configurée (nouveau poste)
+  if (headers.length && tabState[activeTab].plain.length === 0) {
+    const fixedAndVisits = new Set([...FIXED, ...tabState[activeTab].visits]);
+    const autoPlain = headers.filter(col => !fixedAndVisits.has(col));
+    if (autoPlain.length) {
+      tabState[activeTab].plain = autoPlain;
+      localStorage.setItem(plainsKey(), JSON.stringify(autoPlain));
+    }
+  }
+
   if (headers.length) {
     document.getElementById('setupState').style.display = 'none';
     document.getElementById('emptyState').style.display = rows.length ? 'none' : '';
