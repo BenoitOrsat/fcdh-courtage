@@ -698,11 +698,18 @@ function startRefresh() {
 //  FILTERS
 // ═══════════════════════════════════════════════════════════════
 function populateFilterOptions() {
+  const elS = document.getElementById('fSecteur');
+  const elC = document.getElementById('fCourtier');
+  const prevS = elS.value, prevC = elC.value;
+
   const sIdx = ci('Secteur'), cIdx = ci('Courtier');
   const sects = [...new Set(rows.map(r => r[sIdx]).filter(Boolean))].sort();
   const crtrs = [...new Set(rows.map(r => r[cIdx]).filter(Boolean))].sort();
-  document.getElementById('fSecteur').innerHTML  = '<option value="">Tous</option>' + sects.map(s => `<option>${esc(s)}</option>`).join('');
-  document.getElementById('fCourtier').innerHTML = '<option value="">Tous</option>' + crtrs.map(c => `<option>${esc(c)}</option>`).join('');
+  elS.innerHTML = '<option value="">Tous</option>' + sects.map(s => `<option>${esc(s)}</option>`).join('');
+  elC.innerHTML = '<option value="">Tous</option>' + crtrs.map(c => `<option>${esc(c)}</option>`).join('');
+
+  if (prevS && sects.includes(prevS)) elS.value = prevS;
+  if (prevC && crtrs.includes(prevC)) elC.value = prevC;
 }
 
 function applyFilters() {
