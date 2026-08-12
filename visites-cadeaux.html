@@ -1096,7 +1096,7 @@ function importXlsx(file) {
           originals[pr] = {};
           btCols.forEach(col => {
             const colI = headers.indexOf(col);
-            if (colI >= 0) originals[pr][col] = row[colI];
+            if (colI >= 0) originals[pr][col] = Number(row[colI]) || 0;
           });
         });
         tabState[activeTab].btOriginals = originals;
