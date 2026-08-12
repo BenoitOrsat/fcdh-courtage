@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Visites &amp; Cadeaux — FCDH</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    (function() {
+      if (new URLSearchParams(location.search).has('admin')) localStorage.setItem('fcdh_admin', '1');
+      if (localStorage.getItem('fcdh_admin') !== '1') {
+        var s = document.createElement('style');
+        s.textContent = '.admin-only { display: none !important; }';
+        document.head.appendChild(s);
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
@@ -213,21 +223,21 @@
 
 <!-- ── Toolbar ──────────────────────────────────────────────── -->
 <div class="toolbar">
-  <button class="btn btn-dark" onclick="document.getElementById('xlsxInput').click()">📂 Importer Excel</button>
-  <input type="file" id="xlsxInput" accept=".xlsx,.xls" onchange="handleXlsx(event)">
+  <button class="btn btn-dark admin-only" onclick="document.getElementById('xlsxInput').click()">📂 Importer Excel</button>
+  <input type="file" id="xlsxInput" class="admin-only" accept=".xlsx,.xls" onchange="handleXlsx(event)">
 
-  <div class="toolbar-sep"></div>
+  <div class="toolbar-sep admin-only"></div>
 
   <button class="btn btn-green"  id="btnAddRow" onclick="openModal('modalAddRow')" disabled>➕ Nouveau pressoir</button>
   <button class="btn btn-amber"  id="btnAddCol" onclick="openModal('modalAddCol')" disabled>🎁 + Colonne cadeau</button>
 
-  <div class="toolbar-sep"></div>
+  <div class="toolbar-sep admin-only"></div>
 
-  <button class="btn btn-ghost" onclick="openModal('modalSettings')">⚙️ Configuration</button>
+  <button class="btn btn-ghost admin-only" onclick="openModal('modalSettings')">⚙️ Configuration</button>
 
-  <div class="toolbar-sep"></div>
+  <div class="toolbar-sep admin-only"></div>
 
-  <button class="btn btn-red" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Remettre à zéro toutes les lignes de cet onglet">⚠️ RAZ</button>
+  <button class="btn btn-red admin-only" id="btnRAZ" onclick="handleRAZ(event)" disabled title="Remettre à zéro toutes les lignes de cet onglet">⚠️ RAZ</button>
   <span id="cacheBadge" class="cache-badge" style="display:none">⚡ Cache local</span>
 </div>
 
@@ -258,7 +268,7 @@
 
 <!-- ── Table / empty state ──────────────────────────────────── -->
 <div class="table-wrap" id="tableWrap">
-  <div class="center-state" id="setupState">
+  <div class="center-state admin-only" id="setupState">
     <div class="center-icon">⚙️</div>
     <div class="center-title">Configuration requise</div>
     <div class="center-sub">Connectez cet outil à un Google Sheet pour commencer. La configuration ne prend que 5 minutes.</div>
@@ -276,7 +286,7 @@
 </div>
 
 <!-- ── Drop overlay ─────────────────────────────────────────── -->
-<div class="drop-overlay" id="dropOverlay">
+<div class="drop-overlay admin-only" id="dropOverlay">
   <div class="drop-box">
     <div class="di">📂</div>
     <p>Déposer le fichier Excel ici</p>
@@ -284,7 +294,7 @@
 </div>
 
 <!-- ── Modal : Paramètres ─────────────────────────────────────  -->
-<div class="modal-bg" id="modalSettings">
+<div class="modal-bg admin-only" id="modalSettings">
   <div class="modal wide">
     <div class="modal-title">⚙️ Configuration Google Sheets</div>
 
